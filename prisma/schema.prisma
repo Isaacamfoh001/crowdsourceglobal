@@ -33,6 +33,11 @@ model User {
   accounts        Account[]
   customerProfile CustomerProfile?
 
+  vendorApplication VendorApplication?
+  vendorMemberships VendorMembership[]
+  adminUser         AdminUser?
+  sentMessages      Message[]
+
   @@unique([email])
   @@map("user")
 }
@@ -107,8 +112,9 @@ model CustomerProfile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  carts  Cart[]
-  orders Order[]
+  carts         Cart[]
+  orders        Order[]
+  conversations Conversation[]
 
   @@map("customer_profile")
 }
@@ -177,7 +183,15 @@ model Category {
 }
 
 /// Supplier company profile. Vendor-owned listings are the sellable unit —
-/// see VendorListing.
+/// see VendorListing. Created only once a VendorApplication is approved
+/// (see VendorApplication below) — there is no Vendor row for an applicant
+/// still under review.
+///
+/// `contactEmail`/`contactPhone` are CrownSource-operational contact details
+/// (private) — never select these in a public storefront/listing DTO. Public
+/// store identity is `companyName`/`description`/`logoUrl`/location/
+/// `sellerType`/`categorySlugs` only (see modules/vendors — the "no contact
+/// bypass" rule in CLAUDE.md).
 model Vendor {
   id                 String                   @id @default(cuid())
   companyName        String
@@ -187,9 +201,27 @@ model Vendor {
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
 
+  sellerType    SellerType?
+  logoUrl       String?
+  country       String?
+  region        String?
+  city          String?
+  categorySlugs String[]    @default([])
+
+  /// Private — CrownSource↔vendor operational contact only.
+  contactEmail        String?
+  contactPhone        String?
+  leadTimeDaysDefault Int?
+
   listings    VendorListing[]
   fulfilments Fulfilment[]
   orderItems  OrderItem[]
+
+  memberships VendorMembership[]
+  application VendorApplication?
+
+  participantConversations Conversation[] @relation("VendorParticipantConversations")
+  contextConversations     Conversation[] @relation("ConversationContextVendor")
 
   @@map("vendor")
 }
@@ -215,6 +247,25 @@ model VendorListing {
   approvalStatus ListingApprovalStatus @default(PENDING)
   listingStatus  ListingStatus         @default(DRAFT)
 
+  /// First-time submission is tracked via this timestamp (not a new enum
+  /// value) — a listing is a true, never-submitted draft when this is null,
+  /// matching entities.md's existing two-axis model (approvalStatus x
+  /// listingStatus) rather than adding a redundant "PENDING_REVIEW" status.
+  submittedAt DateTime?
+
+  /// A material edit to an already APPROVED+ACTIVE listing is staged here
+  /// rather than applied in place, so the live public row is undisturbed
+  /// while the edit is under re-review (approvalStatus flips to PENDING but
+  /// listingStatus stays ACTIVE). Admin approval merges this onto the real
+  /// fields and clears it; reject/changes-requested discards or retains it
+  /// for further vendor edits. See modules/vendors listing service — this is
+  /// deliberately not a full version-history table (out of scope for M3).
+  pendingChanges Json?
+
+  /// Admin's reason when approvalStatus = CHANGES_REQUESTED, shown to the
+  /// vendor in their portal. Cleared on the next admin decision.
+  changesRequestedReason String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -229,6 +280,7 @@ model VendorListing {
   cartItems      CartItem[]
   orderItems     OrderItem[]
   reservations   InventoryReservation[]
+  conversations  Conversation[]
 
   @@index([vendorId])
   @@index([categoryId])
@@ -365,10 +417,11 @@ model Order {
   customerProfileId String
   customerProfile   CustomerProfile @relation(fields: [customerProfileId], references: [id])
 
-  items        OrderItem[]
-  fulfilments  Fulfilment[]
-  payments     Payment[]
-  reservations InventoryReservation[]
+  items         OrderItem[]
+  fulfilments   Fulfilment[]
+  payments      Payment[]
+  reservations  InventoryReservation[]
+  conversations Conversation[]
 
   @@index([customerProfileId])
   @@map("order")
@@ -543,4 +596,209 @@ model IdempotencyKey {
   createdAt DateTime         @default(now())
 
   @@map("idempotency_key")
+}
+
+// ---------------------------------------------------------------------------
+// M3 — Vendor onboarding, VendorMembership, admin, messaging
+//
+// A VendorApplication is the private onboarding/moderation record; Vendor
+// itself (above) is only created once an application is APPROVED, keeping
+// the lean, partially-public Vendor row separate from private application
+// data (CLAUDE.md's "public vs private vendor information" boundary).
+// Conversation/Message implement the two structurally-separate managed
+// messaging shapes (Customer<->CSG, Vendor<->CSG) — there is deliberately no
+// participant shape that lets a buyer and a vendor share a thread.
+// ---------------------------------------------------------------------------
+
+enum SellerType {
+  INDIVIDUAL
+  SOLE_TRADER
+  REGISTERED_BUSINESS
+  DISTRIBUTOR_WHOLESALER
+  MANUFACTURER
+  ORGANIZATION
+  OTHER
+}
+
+enum VendorApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+  REJECTED
+}
+
+/// One application per User, ever (see modules/vendor-applications) — reused
+/// across resubmission after CHANGES_REQUESTED/REJECTED rather than creating
+/// a new row, so "leave and resume" and "edit after rejection" are the same
+/// mechanism. Approval creates the Vendor row and an OWNER VendorMembership
+/// in one transaction.
+model VendorApplication {
+  id     String                  @id @default(cuid())
+  status VendorApplicationStatus @default(DRAFT)
+
+  sellerType SellerType?
+
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+
+  displayName        String?
+  legalName          String?
+  storeDescription   String?
+  registrationNumber String?
+  taxIdentifier      String?
+  yearEstablished    Int?
+  websiteUrl         String?
+
+  country      String?
+  region       String?
+  city         String?
+  addressLine1 String?
+
+  categorySlugs       String[] @default([])
+  sellingMode         String?
+  bulkCapable         Boolean  @default(false)
+  leadTimeDaysDefault Int?
+  serviceAreas        String?
+
+  submittedAt    DateTime?
+  reviewedAt     DateTime?
+  reviewerUserId String?
+  /// Shown to the applicant when status = CHANGES_REQUESTED or REJECTED.
+  decisionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applicantUserId String @unique
+  applicant       User   @relation(fields: [applicantUserId], references: [id], onDelete: Cascade)
+
+  vendorId String? @unique
+  vendor   Vendor? @relation(fields: [vendorId], references: [id])
+
+  @@index([status])
+  @@map("vendor_application")
+}
+
+enum VendorMembershipRole {
+  OWNER
+  STAFF
+}
+
+/// Only a valid VendorMembership grants Vendor Portal access to that Vendor
+/// — never derived from anything else. M3 does not differentiate OWNER vs
+/// STAFF capabilities yet (all members can manage listings); the role field
+/// exists so that differentiation can be added later without a schema
+/// change (CLAUDE.md's "capable of supporting multiple users per Vendor").
+model VendorMembership {
+  id        String               @id @default(cuid())
+  role      VendorMembershipRole @default(OWNER)
+  createdAt DateTime             @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vendorId])
+  @@index([vendorId])
+  @@map("vendor_membership")
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  OPS_ADMIN
+  FINANCE_ADMIN
+}
+
+/// Grants CrownSourceGlobal staff access — created only via the dev-only
+/// `npm run admin:grant` CLI script (see scripts/grant-admin.ts), never via
+/// a public route or a hardcoded email. Only SUPER_ADMIN/OPS_ADMIN have any
+/// capability wired up in M3 (vendor/listing moderation, managed messaging);
+/// FINANCE_ADMIN is modeled per the approved 3-role split but unused until
+/// payments/payouts admin work exists.
+model AdminUser {
+  id        String    @id @default(cuid())
+  role      AdminRole
+  createdAt DateTime  @default(now())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admin_user")
+}
+
+enum ConversationParticipantType {
+  CUSTOMER
+  VENDOR
+}
+
+enum ConversationContextType {
+  LISTING
+  VENDOR
+  ORDER
+  GENERAL
+}
+
+enum ConversationStatus {
+  OPEN
+  CLOSED
+}
+
+/// The non-CrownSource party is either `customerProfileId` (participantType
+/// CUSTOMER) or `vendorId` (participantType VENDOR) — never both, and there
+/// is no field that could make a vendor a participant in a customer thread.
+/// `contextVendorId`/`contextListingId`/`contextOrderId` describe what a
+/// CUSTOMER conversation is *about* (e.g. "asking about this listing") —
+/// this is metadata for CrownSource staff, not a grant of vendor visibility.
+model Conversation {
+  id              String                      @id @default(cuid())
+  participantType ConversationParticipantType
+  contextType     ConversationContextType     @default(GENERAL)
+  status          ConversationStatus          @default(OPEN)
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+
+  customerProfileId String?
+  customerProfile   CustomerProfile? @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+
+  vendorId String?
+  vendor   Vendor? @relation("VendorParticipantConversations", fields: [vendorId], references: [id], onDelete: Cascade)
+
+  contextListingId String?
+  contextListing   VendorListing? @relation(fields: [contextListingId], references: [id])
+
+  contextVendorId String?
+  contextVendor   Vendor? @relation("ConversationContextVendor", fields: [contextVendorId], references: [id])
+
+  contextOrderId String?
+  contextOrder   Order?  @relation(fields: [contextOrderId], references: [id])
+
+  messages Message[]
+
+  @@index([customerProfileId])
+  @@index([vendorId])
+  @@map("conversation")
+}
+
+model Message {
+  id            String   @id @default(cuid())
+  body          String
+  /// Snapshotted at send time — true when the sender was CrownSource staff
+  /// replying (customer/vendor side is always false), independent of the
+  /// AdminUser table so a later staff-role change never rewrites history.
+  senderIsStaff Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderUserId String
+  senderUser   User   @relation(fields: [senderUserId], references: [id])
+
+  @@index([conversationId])
+  @@map("message")
 }

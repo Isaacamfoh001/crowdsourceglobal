@@ -34,9 +34,11 @@ function CartLink({ itemCount }: { itemCount: number }) {
 export function SiteHeader({
   isSignedIn,
   cartItemCount,
+  hasVendorPortal = false,
 }: {
   isSignedIn: boolean;
   cartItemCount: number;
+  hasVendorPortal?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -60,6 +62,14 @@ export function SiteHeader({
         <div className="hidden items-center gap-3 lg:flex">
           {isSignedIn ? (
             <>
+              {hasVendorPortal ? (
+                <Link
+                  href="/vendor/portal"
+                  className="text-sm font-medium text-stone-700 transition-colors hover:text-stone-900"
+                >
+                  Vendor Portal
+                </Link>
+              ) : null}
               <CartLink itemCount={cartItemCount} />
               <Link
                 href="/account"
@@ -116,13 +126,24 @@ export function SiteHeader({
               </Link>
             ))}
             {isSignedIn ? (
-              <Link
-                href="/account"
-                onClick={() => setMenuOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-stone-700 hover:bg-stone-100"
-              >
-                Account
-              </Link>
+              <>
+                {hasVendorPortal ? (
+                  <Link
+                    href="/vendor/portal"
+                    onClick={() => setMenuOpen(false)}
+                    className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-stone-700 hover:bg-stone-100"
+                  >
+                    Vendor Portal
+                  </Link>
+                ) : null}
+                <Link
+                  href="/account"
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-stone-700 hover:bg-stone-100"
+                >
+                  Account
+                </Link>
+              </>
             ) : null}
           </nav>
           <div className="mt-4 flex flex-col gap-2 border-t border-stone-200 pt-4">

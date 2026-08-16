@@ -5,6 +5,7 @@ import { Badge } from "../../../../components/ui/Badge";
 import { ListingCard } from "../../../../components/catalogue/ListingCard";
 import { EmptyState } from "../../../../components/catalogue/EmptyState";
 import { Breadcrumbs } from "../../../../components/catalogue/Breadcrumbs";
+import { AskAboutButton } from "../../../../components/messaging/AskAboutButton";
 import { vendorsService } from "../../../../modules/vendors/service";
 
 type Params = { slug: string };
@@ -49,6 +50,14 @@ export default async function VendorStorefrontPage({ params }: { params: Promise
                 {vendor.description}
               </p>
             ) : null}
+            <div className="mt-3">
+              <AskAboutButton
+                contextType="VENDOR"
+                contextRefId={vendor.id}
+                label="Ask about this vendor"
+                placeholder={`Ask CrownSourceGlobal about ${vendor.companyName}…`}
+              />
+            </div>
           </div>
         </div>
 

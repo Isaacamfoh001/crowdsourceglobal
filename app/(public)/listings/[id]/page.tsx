@@ -9,6 +9,7 @@ import { ListingImagePlaceholder } from "../../../../components/catalogue/Listin
 import { AvailabilityBadge } from "../../../../components/catalogue/AvailabilityBadge";
 import { BulkPricingTable } from "../../../../components/catalogue/BulkPricingTable";
 import { AddToCartForm } from "../../../../components/catalogue/AddToCartForm";
+import { AskAboutButton } from "../../../../components/messaging/AskAboutButton";
 import { formatPrice } from "../../../../lib/format";
 import { catalogueService } from "../../../../modules/catalogue/service";
 
@@ -162,6 +163,14 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
                 Visit storefront
               </Button>
             </Link>
+            <div className="mt-4">
+              <AskAboutButton
+                contextType="LISTING"
+                contextRefId={listing.id}
+                label="Ask about this item"
+                placeholder={`Ask CrownSourceGlobal about "${listing.title}"…`}
+              />
+            </div>
           </div>
         </div>
       </Container>

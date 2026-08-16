@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Receipt, User } from "lucide-react";
+import { LayoutGrid, MessagesSquare, Receipt, User } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/account", label: "Overview", icon: LayoutGrid, exact: true },
   { href: "/account/orders", label: "Orders", icon: Receipt, exact: false },
+  { href: "/account/messages", label: "Messages", icon: MessagesSquare, exact: false },
   { href: "/account/profile", label: "Profile", icon: User, exact: true },
 ];
 
