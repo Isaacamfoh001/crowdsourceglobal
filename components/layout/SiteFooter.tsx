@@ -2,8 +2,7 @@ import Link from "next/link";
 import { Logo } from "./Logo";
 
 const marketplaceLinks = [
-  { href: "/#marketplace", label: "Shop" },
-  { href: "/#marketplace", label: "Categories" },
+  { href: "/shop", label: "Shop" },
   { href: "/#custom-sourcing", label: "Custom sourcing" },
   { href: "/#how-it-works", label: "How it works" },
 ];

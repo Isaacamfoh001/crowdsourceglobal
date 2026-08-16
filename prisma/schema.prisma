@@ -1,7 +1,9 @@
-// CrownSourceGlobal — M0 schema.
+// CrownSourceGlobal — schema.
 //
-// Scope: Identity (Better Auth-owned tables) + CustomerProfile only.
-// Do not add catalogue/pricing/cart/order/etc. models here — those belong
+// M0 scope: Identity (Better Auth-owned tables) + CustomerProfile.
+// M1 scope: Catalogue (Category, Vendor, VendorListing) + Pricing
+// (BulkPriceTier, VendorCostRule) — read-only public marketplace browsing.
+// Do not add cart/order/payment/quotation/etc. models here — those belong
 // to later milestones per the approved roadmap (docs/architecture/overview.md).
 
 generator client {
@@ -104,4 +106,154 @@ model CustomerProfile {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("customer_profile")
+}
+
+// ---------------------------------------------------------------------------
+// M1 — Catalogue & Pricing
+//
+// VendorListing is the sellable unit (ADR 0003) — there is no canonical
+// cross-vendor Product. Public reads always filter on approvalStatus=APPROVED
+// and listingStatus=ACTIVE; the two are tracked as separate axes (admin
+// review outcome vs. vendor-facing visibility) rather than one combined
+// status, mirroring how Order.status/paymentStatus stay separate.
+// ---------------------------------------------------------------------------
+
+enum VendorVerificationStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum ListingApprovalStatus {
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum AvailabilityStatus {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+  MADE_TO_ORDER
+}
+
+enum MarginRuleType {
+  PERCENTAGE
+  FIXED
+}
+
+/// Category taxonomy. Self-referencing for subcategories (e.g. "Hair &
+/// Beauty Supplies" -> "Hair Extensions & Wigs"). Two levels are seeded for
+/// M1; the model itself supports arbitrary depth.
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parentCategoryId String?
+  parent           Category?  @relation("CategoryToSubcategory", fields: [parentCategoryId], references: [id])
+  children         Category[] @relation("CategoryToSubcategory")
+
+  listings VendorListing[]
+
+  @@index([parentCategoryId])
+  @@map("category")
+}
+
+/// Supplier company profile. Vendor-owned listings are the sellable unit —
+/// see VendorListing.
+model Vendor {
+  id                 String                    @id @default(cuid())
+  companyName        String
+  description        String?
+  verificationStatus VendorVerificationStatus  @default(PENDING)
+  storefrontSlug     String                    @unique
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  listings VendorListing[]
+
+  @@map("vendor")
+}
+
+/// The sellable unit (ADR 0003). No canonical cross-vendor Product — two
+/// vendors selling a similar item are two independent listings, related
+/// only by shared Category.
+model VendorListing {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  images      Json     @default("[]")
+  specs       Json?
+  basePrice   Decimal  @db.Decimal(12, 2)
+  currency    String   @default("GHS")
+
+  moq                Int                 @default(1)
+  maxOq              Int?
+  leadTimeDays       Int?
+  availableQuantity  Int                 @default(0)
+  availabilityStatus AvailabilityStatus  @default(IN_STOCK)
+
+  approvalStatus ListingApprovalStatus @default(PENDING)
+  listingStatus  ListingStatus         @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  bulkPriceTiers BulkPriceTier[]
+  vendorCostRule VendorCostRule?
+
+  @@index([vendorId])
+  @@index([categoryId])
+  @@index([approvalStatus, listingStatus])
+  @@map("vendor_listing")
+}
+
+/// Pricing-owned. Quantity-based pricing tiers for a listing — customer-
+/// facing, safe to display publicly.
+model BulkPriceTier {
+  id          String  @id @default(cuid())
+  minQuantity Int
+  maxQuantity Int?
+  unitPrice   Decimal @db.Decimal(12, 2)
+
+  listingId String
+  listing   VendorListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, minQuantity])
+  @@index([listingId])
+  @@map("bulk_price_tier")
+}
+
+/// Pricing-owned. Vendor supply cost and margin policy — commercially
+/// sensitive. No public read path may ever select these fields (see
+/// modules/pricing — there is deliberately no public accessor for this
+/// model, only BulkPriceTier is exposed to catalogue reads).
+model VendorCostRule {
+  id                String         @id @default(cuid())
+  vendorSupplyCost  Decimal        @db.Decimal(12, 2)
+  marginRuleType    MarginRuleType
+  marginValue       Decimal        @db.Decimal(8, 4)
+
+  listingId String        @unique
+  listing   VendorListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("vendor_cost_rule")
 }

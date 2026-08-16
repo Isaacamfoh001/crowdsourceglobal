@@ -7,7 +7,7 @@ import { Logo } from "./Logo";
 import { Button } from "../ui/Button";
 
 const NAV_LINKS = [
-  { href: "/#marketplace", label: "Shop" },
+  { href: "/shop", label: "Shop" },
   { href: "/#custom-sourcing", label: "Custom Sourcing" },
   { href: "/sell", label: "Sell with Us" },
   { href: "/#how-it-works", label: "How It Works" },
