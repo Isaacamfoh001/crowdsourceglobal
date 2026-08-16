@@ -1,0 +1,107 @@
+// CrownSourceGlobal — M0 schema.
+//
+// Scope: Identity (Better Auth-owned tables) + CustomerProfile only.
+// Do not add catalogue/pricing/cart/order/etc. models here — those belong
+// to later milestones per the approved roadmap (docs/architecture/overview.md).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Better Auth-owned. Field shape matches better-auth's core user schema
+/// (see docs/decisions/0002-authentication.md) — do not add CrownSourceGlobal
+/// business fields (role, ownership, etc.) here; those live on CustomerProfile.
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions        Session[]
+  accounts        Account[]
+  customerProfile CustomerProfile?
+
+  @@unique([email])
+  @@map("user")
+}
+
+/// Better Auth-owned.
+model Session {
+  id        String   @id
+  token     String
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+/// Better Auth-owned. One row per linked credential/OAuth provider for a
+/// user — e.g. a Google-linked user and an email/password credential are
+/// two Account rows pointing at the same User (see ADR 0002).
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("account")
+}
+
+/// Better Auth-owned. Email verification and password reset tokens.
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+}
+
+/// CrownSourceGlobal-owned. The buyer-side profile — created automatically
+/// after every successful registration (email/password or Google), via a
+/// Better Auth `databaseHooks.user.create.after` hook, so a user reaches the
+/// same CustomerProfile regardless of authentication method (PROJECT.md §54.6).
+///
+/// Deliberately minimal for M0: no organizationId/businessInfo yet — see
+/// docs/domain/entities.md for the full future shape, added when the
+/// business/organization flows actually need it.
+model CustomerProfile {
+  id          String   @id @default(cuid())
+  displayName String
+  phone       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("customer_profile")
+}
