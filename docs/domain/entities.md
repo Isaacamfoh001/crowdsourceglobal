@@ -62,6 +62,16 @@ High-level relational data model (PostgreSQL-oriented). This is a domain preview
 
 **Vendor** gains private pickup/collection fields *(added M4)*: pickupAddressLine1, pickupContactName, pickupContactPhone, pickupHours, pickupNotes — deliberately separate from the general country/region/city (which describe where the store operates commercially); these are the precise details CrownSource-arranged collection actually uses. Never on the public storefront DTO.
 
+## Quotation *(implemented M5)*
+
+**Quotation** — id `PK`, reference `UQ` (customer-facing, `QT-YYYYMMDD-XXXXX`, same collision-safe convention as `Order.orderNumber`), customerProfileId `FK→CustomerProfile IDX`, origin (`INSTANT` only in M5 — `CUSTOM` is added when Custom Sourcing needs it, not guessed ahead of that work), status (`ISSUED|ACCEPTED|EXPIRED` `IDX` — `WITHDRAWN`/`SUPERSEDED` are reserved for a later milestone's manual reissue/custom-sourcing flow, not modeled yet since nothing in M5 produces them), currency, subtotal, total, issuedAt, expiresAt, acceptedAt (nullable). An issued Quotation is immutable — its `QuotationItem`s are never recomputed after creation, regardless of later catalogue/pricing changes (see workflows.md Workflow Q). Unlike Cart, a Quotation is a locked commercial offer, not mutable shopping intent — see CLAUDE.md §3's "do not simply rename Cart to Quote."
+
+**QuotationItem** — id `PK`, quotationId `FK→Quotation IDX`, listingId `FK→VendorListing` (nullable, same rule as OrderItem — a future Custom Sourcing-origin line with no single vendor exposed to the customer needs no schema change), vendorId `FK→Vendor` (nullable, same rule), description, quantity, unitPrice, vendorPayableBasis (private — never on the customer-facing DTO), lineTotal. Snapshotted once at issuance from live `VendorListing`/`BulkPriceTier`/`VendorCostRule`, then read-only — mirrors OrderItem's snapshot philosophy exactly.
+
+**Order** gains `originQuotationId` *(added M5)*: `FK→Quotation`, nullable, **`UQ`**. The uniqueness constraint is the entire "at most one Order per Quotation, ever" idempotency guarantee — a double-accept (double-click, retry, concurrent tab) cannot produce a second Order even under a true race, without a separate IdempotencyKey scope (see modules/orders/service.ts `createOrderFromQuotation`).
+
+There is deliberately no persisted `DRAFT` Quotation row. The pre-issuance "Quote Builder" state lives in an HttpOnly cookie (`lib/actions/quotation.ts`) holding only `{listingId, quantity}` pairs — nothing commercial exists until "Generate Quote" re-validates every line fresh and writes an already-`ISSUED` Quotation in one transaction.
+
 ## Payments & Payouts
 
 **Payment** — id `PK`, orderId `FK→Order IDX`, providerEventId `UQ` (nullable until confirmed), provider, method (`momo|card|...`), amount, currency, status, initiatedAt, confirmedAt.

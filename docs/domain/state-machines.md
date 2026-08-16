@@ -4,6 +4,7 @@ Authoritative states and legal transitions for the entities whose lifecycle matt
 
 | Entity | States (→ = transition) | Terminal | Triggered by | Idempotency note |
 |---|---|---|---|---|
+| **Quotation** *(implemented M5, INSTANT origin only)* | ISSUED → ACCEPTED \| EXPIRED | ACCEPTED, EXPIRED | System (issue — always already ISSUED, no persisted DRAFT row), Customer (accept, via `ordersService.createOrderFromQuotation`) | `Order.originQuotationId` unique constraint — at most one Order per Quotation, ever, even under a race. EXPIRED is derived at read time from `expiresAt`, not a background sweep; acceptance independently re-checks expiry so correctness never depends on a scheduler running. `WITHDRAWN`/`SUPERSEDED` are reserved for a later milestone (Custom Sourcing / admin reissue) — not modeled in M5. |
 | **Vendor Verification** | PENDING → UNDER_REVIEW → APPROVED \| REJECTED → (resubmit) PENDING | APPROVED, REJECTED (soft) | Vendor (submit), Admin (approve/reject) | — |
 | **Vendor Listing** | DRAFT → PENDING_REVIEW → APPROVED → ACTIVE ⇄ INACTIVE; APPROVED → CHANGES_REQUESTED → PENDING_REVIEW; → REJECTED → (edit) PENDING_REVIEW; → ARCHIVED | ARCHIVED | Vendor (create/edit/toggle), Admin (approve/reject/request changes) | — |
 | **Quotation** | DRAFT (internal, custom only) → ISSUED → ACCEPTED \| EXPIRED \| WITHDRAWN \| SUPERSEDED | ACCEPTED, EXPIRED, WITHDRAWN, SUPERSEDED | System (issue/expire), Customer (accept), Admin (withdraw/supersede) | Unique constraint: one Order per Quotation — ACCEPTED cannot fire twice |

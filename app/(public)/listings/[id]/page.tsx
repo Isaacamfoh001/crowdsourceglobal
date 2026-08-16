@@ -9,11 +9,13 @@ import { ListingImagePlaceholder } from "../../../../components/catalogue/Listin
 import { AvailabilityBadge } from "../../../../components/catalogue/AvailabilityBadge";
 import { BulkPricingTable } from "../../../../components/catalogue/BulkPricingTable";
 import { AddToCartForm } from "../../../../components/catalogue/AddToCartForm";
+import { GetInstantQuoteForm } from "../../../../components/catalogue/GetInstantQuoteForm";
 import { AskAboutButton } from "../../../../components/messaging/AskAboutButton";
 import { formatPrice } from "../../../../lib/format";
 import { catalogueService } from "../../../../modules/catalogue/service";
 import { getCurrentSession } from "../../../../modules/identity/policy";
 import { getPendingMessageIntent } from "../../../../lib/actions/messaging";
+import { getPendingQuoteIntent } from "../../../../lib/actions/quotation";
 
 type Params = { id: string };
 
@@ -36,6 +38,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
   const session = await getCurrentSession();
   const isSignedIn = Boolean(session);
   const resumedMessage = await getPendingMessageIntent("LISTING", listing.id);
+  const resumedQuoteQuantity = isSignedIn ? await getPendingQuoteIntent(listing.id) : null;
 
   return (
     <div className="bg-stone-50 py-10 sm:py-14">
@@ -131,6 +134,20 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
               availabilityStatus={listing.availabilityStatus}
               bulkPriceTiers={listing.bulkPriceTiers}
             />
+
+            {listing.bulkPriceTiers.length > 0 ? (
+              <GetInstantQuoteForm
+                listingId={listing.id}
+                currentPath={`/listings/${listing.id}`}
+                basePrice={listing.basePrice}
+                currency={listing.currency}
+                moq={listing.moq}
+                maxOq={listing.maxOq}
+                availableQuantity={listing.availableQuantity}
+                bulkPriceTiers={listing.bulkPriceTiers}
+                resumedQuantity={resumedQuoteQuantity}
+              />
+            ) : null}
           </div>
         </div>
 

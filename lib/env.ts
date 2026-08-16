@@ -16,6 +16,13 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   NEXT_PUBLIC_APP_URL: z.url(),
+  /**
+   * How many days an instant quotation stays acceptable after issuance
+   * (docs/workflows/workflows.md Workflow Q). PROJECT.md does not mandate an
+   * exact figure, so this is a documented, configurable V1 default rather
+   * than a number buried inside modules/quotation/service.ts.
+   */
+  QUOTE_VALIDITY_DAYS: z.coerce.number().int().positive().default(7),
 });
 
 function loadEnv() {
@@ -26,6 +33,7 @@ function loadEnv() {
     GOOGLE_CLIENT_ID: process.env["GOOGLE_CLIENT_ID"] || undefined,
     GOOGLE_CLIENT_SECRET: process.env["GOOGLE_CLIENT_SECRET"] || undefined,
     NEXT_PUBLIC_APP_URL: process.env["NEXT_PUBLIC_APP_URL"],
+    QUOTE_VALIDITY_DAYS: process.env["QUOTE_VALIDITY_DAYS"] || undefined,
   });
 
   if (!parsed.success) {

@@ -153,3 +153,22 @@ export async function sendDeliveryIssueEmail(params: { to: string; orderNumber: 
       `  CrownSourceGlobal is following up.`,
   );
 }
+
+/**
+ * M5 instant-quotation notification — same dev-console adapter pattern.
+ * Dispatched post-commit (see modules/quotation/service.ts) — an email
+ * provider outage must never roll back or block an already-issued quote.
+ */
+export async function sendQuoteIssuedEmail(params: {
+  to: string;
+  reference: string;
+  total: number;
+  currency: string;
+  expiresAt: string;
+}): Promise<void> {
+  console.log(
+    `[email:quote-issued] to=${params.to}\n` +
+      `  Your CrownSourceGlobal quotation ${params.reference} is ready: ${params.currency} ${params.total.toFixed(2)}.\n` +
+      `  Valid until ${params.expiresAt}. View it at /account/quotes.`,
+  );
+}

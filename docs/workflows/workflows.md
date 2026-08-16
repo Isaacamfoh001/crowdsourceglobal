@@ -38,9 +38,9 @@ Listing → Cart → checkout revalidation → `PENDING_PAYMENT` Order/OrderItem
 
 Same as A, but Cart holds items across N vendor Listings → checkout produces N OrderItems (each `vendorId` populated) → Order CONFIRMED spawns N Fulfilments, one per distinct vendor. No allocation logic exists — the customer's line items are the allocation.
 
-## C. Bulk / Instant Quotation Purchase
+## C. Bulk / Instant Quotation Purchase *(implemented M5 — see Workflow Q for full detail)*
 
-Listing + quantity → Pricing evaluates tier → Quotation (instant) issued → checkout consumes the Quotation directly (no revalidation, since it's already authoritative) → `PENDING_PAYMENT` Order copies Quotation terms → Payment → CONFIRMED → Fulfilment.
+Listing + quantity → Pricing evaluates tier → Quotation (instant) issued → checkout consumes the Quotation directly (no revalidation of price, since it's already authoritative — availability IS revalidated at this step) → `PENDING_PAYMENT` Order copies Quotation terms → Payment → CONFIRMED → Fulfilment.
 
 ## D. Custom Sourcing → Quotation → Order
 
@@ -130,3 +130,33 @@ Customs/duties/import-freight costs are explicitly out of scope for M4 — the d
 ## P. Fulfilment Issue / Operational Exception *(added M4)*
 
 A Vendor may report a problem (can't fulfil the quantity, item unavailable, preparation delay, damaged stock) any time before their Fulfilment leaves their hands (PENDING/PREPARING/READY only — not after DISPATCHED, which is no longer their responsibility). This creates a `FulfilmentIssue(OPEN)` and moves `Fulfilment.status → EXCEPTION`, pausing it. CrownSource operations resolves it with a note (visible to the Vendor) which resumes the Fulfilment to PREPARING. This never touches OrderItem, quantities, or payment amounts — it is an operational pause/resume mechanism only, not a refund or replacement workflow (those remain a later milestone).
+
+## Q. Instant Bulk Quotation *(added M5)*
+
+```
+Customer selects a bulk quantity on an eligible listing ("Get Instant Quote")
+  → signed out? selection is stashed in an HttpOnly cookie, customer sent to
+    sign-in, then resumed as an explicit prompt on return (never auto-added)
+  → line added to a cookie-held Quote Draft (NOT a persisted DRAFT row —
+    nothing commercial exists yet; see entities.md)
+  → Customer may add more eligible listings — from ANY vendor, customer-
+    selected, never auto-split — adjust quantities, or remove lines
+  → "Generate Quote": every line is re-validated fresh server-side
+    (approval/active/MOQ/maxOq) and priced fresh from live
+    BulkPriceTier/VendorCostRule — nothing about the draft cookie is trusted
+  → Quotation + QuotationItems created, already ISSUED, expiresAt =
+    now + QUOTE_VALIDITY_DAYS (lib/env.ts) — inventory is NOT reserved here
+  → Customer views the quote (/account/quotes/[id]) — pricing shown is
+    always the immutable snapshot, never re-derived from current pricing
+  → "Proceed to Checkout": ordersService.createOrderFromQuotation
+    atomically claims the Quotation (ISSUED → ACCEPTED, idempotent via
+    Order.originQuotationId's unique constraint), revalidates availability
+    with the same atomic conditional-decrement as cart checkout (Workflow G),
+    and copies OrderItem values VERBATIM from the QuotationItem snapshot —
+    no new pricing evaluation happens at this step
+  → PENDING_PAYMENT Order (multiple OrderItems, possibly multiple vendors)
+    → existing MockPaymentProvider → CONFIRMED → Fulfilments fan out per
+      vendor exactly as Workflow B/E already do — no parallel commerce path
+```
+
+If availability has dropped below the quoted quantity by acceptance time, the whole acceptance transaction rolls back: the Quotation reverts to ISSUED (never left stuck ACCEPTED with no Order), its price is untouched, and the customer sees a clear message with a path to request an updated quote (which re-validates everything from scratch — it never reuses the old snapshot's prices). An expired Quotation remains permanently viewable as a historical artifact but can never be accepted; expiry is derived at read time from `expiresAt` rather than a background sweep, and acceptance independently re-checks it, so correctness never depends on a scheduler running.

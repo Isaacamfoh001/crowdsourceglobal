@@ -12,7 +12,7 @@ Authoritative summary of the approved V1 architecture. See `/docs/domain/entitie
 | Catalogue | Category taxonomy + `VendorListing` (the sellable unit — see ADR 0003) |
 | Pricing | Bulk tier rules, vendor supply cost, margin policy, promotions |
 | Cart | Mutable, pre-commercial buyer intent |
-| Quotation | Immutable priced commercial offer (instant or custom origin) |
+| Quotation | Immutable priced commercial offer (instant or custom origin) — `modules/quotation` (INSTANT origin implemented M5; CUSTOM origin deferred to Custom Sourcing) |
 | Custom Sourcing | Operational process that produces a custom Quotation |
 | Checkout & Orders | Converts a Cart or accepted Quotation into a durable Order |
 | Fulfilment | Vendor-scoped responsibility for a subset of an Order, plus its Shipment (physical movement) and FulfilmentIssue (operational exception) — `modules/fulfilment` (implemented M4) |

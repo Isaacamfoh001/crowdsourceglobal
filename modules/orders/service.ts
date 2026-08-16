@@ -4,6 +4,7 @@ import { cartRepository } from "../cart/repository";
 import { pricingService } from "../pricing/service";
 import { resolveUnitPrice } from "../pricing/resolveUnitPrice";
 import { generateOrderNumber } from "../../lib/order-number";
+import { quotationRepository } from "../quotation/repository";
 import { ordersRepository } from "./repository";
 import { ok, err, type Result } from "../../lib/result";
 import type { DeliveryInfo, OrderDetailView, OrderSummaryView } from "./types";
@@ -12,6 +13,14 @@ const RESERVATION_TTL_MINUTES = 15;
 
 /** Thrown inside the checkout transaction to trigger a clean rollback with a customer-facing message. */
 class CheckoutValidationError extends Error {}
+
+/**
+ * Thrown when a concurrent request already claimed this Quotation (status
+ * flip lost the race) — distinct from CheckoutValidationError because the
+ * caller's recovery is different: look up the Order the winning request
+ * produced and treat this as an idempotent success, not a user-facing error.
+ */
+class QuoteAcceptanceRaceError extends Error {}
 
 type PreparedOrderItem = {
   listingId: string;
@@ -133,6 +142,111 @@ async function runCheckoutTransaction(
   });
 }
 
+type QuotationForAcceptance = NonNullable<
+  Awaited<ReturnType<typeof quotationRepository.findWithItemsForAcceptance>>
+>;
+
+/**
+ * Quote → Order conversion. Mirrors runCheckoutTransaction's shape (same
+ * atomic-decrement availability check, same InventoryReservation creation —
+ * reservation happens HERE, at acceptance, never at quote issuance) but
+ * sources commercial values from the already-issued QuotationItem snapshot
+ * verbatim rather than re-deriving them from live pricing (see
+ * docs/workflows/workflows.md Workflow Q — "current listing prices cannot
+ * rewrite historical Quotes"). The Quotation status claim happens first, so
+ * a losing concurrent request never reaches the availability check at all.
+ */
+async function runQuoteAcceptanceTransaction(
+  customerProfileId: string,
+  quotation: QuotationForAcceptance,
+  deliveryInfo: DeliveryInfo,
+): Promise<string> {
+  return prisma.$transaction(async (tx) => {
+    const claimed = await tx.quotation.updateMany({
+      where: { id: quotation.id, customerProfileId, status: "ISSUED" },
+      data: { status: "ACCEPTED", acceptedAt: new Date() },
+    });
+    if (claimed.count !== 1) {
+      throw new QuoteAcceptanceRaceError();
+    }
+
+    const preparedItems: PreparedOrderItem[] = [];
+
+    for (const item of quotation.items) {
+      // M5 always populates both — a future custom-sourcing-origin
+      // QuotationItem with vendorId=null is out of scope here (see
+      // schema.prisma's M5 section comment).
+      if (!item.listingId || !item.vendorId) {
+        throw new CheckoutValidationError("This quotation can't be completed automatically. Please contact support.");
+      }
+
+      const listing = await tx.vendorListing.findUnique({
+        where: { id: item.listingId },
+        select: { id: true, approvalStatus: true, listingStatus: true },
+      });
+      if (!listing || listing.approvalStatus !== "APPROVED" || listing.listingStatus !== "ACTIVE") {
+        throw new CheckoutValidationError(
+          `${item.description} is no longer available. This quotation can no longer be completed as issued.`,
+        );
+      }
+
+      // Same atomic conditional decrement as cart checkout — availability
+      // is revalidated at acceptance, never guaranteed at quote issuance.
+      const decremented = await tx.vendorListing.updateMany({
+        where: { id: item.listingId, availableQuantity: { gte: item.quantity } },
+        data: { availableQuantity: { decrement: item.quantity } },
+      });
+      if (decremented.count !== 1) {
+        throw new CheckoutValidationError(
+          `Only a limited quantity of ${item.description} is left — not enough to complete this quotation. The quoted price remains unchanged; you can request an updated quote.`,
+        );
+      }
+
+      preparedItems.push({
+        listingId: item.listingId,
+        vendorId: item.vendorId,
+        description: item.description,
+        quantity: item.quantity,
+        // Copied verbatim from the immutable QuotationItem snapshot — no
+        // new pricing evaluation happens here.
+        unitPrice: item.unitPrice.toNumber(),
+        vendorPayableBasis: item.vendorPayableBasis.toNumber(),
+        lineTotal: item.lineTotal.toNumber(),
+      });
+    }
+
+    const order = await tx.order.create({
+      data: {
+        orderNumber: generateOrderNumber(),
+        customerProfileId,
+        subtotal: quotation.subtotal,
+        total: quotation.total,
+        currency: quotation.currency,
+        deliveryInfo: deliveryInfo as unknown as Prisma.InputJsonValue,
+        status: "PENDING_PAYMENT",
+        paymentStatus: "UNPAID",
+        originQuotationId: quotation.id,
+      },
+    });
+
+    await tx.orderItem.createMany({
+      data: preparedItems.map((item) => ({ ...item, orderId: order.id })),
+    });
+
+    await tx.inventoryReservation.createMany({
+      data: preparedItems.map((item) => ({
+        listingId: item.listingId,
+        orderId: order.id,
+        quantity: item.quantity,
+        status: "HELD" as const,
+        expiresAt: new Date(Date.now() + RESERVATION_TTL_MINUTES * 60_000),
+      })),
+    });
+
+    return order.id;
+  });
+}
+
 export const ordersService = {
   async createOrderFromCart(
     customerProfileId: string,
@@ -163,6 +277,71 @@ export const ordersService = {
           continue; // orderNumber collision — retry with a freshly generated one
         }
         console.error("Checkout failed unexpectedly:", error);
+        return err("Something went wrong creating your order. Please try again.");
+      }
+    }
+
+    return err("Something went wrong creating your order. Please try again.");
+  },
+
+  /**
+   * Quote acceptance entry point (Workflow Q). Ownership/status/expiry are
+   * re-checked here (defense in depth, before ever entering a transaction),
+   * and again atomically inside runQuoteAcceptanceTransaction. Idempotent:
+   * a Quotation already ACCEPTED — whether from an earlier successful call
+   * or a concurrent request that won the race — returns the existing
+   * orderId rather than erroring or creating a second Order (the
+   * `Order.originQuotationId` unique constraint makes a second Order
+   * impossible even under a true race).
+   */
+  async createOrderFromQuotation(
+    customerProfileId: string,
+    quotationId: string,
+    deliveryInfo: DeliveryInfo,
+  ): Promise<Result<{ orderId: string }>> {
+    const quotation = await quotationRepository.findWithItemsForAcceptance(quotationId, customerProfileId);
+    if (!quotation) {
+      return err("Quotation not found.");
+    }
+
+    if (quotation.status === "ACCEPTED") {
+      const existingOrder = await quotationRepository.findOrderIdByQuotationId(quotationId);
+      if (existingOrder) {
+        return ok({ orderId: existingOrder.id });
+      }
+      return err("This quotation has already been used.");
+    }
+    if (quotation.status !== "ISSUED") {
+      return err("This quotation is no longer available.");
+    }
+    if (quotation.expiresAt.getTime() < Date.now()) {
+      await quotationRepository.markExpiredIfDue(quotationId);
+      return err("This quotation has expired. You can request an updated quote.");
+    }
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const orderId = await runQuoteAcceptanceTransaction(customerProfileId, quotation, deliveryInfo);
+        return ok({ orderId });
+      } catch (error) {
+        if (error instanceof CheckoutValidationError) {
+          return err(error.message);
+        }
+        if (error instanceof QuoteAcceptanceRaceError) {
+          const existingOrder = await quotationRepository.findOrderIdByQuotationId(quotationId);
+          if (existingOrder) {
+            return ok({ orderId: existingOrder.id });
+          }
+          return err("This quotation is no longer available.");
+        }
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002" &&
+          attempt < 2
+        ) {
+          continue; // orderNumber collision — retry with a freshly generated one
+        }
+        console.error("Quote acceptance failed unexpectedly:", error);
         return err("Something went wrong creating your order. Please try again.");
       }
     }
