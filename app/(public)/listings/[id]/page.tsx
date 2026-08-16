@@ -8,6 +8,7 @@ import { Breadcrumbs } from "../../../../components/catalogue/Breadcrumbs";
 import { ListingImagePlaceholder } from "../../../../components/catalogue/ListingImagePlaceholder";
 import { AvailabilityBadge } from "../../../../components/catalogue/AvailabilityBadge";
 import { BulkPricingTable } from "../../../../components/catalogue/BulkPricingTable";
+import { AddToCartForm } from "../../../../components/catalogue/AddToCartForm";
 import { formatPrice } from "../../../../lib/format";
 import { catalogueService } from "../../../../modules/catalogue/service";
 
@@ -110,18 +111,17 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
               </div>
             ) : null}
 
-            <div className="mt-8 rounded-2xl border border-stone-200 bg-white p-5">
-              <Link href="/sign-up">
-                <Button size="lg" fullWidth disabled={listing.availabilityStatus === "OUT_OF_STOCK"}>
-                  {listing.availabilityStatus === "OUT_OF_STOCK"
-                    ? "Currently unavailable"
-                    : "Create an account to purchase"}
-                </Button>
-              </Link>
-              <p className="mt-3 text-center text-xs text-stone-500">
-                Cart and checkout are coming in a future update.
-              </p>
-            </div>
+            <AddToCartForm
+              listingId={listing.id}
+              currentPath={`/listings/${listing.id}`}
+              basePrice={listing.basePrice}
+              currency={listing.currency}
+              moq={listing.moq}
+              maxOq={listing.maxOq}
+              availableQuantity={listing.availableQuantity}
+              availabilityStatus={listing.availabilityStatus}
+              bulkPriceTiers={listing.bulkPriceTiers}
+            />
           </div>
         </div>
 

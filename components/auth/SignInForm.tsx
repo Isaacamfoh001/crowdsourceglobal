@@ -4,18 +4,11 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, sendVerificationEmail } from "../../lib/auth-client";
+import { safeRedirect } from "../../lib/safe-redirect";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { FormMessage } from "../ui/FormMessage";
 import { GoogleButton } from "./GoogleButton";
-
-/** Only ever follow a same-origin, path-relative redirect (never `//host`). */
-function safeRedirect(target: string | null): string {
-  if (target && target.startsWith("/") && !target.startsWith("//")) {
-    return target;
-  }
-  return "/account";
-}
 
 export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const router = useRouter();

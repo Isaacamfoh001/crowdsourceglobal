@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { verifyEmail } from "../../lib/auth-client";
+import { safeRedirect } from "../../lib/safe-redirect";
 import { FormMessage } from "../ui/FormMessage";
 
 type Status = "verifying" | "success" | "error";
@@ -12,6 +13,10 @@ type Status = "verifying" | "success" | "error";
 export function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const redirectParam = searchParams.get("redirect");
+  const signInHref = redirectParam
+    ? `/sign-in?redirect=${encodeURIComponent(safeRedirect(redirectParam))}`
+    : "/sign-in";
   const [status, setStatus] = useState<Status>(token ? "verifying" : "error");
 
   useEffect(() => {
@@ -55,7 +60,7 @@ export function VerifyEmailContent() {
       {status === "success" ? (
         <>
           <FormMessage tone="success">Your email is verified.</FormMessage>
-          <Link href="/sign-in" className="text-sm font-medium text-brand-700 hover:underline">
+          <Link href={signInHref} className="text-sm font-medium text-brand-700 hover:underline">
             Continue to sign in
           </Link>
         </>

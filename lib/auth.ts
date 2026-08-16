@@ -29,11 +29,18 @@ export const auth = betterAuth({
   emailVerification: {
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
-    sendVerificationEmail: async ({ user, token }) => {
+    sendVerificationEmail: async ({ user, token, url: betterAuthUrl }) => {
       // Point at our own /verify-email page (rather than Better Auth's
       // bare API url) so verification gets a proper loading/success/error
-      // UI instead of a raw JSON response.
-      const url = `${env.NEXT_PUBLIC_APP_URL}/verify-email?token=${encodeURIComponent(token)}`;
+      // UI instead of a raw JSON response. Better Auth's own generated
+      // `url` already embeds whatever callbackURL was passed to
+      // signUp.email() as a query param — forward it through as `redirect`
+      // so a customer who registered mid-checkout returns there after
+      // verifying, instead of always landing on /account.
+      const callbackURL = new URL(betterAuthUrl).searchParams.get("callbackURL");
+      const redirectParam =
+        callbackURL && callbackURL !== "/" ? `&redirect=${encodeURIComponent(callbackURL)}` : "";
+      const url = `${env.NEXT_PUBLIC_APP_URL}/verify-email?token=${encodeURIComponent(token)}${redirectParam}`;
       await sendVerificationEmail({ to: user.email, url });
     },
   },

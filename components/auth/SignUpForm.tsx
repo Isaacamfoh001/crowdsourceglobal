@@ -2,8 +2,10 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { signUp } from "../../lib/auth-client";
+import { safeRedirect } from "../../lib/safe-redirect";
 import { validateRegistration, type RegistrationFieldErrors } from "../../modules/identity/validation";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -11,6 +13,8 @@ import { FormMessage } from "../ui/FormMessage";
 import { GoogleButton } from "./GoogleButton";
 
 export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
+  const searchParams = useSearchParams();
+  const redirectTo = safeRedirect(searchParams.get("redirect"));
   const [fieldErrors, setFieldErrors] = useState<RegistrationFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -32,7 +36,10 @@ export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
     }
 
     setIsSubmitting(true);
-    const { error } = await signUp.email({ name, email, password });
+    // callbackURL flows into the verification email's link (see
+    // lib/auth.ts), so even the email/password + verify-email detour
+    // returns the customer to what they were doing, not just Google sign-up.
+    const { error } = await signUp.email({ name, email, password, callbackURL: redirectTo });
     setIsSubmitting(false);
 
     if (error) {
@@ -72,7 +79,7 @@ export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
 
       {googleEnabled ? (
         <>
-          <GoogleButton label="Continue with Google" />
+          <GoogleButton label="Continue with Google" callbackURL={redirectTo} />
           <div className="flex items-center gap-3 text-xs font-medium tracking-wide text-stone-400 uppercase">
             <div className="h-px flex-1 bg-stone-200" />
             or
