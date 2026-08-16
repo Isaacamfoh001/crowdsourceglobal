@@ -56,15 +56,17 @@ export const messagingRepository = {
 
   findOpenCustomerConversationByContext(
     customerProfileId: string,
-    contextType: "LISTING" | "VENDOR",
+    contextType: "LISTING" | "VENDOR" | "ORDER",
     contextRefId: string,
   ) {
+    const contextField =
+      contextType === "LISTING" ? "contextListingId" : contextType === "VENDOR" ? "contextVendorId" : "contextOrderId";
     return prisma.conversation.findFirst({
       where: {
         participantType: "CUSTOMER",
         customerProfileId,
         status: "OPEN",
-        ...(contextType === "LISTING" ? { contextListingId: contextRefId } : { contextVendorId: contextRefId }),
+        [contextField]: contextRefId,
       },
       include: conversationInclude,
     });
@@ -72,9 +74,10 @@ export const messagingRepository = {
 
   async createCustomerConversation(input: {
     customerProfileId: string;
-    contextType: "LISTING" | "VENDOR" | "GENERAL";
+    contextType: "LISTING" | "VENDOR" | "ORDER" | "GENERAL";
     contextListingId?: string;
     contextVendorId?: string;
+    contextOrderId?: string;
     senderUserId: string;
     body: string;
   }) {
@@ -85,6 +88,7 @@ export const messagingRepository = {
         customerProfileId: input.customerProfileId,
         contextListingId: input.contextListingId,
         contextVendorId: input.contextVendorId,
+        contextOrderId: input.contextOrderId,
         messages: { create: { senderUserId: input.senderUserId, body: input.body, senderIsStaff: false } },
       },
       include: conversationInclude,

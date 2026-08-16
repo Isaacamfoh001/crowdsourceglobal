@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardCheck, MessagesSquare, PackageSearch } from "lucide-react";
+import { ClipboardCheck, MessagesSquare, PackageSearch, Truck } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin/vendor-applications", label: "Vendor applications", icon: ClipboardCheck },
   { href: "/admin/listings", label: "Listings", icon: PackageSearch },
+  { href: "/admin/operations", label: "Operations", icon: Truck },
   { href: "/admin/messages", label: "Messages", icon: MessagesSquare },
 ];
 

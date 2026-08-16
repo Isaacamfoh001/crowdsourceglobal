@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, Clock, FileEdit, PackageX } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, FileEdit, PackageX, ClipboardList } from "lucide-react";
 import { requireVendorPortalContext } from "../../../modules/vendors/policy";
 import { vendorListingsService } from "../../../modules/vendor-listings/service";
+import { fulfilmentService } from "../../../modules/fulfilment/service";
 
 export const metadata = { title: "Dashboard — Vendor Portal" };
 export const dynamic = "force-dynamic";
@@ -41,7 +42,10 @@ function StatCard({
 
 export default async function VendorDashboardPage() {
   const { vendorId, vendor } = await requireVendorPortalContext("/vendor/portal");
-  const listings = await vendorListingsService.listForVendor(vendorId);
+  const [listings, orders] = await Promise.all([
+    vendorListingsService.listForVendor(vendorId),
+    fulfilmentService.listForVendor(vendorId),
+  ]);
 
   const active = listings.filter((l) => l.listingStatus === "ACTIVE").length;
   const pendingReview = listings.filter((l) => l.approvalStatus === "PENDING").length;
@@ -49,6 +53,9 @@ export default async function VendorDashboardPage() {
   const outOfStock = listings.filter((l) => l.availabilityStatus === "OUT_OF_STOCK").length;
   const lowStock = listings.filter((l) => l.availabilityStatus === "LOW_STOCK").length;
   const needsAttention = listings.filter((l) => l.approvalStatus === "CHANGES_REQUESTED");
+
+  const newOrders = orders.filter((o) => o.status === "PENDING").length;
+  const orderIssues = orders.filter((o) => o.hasOpenIssue);
 
   return (
     <div className="flex flex-col gap-8">
@@ -60,17 +67,28 @@ export default async function VendorDashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard icon={ClipboardList} label="New orders" value={newOrders} href="/vendor/portal/orders?status=PENDING" />
         <StatCard icon={CheckCircle2} label="Active listings" value={active} href="/vendor/portal/listings" />
-        <StatCard icon={Clock} label="Pending review" value={pendingReview} href="/vendor/portal/listings" />
+        <StatCard icon={Clock} label="Listings pending review" value={pendingReview} href="/vendor/portal/listings" />
         <StatCard icon={FileEdit} label="Drafts" value={drafts} href="/vendor/portal/listings" />
         <StatCard icon={PackageX} label="Out of stock" value={outOfStock} href="/vendor/portal/listings" tone="warning" />
         <StatCard icon={AlertTriangle} label="Low stock" value={lowStock} href="/vendor/portal/listings" tone="warning" />
       </div>
 
-      {needsAttention.length > 0 ? (
+      {orderIssues.length > 0 || needsAttention.length > 0 ? (
         <div>
           <h2 className="font-display text-lg font-medium text-stone-900">Needs your attention</h2>
           <div className="mt-3 flex flex-col gap-2">
+            {orderIssues.map((order) => (
+              <Link
+                key={order.id}
+                href={`/vendor/portal/orders/${order.id}`}
+                className="rounded-xl border border-red-200 bg-red-50 p-4 hover:border-red-300"
+              >
+                <p className="text-sm font-medium text-stone-900">Order {order.orderNumber}</p>
+                <p className="mt-1 text-sm text-stone-600">An issue was reported on this order.</p>
+              </Link>
+            ))}
             {needsAttention.map((listing) => (
               <Link
                 key={listing.id}

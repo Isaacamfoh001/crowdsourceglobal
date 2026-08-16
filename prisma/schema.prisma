@@ -213,6 +213,16 @@ model Vendor {
   contactPhone        String?
   leadTimeDaysDefault Int?
 
+  /// Private pickup/collection details — never on the public storefront.
+  /// Deliberately separate from the general country/region/city above:
+  /// those describe where the store operates commercially, this is the
+  /// precise dock CrownSource-arranged collection actually happens at.
+  pickupAddressLine1 String?
+  pickupContactName  String?
+  pickupContactPhone String?
+  pickupHours        String?
+  pickupNotes        String?
+
   listings    VendorListing[]
   fulfilments Fulfilment[]
   orderItems  OrderItem[]
@@ -470,12 +480,27 @@ enum FulfilmentStatus {
   CANCELLED
 }
 
+/// Which physical route a Fulfilment takes to reach the customer — decided
+/// once, at Fulfilment-creation time, from the vendor's country at that
+/// moment (never re-derived later, same snapshot philosophy as
+/// OrderItem/FulfilmentItem pricing). Domestic vendors hand off to a
+/// CrownSource-arranged local collection; international vendors ship to a
+/// CrownSource-designated Ghana ReceivingLocation first. Keeping this as an
+/// explicit field — rather than checking vendor.country throughout the UI —
+/// is what lets M4 UI/services branch on origin without hard-coding country
+/// logic in multiple places (see docs/domain/entities.md M4 addendum).
+enum FulfilmentOrigin {
+  DOMESTIC_COLLECTION
+  INTERNATIONAL_INBOUND
+}
+
 /// Vendor-scoped responsibility for a subset of an Order. No uniqueness
 /// constraint on (orderId, vendorId) — multiple Fulfilments per vendor per
 /// Order are legal (future partial/split fulfilment), per entities.md.
 model Fulfilment {
   id        String           @id @default(cuid())
   status    FulfilmentStatus @default(PENDING)
+  origin    FulfilmentOrigin
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
@@ -485,11 +510,46 @@ model Fulfilment {
   vendorId String
   vendor   Vendor @relation(fields: [vendorId], references: [id])
 
-  items FulfilmentItem[]
+  items     FulfilmentItem[]
+  issues    FulfilmentIssue[]
+  shipments Shipment[]
 
   @@index([orderId])
   @@index([vendorId])
+  @@index([vendorId, status])
+  /// Backs the admin Operations queue — filtered by status without a vendor.
+  @@index([status])
   @@map("fulfilment")
+}
+
+enum FulfilmentIssueStatus {
+  OPEN
+  RESOLVED
+}
+
+/// The M4 "operational exception boundary" — a vendor-reportable problem
+/// that pauses a Fulfilment (status flips to EXCEPTION) for CrownSource
+/// operations to resolve. Deliberately does not touch OrderItem, payment
+/// amounts, or quantities — a real refund/replacement/quantity-adjustment
+/// platform is out of scope for M4 (see CLAUDE.md's overengineering rule).
+model FulfilmentIssue {
+  id          String                @id @default(cuid())
+  status      FulfilmentIssueStatus @default(OPEN)
+  category    String
+  description String
+
+  reportedByUserId String
+  createdAt        DateTime  @default(now())
+  resolvedAt       DateTime?
+  resolvedByUserId String?
+  resolutionNotes  String?
+
+  fulfilmentId String
+  fulfilment   Fulfilment @relation(fields: [fulfilmentId], references: [id], onDelete: Cascade)
+
+  @@index([fulfilmentId])
+  @@index([status])
+  @@map("fulfilment_issue")
 }
 
 enum PayoutEligibility {
@@ -521,6 +581,100 @@ model FulfilmentItem {
   @@index([fulfilmentId])
   @@index([orderItemId])
   @@map("fulfilment_item")
+}
+
+/// A CrownSource-controlled physical receiving point for international
+/// inbound Fulfilments — an office, warehouse, consolidation facility, or
+/// 3PL partner. Never assume there is exactly one; operations assigns the
+/// appropriate one per Shipment. Private/admin-only — never on any public
+/// DTO (this is operational infrastructure, not a storefront address).
+model ReceivingLocation {
+  id     String  @id @default(cuid())
+  name   String
+  type   String? // free text: "office" | "warehouse" | "consolidation" | "freight_forwarder" | ...
+  active Boolean @default(true)
+
+  country      String
+  region       String?
+  city         String?
+  addressLine1 String
+
+  contactName  String?
+  contactPhone String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shipments Shipment[]
+
+  @@index([active])
+  @@map("receiving_location")
+}
+
+enum ShipmentStatus {
+  CREATED
+  COLLECTED
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  DELIVERY_FAILED
+  EXCEPTION
+}
+
+/// Physical movement of goods — distinct from Fulfilment (vendor
+/// responsibility) and Order (commercial purchase), per entities.md's
+/// existing separation. `fulfilmentId` is intentionally NOT unique: the V1
+/// path is exactly one Shipment per Fulfilment, but leaving this
+/// unconstrained means a future partial-shipment split (one Fulfilment,
+/// several Shipments) needs no schema change. True consolidation (several
+/// Fulfilments sharing one Shipment) would still need a join table later —
+/// documented as a future path, not built now.
+///
+/// CrownSource/logistics-controlled fields only — nothing here is ever
+/// vendor- or customer-writable directly; see modules/fulfilment/policy.ts.
+model Shipment {
+  id     String         @id @default(cuid())
+  status ShipmentStatus @default(CREATED)
+
+  carrier           String?
+  trackingReference String?
+
+  /// Domestic collection — set by CrownSource operations once the vendor
+  /// marks READY.
+  collectionScheduledAt DateTime?
+  collectionNotes       String?
+  collectedAt           DateTime?
+  collectedByUserId     String?
+
+  /// International inbound — shippedAt/expectedArrivalAt are vendor-
+  /// entered; receivedAt/receivedByUserId are CrownSource-confirmed only.
+  receivingLocationId String?
+  receivingLocation   ReceivingLocation? @relation(fields: [receivingLocationId], references: [id])
+  shippedAt           DateTime?
+  expectedArrivalAt   DateTime?
+  receivedAt          DateTime?
+  receivedByUserId    String?
+
+  outForDeliveryAt DateTime?
+  deliveredAt      DateTime?
+  deliveryFailedAt DateTime?
+  deliveryNotes    String?
+
+  /// An additional signal only — never the sole authoritative delivery
+  /// confirmation (CLAUDE.md / M4 brief: a customer action must never
+  /// itself set `status = DELIVERED`).
+  customerConfirmedReceiptAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fulfilmentId String
+  fulfilment   Fulfilment @relation(fields: [fulfilmentId], references: [id], onDelete: Cascade)
+
+  @@index([fulfilmentId])
+  @@index([status])
+  @@index([trackingReference])
+  @@map("shipment")
 }
 
 enum PaymentStatus {

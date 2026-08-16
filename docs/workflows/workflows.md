@@ -91,3 +91,42 @@ There is deliberately no full accounting ledger — `payoutHold` and `PayoutAdju
 ## M. Vendor → CrownSource Messaging
 
 `Conversation(participantType = vendor, context = fulfilment|general)` — an operationally separate thread, never merged with any customer thread on the same Order.
+
+## N. Domestic Fulfilment & Collection *(added M4)*
+
+```
+Payment confirmed → Fulfilment created (origin = DOMESTIC_COLLECTION, Shipment CREATED)
+  → Vendor notified ("new order")
+  → Vendor: Start Preparing (PENDING → PREPARING)
+  → Vendor: Mark Ready for Collection (PREPARING → READY)
+  → Admin: schedule collection (carrier/reference/date on the Shipment — informational only, no status change)
+  → Admin: confirm collected (Shipment CREATED → COLLECTED, collectedAt/collectedByUserId; Fulfilment → DISPATCHED)
+  → Admin: progress Shipment COLLECTED → IN_TRANSIT → OUT_FOR_DELIVERY → DELIVERED
+  → Fulfilment → DELIVERED (system, mirrors Shipment)
+  → Customer sees each step on their order tracking timeline; may optionally confirm receipt (a side signal only)
+```
+
+The Vendor never sees the customer's delivery address — only their own registered pickup details (Vendor.pickupAddressLine1/pickupContactName/pickupContactPhone/pickupHours/pickupNotes, private, editable in the Vendor Portal). The customer's delivery address is only ever read by CrownSource operations (via `Order.deliveryInfo`), never copied onto the Fulfilment/Shipment record itself.
+
+## O. International Inbound Fulfilment *(added M4)*
+
+```
+Payment confirmed → Fulfilment created (origin = INTERNATIONAL_INBOUND)
+  → Shipment auto-created, receivingLocationId defaulted to the oldest active ReceivingLocation
+    (or left unassigned if none exists yet — Admin must assign one before the vendor can ship)
+  → Vendor notified, sees the assigned receiving destination on their order detail page
+  → Vendor: Start Preparing → Mark Ready to Ship (same PENDING→PREPARING→READY transitions as domestic)
+  → Vendor: records outbound shipment (carrier, tracking reference, ship date, expected arrival)
+    — this is the ONE case where a Vendor moves Fulfilment READY → DISPATCHED themselves
+  → Admin: confirms CrownSource receipt (Shipment CREATED → COLLECTED, receivedAt/receivedByUserId,
+    receivingLocationId reconfirmed) — the Vendor cannot perform this step
+  → Same onward Shipment progression as domestic (COLLECTED → IN_TRANSIT → OUT_FOR_DELIVERY → DELIVERED)
+  → Customer-facing copy uses plain-language steps ("On the way to CrownSource" / "Received for local
+    delivery") rather than exposing the internal freight state machine directly
+```
+
+Customs/duties/import-freight costs are explicitly out of scope for M4 — the data model isn't blocked from representing them later (e.g. an OrderItem-level adjustment or a future `PayoutAdjustment`-style mechanism), but nothing is calculated or invented now.
+
+## P. Fulfilment Issue / Operational Exception *(added M4)*
+
+A Vendor may report a problem (can't fulfil the quantity, item unavailable, preparation delay, damaged stock) any time before their Fulfilment leaves their hands (PENDING/PREPARING/READY only — not after DISPATCHED, which is no longer their responsibility). This creates a `FulfilmentIssue(OPEN)` and moves `Fulfilment.status → EXCEPTION`, pausing it. CrownSource operations resolves it with a note (visible to the Vendor) which resumes the Fulfilment to PREPARING. This never touches OrderItem, quantities, or payment amounts — it is an operational pause/resume mechanism only, not a refund or replacement workflow (those remain a later milestone).

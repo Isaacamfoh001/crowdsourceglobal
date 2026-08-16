@@ -15,8 +15,8 @@ Authoritative summary of the approved V1 architecture. See `/docs/domain/entitie
 | Quotation | Immutable priced commercial offer (instant or custom origin) |
 | Custom Sourcing | Operational process that produces a custom Quotation |
 | Checkout & Orders | Converts a Cart or accepted Quotation into a durable Order |
-| Fulfilment | Vendor-scoped responsibility for a subset of an Order |
-| Shipment/Delivery | Physical movement, submodule of Fulfilment |
+| Fulfilment | Vendor-scoped responsibility for a subset of an Order, plus its Shipment (physical movement) and FulfilmentIssue (operational exception) — `modules/fulfilment` (implemented M4) |
+| Logistics | ReceivingLocation reference data for CrownSource-designated international inbound destinations — `modules/logistics` (implemented M4) |
 | Payments | Collects money from the customer, provider-agnostic |
 | Vendor Payouts | Pays vendors, computed from historical Fulfilment economics |
 | Documents | Thin layer generating artifacts from immutable snapshots |

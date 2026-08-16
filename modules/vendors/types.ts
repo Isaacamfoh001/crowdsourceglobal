@@ -39,6 +39,11 @@ export type VendorStoreProfile = {
   contactEmail: string | null;
   contactPhone: string | null;
   leadTimeDaysDefault: number | null;
+  pickupAddressLine1: string | null;
+  pickupContactName: string | null;
+  pickupContactPhone: string | null;
+  pickupHours: string | null;
+  pickupNotes: string | null;
 };
 
 export type StoreProfileInput = {
@@ -52,4 +57,9 @@ export type StoreProfileInput = {
   contactEmail?: string;
   contactPhone?: string;
   leadTimeDaysDefault?: number;
+  pickupAddressLine1?: string;
+  pickupContactName?: string;
+  pickupContactPhone?: string;
+  pickupHours?: string;
+  pickupNotes?: string;
 };

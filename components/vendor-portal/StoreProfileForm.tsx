@@ -86,6 +86,58 @@ export function StoreProfileForm({ profile, categories }: { profile: VendorStore
         />
       </section>
 
+      <section className="flex flex-col gap-4 border-t border-stone-100 pt-6">
+        <div>
+          <h2 className="font-display text-lg font-medium text-stone-900">Pickup / collection details</h2>
+          <p className="mt-1 text-sm text-stone-500">
+            Private — how CrownSourceGlobal arranges collection of your orders. Never shown to customers.
+          </p>
+        </div>
+        <Input
+          label="Pickup address"
+          name="pickupAddressLine1"
+          defaultValue={profile.pickupAddressLine1 ?? ""}
+          hint="The precise address a courier should collect from — may differ from your general store location."
+          disabled={isPending}
+        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Input
+            label="Pickup contact name"
+            name="pickupContactName"
+            defaultValue={profile.pickupContactName ?? ""}
+            disabled={isPending}
+          />
+          <Input
+            label="Pickup contact phone"
+            name="pickupContactPhone"
+            type="tel"
+            defaultValue={profile.pickupContactPhone ?? profile.contactPhone ?? ""}
+            disabled={isPending}
+          />
+        </div>
+        <Input
+          label="Collection hours (optional)"
+          name="pickupHours"
+          defaultValue={profile.pickupHours ?? ""}
+          placeholder="e.g. Mon–Sat, 9am–5pm"
+          disabled={isPending}
+        />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="pickupNotes" className="text-sm font-medium text-stone-700">
+            Collection notes (optional)
+          </label>
+          <textarea
+            id="pickupNotes"
+            name="pickupNotes"
+            rows={2}
+            defaultValue={profile.pickupNotes ?? ""}
+            placeholder="Gate code, landmark, preferred entrance, etc."
+            disabled={isPending}
+            className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-[15px] text-stone-900 shadow-soft outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+          />
+        </div>
+      </section>
+
       <Button type="submit" size="lg" className="w-fit" disabled={isPending}>
         {isPending ? "Saving…" : "Save changes"}
       </Button>

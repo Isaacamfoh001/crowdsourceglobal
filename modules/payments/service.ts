@@ -2,9 +2,31 @@ import { prisma } from "../../lib/db";
 import { Prisma } from "../../generated/prisma/client";
 import { ordersRepository } from "../orders/repository";
 import { ordersService } from "../orders/service";
+import { vendorsRepository } from "../vendors/repository";
 import { mockPaymentProvider } from "./mockProvider";
 import { ok, err, type Result } from "../../lib/result";
+import { sendNewOrderToVendorEmail } from "../../lib/email";
 import type { MockPaymentOutcome } from "./types";
+
+function notifySafely(send: () => Promise<void>): void {
+  send().catch((error) => console.error("Notification dispatch failed:", error));
+}
+
+/**
+ * Post-commit notification boundary: fires only after confirmOrderPayment's
+ * own transaction has already committed, and only for vendors that
+ * genuinely received a NEW Fulfilment this call — never on an idempotent
+ * re-confirmation (protects both payment idempotency and against duplicate
+ * "new order" emails). A failing email provider can never roll back or
+ * block the payment confirmation that already succeeded.
+ */
+async function notifyVendorsOfNewOrder(vendorIds: string[], orderNumber: string): Promise<void> {
+  for (const vendorId of vendorIds) {
+    const email = await vendorsRepository.findOwnerEmail(vendorId);
+    if (!email) continue;
+    notifySafely(() => sendNewOrderToVendorEmail({ to: email, orderNumber }));
+  }
+}
 
 async function resultForExistingKey(key: string): Promise<Result<{ succeeded: boolean }> | null> {
   const existing = await prisma.idempotencyKey.findUnique({ where: { key } });
@@ -83,7 +105,10 @@ export const paymentsService = {
     }
 
     if (providerResult.succeeded) {
-      await ordersService.confirmOrderPayment(orderId);
+      const { newVendorIds } = await ordersService.confirmOrderPayment(orderId);
+      if (newVendorIds.length > 0) {
+        void notifyVendorsOfNewOrder(newVendorIds, order.orderNumber);
+      }
     }
 
     return ok({ succeeded: providerResult.succeeded });

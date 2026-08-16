@@ -41,6 +41,11 @@ export const vendorsService = {
       contactEmail: input.contactEmail ?? null,
       contactPhone: input.contactPhone ?? null,
       leadTimeDaysDefault: input.leadTimeDaysDefault ?? null,
+      pickupAddressLine1: input.pickupAddressLine1 ?? null,
+      pickupContactName: input.pickupContactName ?? null,
+      pickupContactPhone: input.pickupContactPhone ?? null,
+      pickupHours: input.pickupHours ?? null,
+      pickupNotes: input.pickupNotes ?? null,
     });
     return ok(null);
   },

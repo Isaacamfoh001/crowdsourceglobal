@@ -33,6 +33,11 @@ const storeProfileSelect = {
   contactEmail: true,
   contactPhone: true,
   leadTimeDaysDefault: true,
+  pickupAddressLine1: true,
+  pickupContactName: true,
+  pickupContactPhone: true,
+  pickupHours: true,
+  pickupNotes: true,
 } as const;
 
 export const vendorsRepository = {

@@ -177,14 +177,20 @@ export const ordersService = {
    * idempotency note (creation is keyed to "has this confirmation already
    * produced Fulfilments", not vendor-scoped uniqueness).
    */
-  async confirmOrderPayment(orderId: string): Promise<void> {
-    await prisma.$transaction(async (tx) => {
+  /**
+   * Returns the vendorIds that received a NEW Fulfilment this call (empty
+   * on an idempotent no-op re-confirmation) — the caller uses this to
+   * dispatch "you have a new order" notifications exactly once per real
+   * confirmation, never on a repeat/duplicate webhook-equivalent call.
+   */
+  async confirmOrderPayment(orderId: string): Promise<{ newVendorIds: string[] }> {
+    return prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { id: orderId },
         select: { id: true, status: true, fulfilmentsCreatedAt: true, items: true },
       });
       if (!order || order.status === "CONFIRMED") {
-        return; // already confirmed — nothing to do (idempotent no-op)
+        return { newVendorIds: [] }; // already confirmed — nothing to do (idempotent no-op)
       }
 
       await tx.order.update({
@@ -198,7 +204,7 @@ export const ordersService = {
       });
 
       if (order.fulfilmentsCreatedAt) {
-        return; // Fulfilments already created for this confirmation
+        return { newVendorIds: [] }; // Fulfilments already created for this confirmation
       }
 
       const itemsByVendor = new Map<string, typeof order.items>();
@@ -209,8 +215,21 @@ export const ordersService = {
         itemsByVendor.set(item.vendorId, group);
       }
 
+      const defaultReceivingLocation = await tx.receivingLocation.findFirst({
+        where: { active: true },
+        orderBy: { createdAt: "asc" },
+        select: { id: true },
+      });
+
       for (const [vendorId, items] of itemsByVendor) {
-        const fulfilment = await tx.fulfilment.create({ data: { orderId, vendorId } });
+        const vendor = await tx.vendor.findUnique({ where: { id: vendorId }, select: { country: true } });
+        // Snapshotted at creation time, per the same principle as OrderItem
+        // pricing — never re-derived from live vendor data afterward.
+        const origin = vendor?.country && vendor.country.trim().toLowerCase() !== "ghana"
+          ? "INTERNATIONAL_INBOUND"
+          : "DOMESTIC_COLLECTION";
+
+        const fulfilment = await tx.fulfilment.create({ data: { orderId, vendorId, origin } });
         await tx.fulfilmentItem.createMany({
           data: items.map((item) => ({
             fulfilmentId: fulfilment.id,
@@ -220,9 +239,16 @@ export const ordersService = {
             vendorPayableBasis: item.vendorPayableBasis,
           })),
         });
+        await tx.shipment.create({
+          data: {
+            fulfilmentId: fulfilment.id,
+            receivingLocationId: origin === "INTERNATIONAL_INBOUND" ? defaultReceivingLocation?.id : undefined,
+          },
+        });
       }
 
       await tx.order.update({ where: { id: orderId }, data: { fulfilmentsCreatedAt: new Date() } });
+      return { newVendorIds: [...itemsByVendor.keys()] };
     });
   },
 

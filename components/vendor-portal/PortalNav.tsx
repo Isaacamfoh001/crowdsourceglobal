@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, MessagesSquare, Package, Settings, Store } from "lucide-react";
+import { ClipboardList, LayoutGrid, MessagesSquare, Package, Settings, Store } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/vendor/portal", label: "Dashboard", icon: LayoutGrid, exact: true },
   { href: "/vendor/portal/listings", label: "Listings", icon: Package, exact: false },
+  { href: "/vendor/portal/orders", label: "Orders", icon: ClipboardList, exact: false },
   { href: "/vendor/portal/store", label: "Store profile", icon: Store, exact: true },
   { href: "/vendor/portal/messages", label: "Messages", icon: MessagesSquare, exact: false },
   { href: "/vendor/portal/settings", label: "Settings", icon: Settings, exact: true },

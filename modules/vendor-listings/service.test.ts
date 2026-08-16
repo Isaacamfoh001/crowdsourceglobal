@@ -5,7 +5,7 @@ import { cartService } from "../cart/service";
 import * as emailModule from "../../lib/email";
 
 async function flushMicrotasks() {
-  await new Promise((resolve) => setTimeout(resolve, 30));
+  await new Promise((resolve) => setTimeout(resolve, 150));
 }
 
 /** Integration tests against the real local Postgres dev database. */

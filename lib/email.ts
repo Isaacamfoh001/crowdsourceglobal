@@ -88,3 +88,68 @@ export async function sendListingRejectedEmail(params: {
       `  Your listing "${params.listingTitle}" was not approved: ${params.reason}`,
   );
 }
+
+/**
+ * M4 fulfilment/delivery notifications — same dev-console adapter pattern.
+ * Deliberately narrow: only the meaningful, actionable events (per CLAUDE.md
+ * "avoid notification spam") — not every internal Shipment status tick.
+ */
+
+export async function sendNewOrderToVendorEmail(params: { to: string; orderNumber: string }): Promise<void> {
+  console.log(
+    `[email:vendor-new-order] to=${params.to}\n` +
+      `  You have a new order to prepare: ${params.orderNumber}.\n` +
+      `  Review it in your Vendor Portal at /vendor/portal/orders.`,
+  );
+}
+
+export async function sendCollectionScheduledEmail(params: {
+  to: string;
+  orderNumber: string;
+  scheduledAt: string;
+}): Promise<void> {
+  console.log(
+    `[email:vendor-collection-scheduled] to=${params.to}\n` +
+      `  Collection for order ${params.orderNumber} has been scheduled: ${params.scheduledAt}.`,
+  );
+}
+
+export async function sendFulfilmentIssueResolvedEmail(params: {
+  to: string;
+  orderNumber: string;
+  resolutionNotes: string;
+}): Promise<void> {
+  console.log(
+    `[email:vendor-issue-resolved] to=${params.to}\n` +
+      `  The issue on order ${params.orderNumber} has been resolved: ${params.resolutionNotes}\n` +
+      `  You can continue preparing it in your Vendor Portal.`,
+  );
+}
+
+export async function sendPackageCollectedEmail(params: { to: string; orderNumber: string }): Promise<void> {
+  console.log(
+    `[email:customer-package-collected] to=${params.to}\n` +
+      `  Your order ${params.orderNumber} has been collected and is on its way.`,
+  );
+}
+
+export async function sendOutForDeliveryEmail(params: { to: string; orderNumber: string }): Promise<void> {
+  console.log(
+    `[email:customer-out-for-delivery] to=${params.to}\n` +
+      `  Your order ${params.orderNumber} is out for delivery today.`,
+  );
+}
+
+export async function sendDeliveredEmail(params: { to: string; orderNumber: string }): Promise<void> {
+  console.log(
+    `[email:customer-delivered] to=${params.to}\n  Your order ${params.orderNumber} has been delivered.`,
+  );
+}
+
+export async function sendDeliveryIssueEmail(params: { to: string; orderNumber: string; notes: string }): Promise<void> {
+  console.log(
+    `[email:customer-delivery-issue] to=${params.to}\n` +
+      `  There was a problem delivering order ${params.orderNumber}: ${params.notes}\n` +
+      `  CrownSourceGlobal is following up.`,
+  );
+}

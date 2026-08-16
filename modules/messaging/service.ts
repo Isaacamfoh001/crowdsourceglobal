@@ -1,3 +1,4 @@
+import { prisma } from "../../lib/db";
 import { messagingRepository } from "./repository";
 import { onMessagePersisted } from "./events";
 import { catalogueRepository } from "../catalogue/repository";
@@ -70,21 +71,22 @@ export const messagingService = {
   },
 
   /**
-   * "Ask about this item" / "Ask about this vendor" — reuses an existing
-   * open thread for the same context instead of spawning a duplicate one
-   * every time the customer clicks the CTA again.
+   * "Ask about this item" / "Ask about this vendor" / "Get help with this
+   * delivery" — reuses an existing open thread for the same context instead
+   * of spawning a duplicate one every time the customer clicks the CTA
+   * again.
    *
-   * `contextRefId` is client-submitted, so it is never trusted as-is: it
-   * must resolve to a listing/vendor that is actually publicly visible
-   * (approved) before it's allowed to become conversation context. Without
-   * this, a forged id could attach an unapproved/draft listing's title and
-   * owning vendor's name to a conversation (CLAUDE.md's IDOR/context-forgery
-   * concern) even though the customer never had legitimate access to it.
+   * `contextRefId` is client-submitted, so it is never trusted as-is: for
+   * LISTING/VENDOR it must resolve to something publicly visible (approved);
+   * for ORDER it must resolve to an Order actually owned by this customer.
+   * Without this, a forged id could attach an unapproved listing's private
+   * details, or worse, another customer's Order, to a conversation record
+   * (CLAUDE.md's IDOR/context-forgery concern).
    */
   async startOrContinueContextual(input: {
     customerProfileId: string;
     senderUserId: string;
-    contextType: "LISTING" | "VENDOR";
+    contextType: "LISTING" | "VENDOR" | "ORDER";
     contextRefId: string;
     body: string;
   }): Promise<Result<{ conversationId: string }>> {
@@ -96,6 +98,12 @@ export const messagingService = {
     } else if (input.contextType === "VENDOR") {
       const vendor = await vendorsRepository.findPublicVendorById(input.contextRefId);
       if (!vendor) return err("This vendor is no longer available.");
+    } else if (input.contextType === "ORDER") {
+      const order = await prisma.order.findFirst({
+        where: { id: input.contextRefId, customerProfileId: input.customerProfileId },
+        select: { id: true },
+      });
+      if (!order) return err("Order not found.");
     } else {
       return err("Invalid conversation context.");
     }
@@ -116,6 +124,7 @@ export const messagingService = {
       contextType: input.contextType,
       contextListingId: input.contextType === "LISTING" ? input.contextRefId : undefined,
       contextVendorId: input.contextType === "VENDOR" ? input.contextRefId : undefined,
+      contextOrderId: input.contextType === "ORDER" ? input.contextRefId : undefined,
       senderUserId: input.senderUserId,
       body: input.body,
     });

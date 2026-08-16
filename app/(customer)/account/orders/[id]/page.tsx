@@ -4,10 +4,12 @@ import { CheckCircle2, MapPin } from "lucide-react";
 import { Button } from "../../../../../components/ui/Button";
 import { FormMessage } from "../../../../../components/ui/FormMessage";
 import { OrderStatusBadge } from "../../../../../components/account/OrderStatusBadge";
+import { PackageTracking } from "../../../../../components/account/PackageTracking";
+import { AskAboutButton } from "../../../../../components/messaging/AskAboutButton";
 import { formatPrice } from "../../../../../lib/format";
-import { requireSession } from "../../../../../modules/identity/policy";
-import { identityService } from "../../../../../modules/identity/service";
+import { requireSession, getCurrentCustomerProfile } from "../../../../../modules/identity/policy";
 import { ordersService } from "../../../../../modules/orders/service";
+import { fulfilmentService } from "../../../../../modules/fulfilment/service";
 
 type Params = { id: string };
 
@@ -24,7 +26,7 @@ export default async function OrderDetailPage({
   const { id } = await params;
   const { confirmed } = await searchParams;
   const session = await requireSession(`/account/orders/${id}`);
-  const customerProfile = await identityService.getCustomerProfileByUserId(session.user.id);
+  const customerProfile = await getCurrentCustomerProfile(session.user.id);
   if (!customerProfile) {
     notFound();
   }
@@ -36,6 +38,11 @@ export default async function OrderDetailPage({
   if (!order) {
     notFound();
   }
+
+  const tracking =
+    order.status === "CONFIRMED" || order.status === "FULFILLING" || order.status === "COMPLETED"
+      ? await fulfilmentService.getCustomerTracking(id, customerProfile.id)
+      : [];
 
   const showConfirmationBanner = confirmed === "true" && order.status === "CONFIRMED";
 
@@ -77,6 +84,29 @@ export default async function OrderDetailPage({
             </Link>
           </div>
         </FormMessage>
+      ) : null}
+
+      {tracking.length > 0 ? (
+        <div className="flex flex-col gap-4">
+          {tracking.length > 1 ? (
+            <p className="text-sm text-stone-600">
+              Your order will arrive in {tracking.length} deliveries, one per vendor.
+            </p>
+          ) : null}
+          {tracking.map((pkg, index) => (
+            <PackageTracking key={pkg.fulfilmentId} tracking={pkg} orderId={order.id} multiPackage={tracking.length > 1} index={index} />
+          ))}
+          <div>
+            <AskAboutButton
+              contextType="ORDER"
+              contextRefId={order.id}
+              currentPath={`/account/orders/${order.id}`}
+              isSignedIn
+              label="Get help with this delivery"
+              placeholder="e.g. My package hasn't arrived, or the status looks wrong…"
+            />
+          </div>
+        </div>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">

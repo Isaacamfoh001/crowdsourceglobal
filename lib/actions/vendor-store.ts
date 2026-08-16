@@ -16,6 +16,11 @@ const storeProfileSchema = z.object({
   contactEmail: z.string().trim().optional(),
   contactPhone: z.string().trim().optional(),
   leadTimeDaysDefault: z.coerce.number().int().min(0).optional(),
+  pickupAddressLine1: z.string().trim().optional(),
+  pickupContactName: z.string().trim().optional(),
+  pickupContactPhone: z.string().trim().optional(),
+  pickupHours: z.string().trim().optional(),
+  pickupNotes: z.string().trim().optional(),
 });
 
 export async function updateStoreProfileAction(
@@ -33,6 +38,11 @@ export async function updateStoreProfileAction(
     contactEmail: formData.get("contactEmail") || undefined,
     contactPhone: formData.get("contactPhone") || undefined,
     leadTimeDaysDefault: formData.get("leadTimeDaysDefault") || undefined,
+    pickupAddressLine1: formData.get("pickupAddressLine1") || undefined,
+    pickupContactName: formData.get("pickupContactName") || undefined,
+    pickupContactPhone: formData.get("pickupContactPhone") || undefined,
+    pickupHours: formData.get("pickupHours") || undefined,
+    pickupNotes: formData.get("pickupNotes") || undefined,
   });
   if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "Check your store profile.");
 
