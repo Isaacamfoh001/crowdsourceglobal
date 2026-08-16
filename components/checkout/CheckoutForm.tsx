@@ -38,7 +38,7 @@ export function CheckoutForm() {
         autoComplete="address-line2"
         disabled={isPending}
       />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input label="City / Town" name="city" autoComplete="address-level2" required disabled={isPending} />
         <div className="flex flex-col gap-1.5">
           <label htmlFor="region" className="text-sm font-medium text-stone-700">

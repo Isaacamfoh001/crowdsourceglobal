@@ -60,7 +60,7 @@ export default async function CategoryPage({
         <div className="mt-10 grid gap-8 lg:grid-cols-[220px_1fr]">
           <CategoryNav categories={categories} activeSlug={slug} />
 
-          <div>
+          <div className="min-w-0">
             {listings.length === 0 ? (
               <EmptyState
                 title="No listings in this category yet"

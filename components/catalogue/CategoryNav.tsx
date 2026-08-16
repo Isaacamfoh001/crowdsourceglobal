@@ -10,8 +10,8 @@ export function CategoryNav({
   activeSlug?: string;
 }) {
   return (
-    <nav aria-label="Categories">
-      <div className="flex gap-2 overflow-x-auto pb-2 lg:hidden">
+    <nav aria-label="Categories" className="min-w-0">
+      <div className="flex min-w-0 gap-2 overflow-x-auto pb-2 lg:hidden">
         <Link
           href="/shop"
           className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium ${

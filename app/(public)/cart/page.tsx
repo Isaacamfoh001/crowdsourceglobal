@@ -5,8 +5,7 @@ import { Button } from "../../../components/ui/Button";
 import { EmptyState } from "../../../components/catalogue/EmptyState";
 import { CartLineItem } from "../../../components/cart/CartLineItem";
 import { formatPrice } from "../../../lib/format";
-import { requireSession } from "../../../modules/identity/policy";
-import { identityService } from "../../../modules/identity/service";
+import { requireSession, getCurrentCustomerProfile } from "../../../modules/identity/policy";
 import { cartService } from "../../../modules/cart/service";
 
 export const metadata = { title: "Your cart" };
@@ -14,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CartPage() {
   const session = await requireSession("/cart");
-  const customerProfile = await identityService.getCustomerProfileByUserId(session.user.id);
+  const customerProfile = await getCurrentCustomerProfile(session.user.id);
   const cart = customerProfile
     ? await cartService.getCartView(customerProfile.id)
     : { cartId: null, itemCount: 0, vendorGroups: [], subtotal: 0, currency: "GHS" };
@@ -44,15 +43,15 @@ export default async function CartPage() {
                   key={group.vendor.id}
                   className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <Link
                       href={`/vendors/${group.vendor.storefrontSlug}`}
-                      className="flex items-center gap-2 font-display text-[15px] font-medium text-stone-900 hover:text-brand-800"
+                      className="flex min-w-0 items-center gap-2 font-display text-[15px] font-medium text-stone-900 hover:text-brand-800"
                     >
-                      <ShoppingBag className="size-4 text-stone-400" strokeWidth={1.75} />
-                      {group.vendor.companyName}
+                      <ShoppingBag className="size-4 shrink-0 text-stone-400" strokeWidth={1.75} />
+                      <span className="truncate">{group.vendor.companyName}</span>
                     </Link>
-                    <span className="text-sm text-stone-500">
+                    <span className="shrink-0 text-sm text-stone-500">
                       {formatPrice(group.subtotal, cart.currency)}
                     </span>
                   </div>

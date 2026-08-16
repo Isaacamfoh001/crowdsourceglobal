@@ -42,7 +42,7 @@ export default async function ShopPage({
         <div className="mt-10 grid gap-8 lg:grid-cols-[220px_1fr]">
           <CategoryNav categories={categories} />
 
-          <div>
+          <div className="min-w-0">
             {q ? (
               <p className="mb-4 text-sm text-stone-500">
                 {listings.length} result{listings.length === 1 ? "" : "s"} for &ldquo;{q}&rdquo;

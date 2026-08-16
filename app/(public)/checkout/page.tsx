@@ -3,8 +3,7 @@ import { redirect } from "next/navigation";
 import { Container } from "../../../components/ui/Container";
 import { CheckoutForm } from "../../../components/checkout/CheckoutForm";
 import { formatPrice } from "../../../lib/format";
-import { requireSession } from "../../../modules/identity/policy";
-import { identityService } from "../../../modules/identity/service";
+import { requireSession, getCurrentCustomerProfile } from "../../../modules/identity/policy";
 import { cartService } from "../../../modules/cart/service";
 
 export const metadata = { title: "Checkout" };
@@ -12,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage() {
   const session = await requireSession("/checkout");
-  const customerProfile = await identityService.getCustomerProfileByUserId(session.user.id);
+  const customerProfile = await getCurrentCustomerProfile(session.user.id);
   const cart = customerProfile
     ? await cartService.getCartView(customerProfile.id)
     : { cartId: null, itemCount: 0, vendorGroups: [], subtotal: 0, currency: "GHS" };

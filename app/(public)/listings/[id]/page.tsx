@@ -61,8 +61,8 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
               {listing.title}
             </h1>
 
-            <div className="mt-4 flex items-center gap-3">
-              <p className="text-3xl font-semibold text-stone-900">
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <p className="text-2xl font-semibold text-stone-900 sm:text-3xl">
                 {formatPrice(listing.basePrice, listing.currency)}
               </p>
               <AvailabilityBadge status={listing.availabilityStatus} />

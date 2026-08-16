@@ -5,8 +5,7 @@ import { Container } from "../../../../../components/ui/Container";
 import { Badge } from "../../../../../components/ui/Badge";
 import { MockPaymentForm } from "../../../../../components/checkout/MockPaymentForm";
 import { formatPrice } from "../../../../../lib/format";
-import { requireSession } from "../../../../../modules/identity/policy";
-import { identityService } from "../../../../../modules/identity/service";
+import { requireSession, getCurrentCustomerProfile } from "../../../../../modules/identity/policy";
 import { ordersService } from "../../../../../modules/orders/service";
 
 type Params = { orderId: string };
@@ -17,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function PaymentPage({ params }: { params: Promise<Params> }) {
   const { orderId } = await params;
   const session = await requireSession(`/checkout/${orderId}/payment`);
-  const customerProfile = await identityService.getCustomerProfileByUserId(session.user.id);
+  const customerProfile = await getCurrentCustomerProfile(session.user.id);
   if (!customerProfile) {
     notFound();
   }

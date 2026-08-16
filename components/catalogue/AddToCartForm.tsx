@@ -61,7 +61,7 @@ export function AddToCartForm({
       <input type="hidden" name="currentPath" value={currentPath} />
       <input type="hidden" name="quantity" value={quantity} />
 
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium text-stone-500">Quantity</p>
           <div className="mt-1.5 flex items-center gap-2">
@@ -95,7 +95,7 @@ export function AddToCartForm({
           </div>
         </div>
 
-        <div className="text-right">
+        <div className="text-left sm:text-right">
           <p className="text-sm font-medium text-stone-500">
             {formatPrice(previewUnitPrice, currency)} / unit
           </p>
