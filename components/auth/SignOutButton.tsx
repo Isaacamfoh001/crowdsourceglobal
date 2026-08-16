@@ -12,7 +12,6 @@ export function SignOutButton() {
   return (
     <Button
       variant="outline"
-      className="!w-auto px-4 py-2"
       disabled={isPending}
       onClick={async () => {
         setIsPending(true);

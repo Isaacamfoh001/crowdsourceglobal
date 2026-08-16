@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { CheckCircle2 } from "lucide-react";
 import { resetPassword } from "../../lib/auth-client";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -56,17 +57,23 @@ export function ResetPasswordForm() {
 
   if (success) {
     return (
-      <div className="flex flex-col gap-4 text-center">
-        <h1 className="text-xl font-semibold text-slate-900">Password updated</h1>
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="flex size-12 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+          <CheckCircle2 className="size-6" strokeWidth={1.75} />
+        </div>
+        <h1 className="text-2xl font-medium text-stone-900">Password updated</h1>
         <FormMessage tone="success">Redirecting you to sign in…</FormMessage>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="text-center">
-        <h1 className="text-xl font-semibold text-slate-900">Set a new password</h1>
+    <div className="flex flex-col gap-7">
+      <div>
+        <h1 className="text-2xl font-medium text-stone-900">Set a new password</h1>
+        <p className="mt-1.5 text-[15px] text-stone-500">
+          Choose a new password for your CrownSourceGlobal account.
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
@@ -77,6 +84,7 @@ export function ResetPasswordForm() {
           name="newPassword"
           type="password"
           autoComplete="new-password"
+          hint="At least 8 characters."
           error={fieldError}
           disabled={isSubmitting}
         />
@@ -88,13 +96,13 @@ export function ResetPasswordForm() {
           disabled={isSubmitting}
         />
 
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" size="lg" fullWidth disabled={isSubmitting} className="mt-2">
           {isSubmitting ? "Updating…" : "Update password"}
         </Button>
       </form>
 
-      <p className="text-center text-sm text-slate-500">
-        <Link href="/sign-in" className="font-medium text-blue-700 hover:underline">
+      <p className="text-center text-sm text-stone-500">
+        <Link href="/sign-in" className="font-medium text-brand-700 hover:underline">
           Back to sign in
         </Link>
       </p>

@@ -1,18 +1,75 @@
 @import "tailwindcss";
 
-:root {
-  --color-brand: #1d4ed8;
-  --color-brand-dark: #1e3a8a;
+/*
+ * CrownSourceGlobal design tokens.
+ *
+ * Palette: deep emerald (trust, growth, global reach) as the primary brand
+ * color, warm gold used sparingly as an accent ("Crown"), on warm stone
+ * neutrals rather than clinical white/gray. Deliberately not the generic
+ * Tailwind-starter blue-on-slate combination.
+ *
+ * Type: Fraunces (serif, display/headlines) + Plus Jakarta Sans (UI/body).
+ * Font CSS variables are set by next/font in app/layout.tsx.
+ */
+@theme {
+  --color-brand-50: #f1f8f4;
+  --color-brand-100: #dff0e6;
+  --color-brand-200: #b9dfc7;
+  --color-brand-300: #8cc9a3;
+  --color-brand-400: #5cae7c;
+  --color-brand-500: #3b9260;
+  --color-brand-600: #2a7549;
+  --color-brand-700: #22603c;
+  --color-brand-800: #1d4d32;
+  --color-brand-900: #18402a;
+  --color-brand-950: #0c2417;
+
+  --color-gold-50: #fdf8ed;
+  --color-gold-100: #faefcf;
+  --color-gold-200: #f3dc9b;
+  --color-gold-300: #eac167;
+  --color-gold-400: #dfa83d;
+  --color-gold-500: #c68c29;
+  --color-gold-600: #a06e20;
+  --color-gold-700: #7c551f;
+  --color-gold-800: #66451f;
+  --color-gold-900: #573a1e;
+  --color-gold-950: #31200f;
+
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-soft: 0 1px 2px 0 rgb(20 20 15 / 0.04), 0 2px 8px -2px rgb(20 20 15 / 0.06);
+  --shadow-lifted: 0 4px 16px -4px rgb(20 20 15 / 0.12), 0 2px 6px -2px rgb(20 20 15 / 0.06);
 }
 
-body {
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    Helvetica,
-    Arial,
-    sans-serif;
+@layer base {
+  body {
+    background-color: var(--color-stone-50);
+    color: var(--color-stone-900);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+  }
+
+  ::selection {
+    background-color: var(--color-brand-200);
+    color: var(--color-brand-950);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }

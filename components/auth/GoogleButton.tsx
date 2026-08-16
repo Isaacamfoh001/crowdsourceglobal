@@ -30,9 +30,11 @@ function GoogleIcon() {
 export function GoogleButton({
   label,
   disabled,
+  callbackURL = "/account",
 }: {
   label: string;
   disabled?: boolean;
+  callbackURL?: string;
 }) {
   const [isPending, setIsPending] = useState(false);
 
@@ -40,12 +42,14 @@ export function GoogleButton({
     <Button
       type="button"
       variant="outline"
+      size="lg"
+      fullWidth
       disabled={disabled || isPending}
       onClick={async () => {
         setIsPending(true);
         await signIn.social({
           provider: "google",
-          callbackURL: "/account",
+          callbackURL,
         });
       }}
     >

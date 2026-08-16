@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { verifyEmail } from "../../lib/auth-client";
 import { FormMessage } from "../ui/FormMessage";
 
@@ -31,16 +32,30 @@ export function VerifyEmailContent() {
 
   return (
     <div className="flex flex-col items-center gap-4 text-center">
-      <h1 className="text-xl font-semibold text-slate-900">Email verification</h1>
+      <div
+        className={`flex size-12 items-center justify-center rounded-full ${
+          status === "success"
+            ? "bg-brand-100 text-brand-700"
+            : status === "error"
+              ? "bg-red-100 text-red-600"
+              : "bg-stone-100 text-stone-500"
+        }`}
+      >
+        {status === "verifying" ? <Loader2 className="size-6 animate-spin" strokeWidth={1.75} /> : null}
+        {status === "success" ? <CheckCircle2 className="size-6" strokeWidth={1.75} /> : null}
+        {status === "error" ? <XCircle className="size-6" strokeWidth={1.75} /> : null}
+      </div>
+
+      <h1 className="text-2xl font-medium text-stone-900">Email verification</h1>
 
       {status === "verifying" ? (
-        <p className="text-sm text-slate-500">Verifying your email…</p>
+        <p className="text-[15px] text-stone-500">Verifying your email…</p>
       ) : null}
 
       {status === "success" ? (
         <>
           <FormMessage tone="success">Your email is verified.</FormMessage>
-          <Link href="/sign-in" className="text-sm font-medium text-blue-700 hover:underline">
+          <Link href="/sign-in" className="text-sm font-medium text-brand-700 hover:underline">
             Continue to sign in
           </Link>
         </>
@@ -51,7 +66,7 @@ export function VerifyEmailContent() {
           <FormMessage tone="error">
             This verification link is invalid or has expired.
           </FormMessage>
-          <Link href="/sign-in" className="text-sm font-medium text-blue-700 hover:underline">
+          <Link href="/sign-in" className="text-sm font-medium text-brand-700 hover:underline">
             Back to sign in
           </Link>
         </>

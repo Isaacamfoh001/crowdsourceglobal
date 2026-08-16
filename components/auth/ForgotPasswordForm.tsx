@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { ArrowLeft, Mail } from "lucide-react";
 import { requestPasswordReset } from "../../lib/auth-client";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -36,12 +37,16 @@ export function ForgotPasswordForm() {
 
   if (success) {
     return (
-      <div className="flex flex-col gap-4 text-center">
-        <h1 className="text-xl font-semibold text-slate-900">Check your email</h1>
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="flex size-12 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+          <Mail className="size-6" strokeWidth={1.75} />
+        </div>
+        <h1 className="text-2xl font-medium text-stone-900">Check your email</h1>
         <FormMessage tone="success">
-          If an account exists for that email, we&apos;ve sent a link to reset your password.
+          If an account exists for that email, we&apos;ve sent a link to reset your
+          password.
         </FormMessage>
-        <Link href="/sign-in" className="text-sm font-medium text-blue-700 hover:underline">
+        <Link href="/sign-in" className="text-sm font-medium text-brand-700 hover:underline">
           Back to sign in
         </Link>
       </div>
@@ -49,10 +54,17 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="text-center">
-        <h1 className="text-xl font-semibold text-slate-900">Forgot your password?</h1>
-        <p className="mt-1 text-sm text-slate-500">
+    <div className="flex flex-col gap-7">
+      <div>
+        <Link
+          href="/sign-in"
+          className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 hover:text-stone-700"
+        >
+          <ArrowLeft className="size-4" />
+          Back to sign in
+        </Link>
+        <h1 className="text-2xl font-medium text-stone-900">Forgot your password?</h1>
+        <p className="mt-1.5 text-[15px] text-stone-500">
           Enter your email and we&apos;ll send you a reset link.
         </p>
       </div>
@@ -60,18 +72,19 @@ export function ForgotPasswordForm() {
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         {formError ? <FormMessage tone="error">{formError}</FormMessage> : null}
 
-        <Input label="Email" name="email" type="email" autoComplete="email" required disabled={isSubmitting} />
+        <Input
+          label="Email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          disabled={isSubmitting}
+        />
 
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" size="lg" fullWidth disabled={isSubmitting} className="mt-2">
           {isSubmitting ? "Sending…" : "Send reset link"}
         </Button>
       </form>
-
-      <p className="text-center text-sm text-slate-500">
-        <Link href="/sign-in" className="font-medium text-blue-700 hover:underline">
-          Back to sign in
-        </Link>
-      </p>
     </div>
   );
 }

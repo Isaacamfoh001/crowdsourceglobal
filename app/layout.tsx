@@ -1,10 +1,27 @@
 import type { Metadata } from "next";
+import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  display: "swap",
+  axes: ["opsz", "SOFT"],
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-jakarta",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "CrownSourceGlobal",
+  title: {
+    default: "CrownSourceGlobal",
+    template: "%s — CrownSourceGlobal",
+  },
   description:
-    "CrownSourceGlobal — buy what you need, however you need it. Shop normally, buy in bulk, or request custom sourcing.",
+    "Shop normally, buy in bulk with instant pricing, or ask CrownSourceGlobal to source something custom. A managed marketplace connecting buyers with approved vendors.",
 };
 
 export default function RootLayout({
@@ -13,10 +30,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
-        {children}
-      </body>
+    <html lang="en" className={`${fraunces.variable} ${jakarta.variable}`}>
+      <body className="min-h-screen antialiased">{children}</body>
     </html>
   );
 }

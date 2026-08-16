@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 import { signUp } from "../../lib/auth-client";
 import { validateRegistration, type RegistrationFieldErrors } from "../../modules/identity/validation";
 import { Button } from "../ui/Button";
@@ -44,13 +45,16 @@ export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
 
   if (success) {
     return (
-      <div className="flex flex-col gap-4 text-center">
-        <h1 className="text-xl font-semibold text-slate-900">Check your email</h1>
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="flex size-12 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+          <CheckCircle2 className="size-6" strokeWidth={1.75} />
+        </div>
+        <h1 className="text-2xl font-medium text-stone-900">Check your email</h1>
         <FormMessage tone="success">
           We&apos;ve sent a verification link to your inbox. Verify your email to finish
           setting up your CrownSourceGlobal account.
         </FormMessage>
-        <Link href="/sign-in" className="text-sm font-medium text-blue-700 hover:underline">
+        <Link href="/sign-in" className="text-sm font-medium text-brand-700 hover:underline">
           Back to sign in
         </Link>
       </div>
@@ -58,10 +62,10 @@ export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="text-center">
-        <h1 className="text-xl font-semibold text-slate-900">Create your account</h1>
-        <p className="mt-1 text-sm text-slate-500">
+    <div className="flex flex-col gap-7">
+      <div>
+        <h1 className="text-2xl font-medium text-stone-900">Create your account</h1>
+        <p className="mt-1.5 text-[15px] text-stone-500">
           Shop normally, buy in bulk, or request custom sourcing.
         </p>
       </div>
@@ -69,10 +73,10 @@ export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
       {googleEnabled ? (
         <>
           <GoogleButton label="Continue with Google" />
-          <div className="flex items-center gap-3 text-xs font-medium uppercase text-slate-400">
-            <div className="h-px flex-1 bg-slate-200" />
+          <div className="flex items-center gap-3 text-xs font-medium tracking-wide text-stone-400 uppercase">
+            <div className="h-px flex-1 bg-stone-200" />
             or
-            <div className="h-px flex-1 bg-slate-200" />
+            <div className="h-px flex-1 bg-stone-200" />
           </div>
         </>
       ) : null}
@@ -104,18 +108,19 @@ export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
           type="password"
           autoComplete="new-password"
           placeholder="At least 8 characters"
+          hint="At least 8 characters."
           error={fieldErrors.password}
           disabled={isSubmitting}
         />
 
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" size="lg" fullWidth disabled={isSubmitting} className="mt-2">
           {isSubmitting ? "Creating account…" : "Create account"}
         </Button>
       </form>
 
-      <p className="text-center text-sm text-slate-500">
+      <p className="text-center text-sm text-stone-500">
         Already have an account?{" "}
-        <Link href="/sign-in" className="font-medium text-blue-700 hover:underline">
+        <Link href="/sign-in" className="font-medium text-brand-700 hover:underline">
           Sign in
         </Link>
       </p>

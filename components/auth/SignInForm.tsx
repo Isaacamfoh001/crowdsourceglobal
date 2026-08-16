@@ -2,15 +2,25 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, sendVerificationEmail } from "../../lib/auth-client";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { FormMessage } from "../ui/FormMessage";
 import { GoogleButton } from "./GoogleButton";
 
+/** Only ever follow a same-origin, path-relative redirect (never `//host`). */
+function safeRedirect(target: string | null): string {
+  if (target && target.startsWith("/") && !target.startsWith("//")) {
+    return target;
+  }
+  return "/account";
+}
+
 export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = safeRedirect(searchParams.get("redirect"));
   const [formError, setFormError] = useState<string | null>(null);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
@@ -40,7 +50,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
       return;
     }
 
-    router.push("/account");
+    router.push(redirectTo);
   }
 
   async function handleResend() {
@@ -51,19 +61,21 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="text-center">
-        <h1 className="text-xl font-semibold text-slate-900">Welcome back</h1>
-        <p className="mt-1 text-sm text-slate-500">Sign in to your CrownSourceGlobal account.</p>
+    <div className="flex flex-col gap-7">
+      <div>
+        <h1 className="text-2xl font-medium text-stone-900">Welcome back</h1>
+        <p className="mt-1.5 text-[15px] text-stone-500">
+          Sign in to your CrownSourceGlobal account.
+        </p>
       </div>
 
       {googleEnabled ? (
         <>
-          <GoogleButton label="Continue with Google" />
-          <div className="flex items-center gap-3 text-xs font-medium uppercase text-slate-400">
-            <div className="h-px flex-1 bg-slate-200" />
+          <GoogleButton label="Continue with Google" callbackURL={redirectTo} />
+          <div className="flex items-center gap-3 text-xs font-medium tracking-wide text-stone-400 uppercase">
+            <div className="h-px flex-1 bg-stone-200" />
             or
-            <div className="h-px flex-1 bg-slate-200" />
+            <div className="h-px flex-1 bg-stone-200" />
           </div>
         </>
       ) : null}
@@ -91,13 +103,23 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
           </FormMessage>
         ) : null}
 
-        <Input label="Email" name="email" type="email" autoComplete="email" required disabled={isSubmitting} />
+        <Input
+          label="Email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          disabled={isSubmitting}
+        />
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <label htmlFor="password" className="text-sm font-medium text-slate-700">
+            <label htmlFor="password" className="text-sm font-medium text-stone-700">
               Password
             </label>
-            <Link href="/forgot-password" className="text-xs font-medium text-blue-700 hover:underline">
+            <Link
+              href="/forgot-password"
+              className="text-xs font-medium text-brand-700 hover:underline"
+            >
               Forgot password?
             </Link>
           </div>
@@ -108,18 +130,18 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             autoComplete="current-password"
             required
             disabled={isSubmitting}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-[15px] text-stone-900 shadow-soft outline-none transition-colors focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
           />
         </div>
 
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" size="lg" fullWidth disabled={isSubmitting} className="mt-2">
           {isSubmitting ? "Signing in…" : "Sign in"}
         </Button>
       </form>
 
-      <p className="text-center text-sm text-slate-500">
+      <p className="text-center text-sm text-stone-500">
         Don&apos;t have an account?{" "}
-        <Link href="/sign-up" className="font-medium text-blue-700 hover:underline">
+        <Link href="/sign-up" className="font-medium text-brand-700 hover:underline">
           Create one
         </Link>
       </p>

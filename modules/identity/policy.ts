@@ -17,11 +17,21 @@ export async function getCurrentSession() {
   return session;
 }
 
-/** For pages/route handlers that must be authenticated. Redirects otherwise. */
-export async function requireSession() {
+/**
+ * For pages/route handlers that must be authenticated. Redirects otherwise.
+ *
+ * `redirectTo` is the path to return to after sign-in (e.g. a page reached
+ * via a vendor-entry CTA) — passed through to /sign-in as a query param so
+ * the shared sign-in flow can send the user back to where they were headed
+ * instead of always landing on /account.
+ */
+export async function requireSession(redirectTo?: string) {
   const session = await getCurrentSession();
   if (!session) {
-    redirect("/sign-in");
+    const target = redirectTo
+      ? `/sign-in?redirect=${encodeURIComponent(redirectTo)}`
+      : "/sign-in";
+    redirect(target);
   }
   return session;
 }
