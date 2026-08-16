@@ -155,7 +155,10 @@ export const vendorListingsRepository = {
 
   async findPendingForAdmin() {
     const rows = await prisma.vendorListing.findMany({
-      where: { approvalStatus: "PENDING" },
+      // submittedAt distinguishes "vendor explicitly submitted this" from
+      // "this is a never-submitted draft that merely defaults to PENDING" —
+      // never surface the latter in the moderation queue.
+      where: { approvalStatus: "PENDING", submittedAt: { not: null } },
       select: {
         id: true,
         title: true,

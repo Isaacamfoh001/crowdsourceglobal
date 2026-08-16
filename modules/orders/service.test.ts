@@ -21,6 +21,9 @@ describe("ordersService", () => {
 
   const createdOrderIds: string[] = [];
   const createdListingIds: string[] = [];
+  const createdVendorIds: string[] = [];
+  const createdCategoryIds: string[] = [];
+  const createdUserIds: string[] = [];
 
   beforeEach(async () => {
     const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -29,20 +32,24 @@ describe("ordersService", () => {
       data: { companyName: "Orders Test Vendor A", storefrontSlug: `orders-test-a-${suffix}`, verificationStatus: "APPROVED" },
     });
     vendorAId = vendorA.id;
+    createdVendorIds.push(vendorA.id);
     const vendorB = await prisma.vendor.create({
       data: { companyName: "Orders Test Vendor B", storefrontSlug: `orders-test-b-${suffix}`, verificationStatus: "APPROVED" },
     });
     vendorBId = vendorB.id;
+    createdVendorIds.push(vendorB.id);
 
     const category = await prisma.category.create({
       data: { name: "Orders Test Category", slug: `orders-test-category-${suffix}` },
     });
     categoryId = category.id;
+    createdCategoryIds.push(category.id);
 
     const user = await prisma.user.create({
       data: { id: `orders-test-user-${suffix}`, name: "Orders Test User", email: `orders.${suffix}@example.com` },
     });
     userId = user.id;
+    createdUserIds.push(user.id);
     const customer = await prisma.customerProfile.create({
       data: { userId: user.id, displayName: "Orders Test User" },
     });
@@ -58,6 +65,10 @@ describe("ordersService", () => {
     await prisma.order.deleteMany({ where: { id: { in: createdOrderIds } } });
     await prisma.vendorCostRule.deleteMany({ where: { listingId: { in: createdListingIds } } });
     await prisma.vendorListing.deleteMany({ where: { id: { in: createdListingIds } } });
+    await prisma.customerProfile.deleteMany({ where: { userId: { in: createdUserIds } } });
+    await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
+    await prisma.category.deleteMany({ where: { id: { in: createdCategoryIds } } });
+    await prisma.vendor.deleteMany({ where: { id: { in: createdVendorIds } } });
     await prisma.$disconnect();
   });
 

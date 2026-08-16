@@ -781,6 +781,8 @@ model Conversation {
 
   @@index([customerProfileId])
   @@index([vendorId])
+  /// Backs the staff inbox — filtered by status, ordered by recency.
+  @@index([status, updatedAt])
   @@map("conversation")
 }
 
@@ -799,6 +801,8 @@ model Message {
   senderUserId String
   senderUser   User   @relation(fields: [senderUserId], references: [id])
 
-  @@index([conversationId])
+  /// Covers "messages for this conversation, chronological" without a
+  /// separate sort step — the shape of every message-history query.
+  @@index([conversationId, createdAt])
   @@map("message")
 }

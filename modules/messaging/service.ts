@@ -1,4 +1,7 @@
 import { messagingRepository } from "./repository";
+import { onMessagePersisted } from "./events";
+import { catalogueRepository } from "../catalogue/repository";
+import { vendorsRepository } from "../vendors/repository";
 import { ok, err, type Result } from "../../lib/result";
 import type { ConversationDetail, ConversationSummary, MessageView, AdminConversationSummary } from "./types";
 
@@ -70,6 +73,13 @@ export const messagingService = {
    * "Ask about this item" / "Ask about this vendor" — reuses an existing
    * open thread for the same context instead of spawning a duplicate one
    * every time the customer clicks the CTA again.
+   *
+   * `contextRefId` is client-submitted, so it is never trusted as-is: it
+   * must resolve to a listing/vendor that is actually publicly visible
+   * (approved) before it's allowed to become conversation context. Without
+   * this, a forged id could attach an unapproved/draft listing's title and
+   * owning vendor's name to a conversation (CLAUDE.md's IDOR/context-forgery
+   * concern) even though the customer never had legitimate access to it.
    */
   async startOrContinueContextual(input: {
     customerProfileId: string;
@@ -80,13 +90,24 @@ export const messagingService = {
   }): Promise<Result<{ conversationId: string }>> {
     if (input.body.trim().length === 0) return err("Write a message before sending.");
 
+    if (input.contextType === "LISTING") {
+      const listing = await catalogueRepository.getListingById(input.contextRefId);
+      if (!listing) return err("This listing is no longer available.");
+    } else if (input.contextType === "VENDOR") {
+      const vendor = await vendorsRepository.findPublicVendorById(input.contextRefId);
+      if (!vendor) return err("This vendor is no longer available.");
+    } else {
+      return err("Invalid conversation context.");
+    }
+
     const existing = await messagingRepository.findOpenCustomerConversationByContext(
       input.customerProfileId,
       input.contextType,
       input.contextRefId,
     );
     if (existing) {
-      await messagingRepository.addMessage(existing.id, input.senderUserId, input.body, false);
+      const message = await messagingRepository.addMessage(existing.id, input.senderUserId, input.body, false);
+      onMessagePersisted({ id: message.id, conversationId: existing.id, senderIsStaff: false });
       return ok({ conversationId: existing.id });
     }
 
@@ -98,6 +119,10 @@ export const messagingService = {
       senderUserId: input.senderUserId,
       body: input.body,
     });
+    const firstMessage = created.messages.at(-1);
+    if (firstMessage) {
+      onMessagePersisted({ id: firstMessage.id, conversationId: created.id, senderIsStaff: false });
+    }
     return ok({ conversationId: created.id });
   },
 
@@ -110,7 +135,8 @@ export const messagingService = {
     if (body.trim().length === 0) return err("Write a message before sending.");
     const conversation = await messagingRepository.findCustomerConversationById(customerProfileId, conversationId);
     if (!conversation) return err("Conversation not found.");
-    await messagingRepository.addMessage(conversationId, senderUserId, body, false);
+    const message = await messagingRepository.addMessage(conversationId, senderUserId, body, false);
+    onMessagePersisted({ id: message.id, conversationId, senderIsStaff: false });
     return ok(null);
   },
 
@@ -129,6 +155,10 @@ export const messagingService = {
   async startVendorConversation(vendorId: string, senderUserId: string, body: string): Promise<Result<{ conversationId: string }>> {
     if (body.trim().length === 0) return err("Write a message before sending.");
     const created = await messagingRepository.createVendorConversation({ vendorId, senderUserId, body });
+    const firstMessage = created.messages.at(-1);
+    if (firstMessage) {
+      onMessagePersisted({ id: firstMessage.id, conversationId: created.id, senderIsStaff: false });
+    }
     return ok({ conversationId: created.id });
   },
 
@@ -141,7 +171,8 @@ export const messagingService = {
     if (body.trim().length === 0) return err("Write a message before sending.");
     const conversation = await messagingRepository.findVendorConversationById(vendorId, conversationId);
     if (!conversation) return err("Conversation not found.");
-    await messagingRepository.addMessage(conversationId, senderUserId, body, false);
+    const message = await messagingRepository.addMessage(conversationId, senderUserId, body, false);
+    onMessagePersisted({ id: message.id, conversationId, senderIsStaff: false });
     return ok(null);
   },
 
@@ -161,7 +192,8 @@ export const messagingService = {
     if (body.trim().length === 0) return err("Write a message before sending.");
     const conversation = await messagingRepository.findByIdForAdmin(conversationId);
     if (!conversation) return err("Conversation not found.");
-    await messagingRepository.addMessage(conversationId, staffUserId, body, true);
+    const message = await messagingRepository.addMessage(conversationId, staffUserId, body, true);
+    onMessagePersisted({ id: message.id, conversationId, senderIsStaff: true });
     return ok(null);
   },
 };

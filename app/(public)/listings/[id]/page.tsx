@@ -12,8 +12,12 @@ import { AddToCartForm } from "../../../../components/catalogue/AddToCartForm";
 import { AskAboutButton } from "../../../../components/messaging/AskAboutButton";
 import { formatPrice } from "../../../../lib/format";
 import { catalogueService } from "../../../../modules/catalogue/service";
+import { getCurrentSession } from "../../../../modules/identity/policy";
+import { getPendingMessageIntent } from "../../../../lib/actions/messaging";
 
 type Params = { id: string };
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<Params> }) {
   const { id } = await params;
@@ -28,6 +32,10 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
   if (!listing) {
     notFound();
   }
+
+  const session = await getCurrentSession();
+  const isSignedIn = Boolean(session);
+  const resumedMessage = await getPendingMessageIntent("LISTING", listing.id);
 
   return (
     <div className="bg-stone-50 py-10 sm:py-14">
@@ -167,6 +175,9 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
               <AskAboutButton
                 contextType="LISTING"
                 contextRefId={listing.id}
+                currentPath={`/listings/${listing.id}`}
+                isSignedIn={isSignedIn}
+                resumedBody={resumedMessage}
                 label="Ask about this item"
                 placeholder={`Ask CrownSourceGlobal about "${listing.title}"…`}
               />

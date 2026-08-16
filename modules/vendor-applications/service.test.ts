@@ -1,6 +1,11 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../lib/db";
 import { vendorApplicationsService } from "./service";
+import * as emailModule from "../../lib/email";
+
+async function flushMicrotasks() {
+  await new Promise((resolve) => setTimeout(resolve, 30));
+}
 
 /** Integration tests against the real local Postgres dev database. */
 describe("vendorApplicationsService", () => {
@@ -195,5 +200,50 @@ describe("vendorApplicationsService", () => {
     const updated = await vendorApplicationsService.getForUser(applicantUserId);
     expect(updated?.status).toBe("REJECTED");
     expect(updated?.decisionReason).toBe("Unable to verify identity.");
+  });
+
+  it("emails the applicant when their application is approved", async () => {
+    const spy = vi.spyOn(emailModule, "sendVendorApplicationApprovedEmail").mockResolvedValue(undefined);
+    const application = await submitFullApplication();
+
+    const result = await vendorApplicationsService.approve(adminUserId, application.id);
+    expect(result.ok).toBe(true);
+    if (result.ok) createdVendorIds.push(result.value.vendorId);
+    await flushMicrotasks();
+
+    const applicantEmail = (await prisma.user.findUnique({ where: { id: applicantUserId } }))!.email;
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ to: applicantEmail, storeName: validBusiness.displayName }),
+    );
+    spy.mockRestore();
+  });
+
+  it("emails the applicant with the reason when changes are requested", async () => {
+    const spy = vi.spyOn(emailModule, "sendVendorApplicationChangesRequestedEmail").mockResolvedValue(undefined);
+    const application = await submitFullApplication();
+
+    await vendorApplicationsService.requestChanges(adminUserId, application.id, "Add your registration number.");
+    await flushMicrotasks();
+
+    const applicantEmail = (await prisma.user.findUnique({ where: { id: applicantUserId } }))!.email;
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ to: applicantEmail, reason: "Add your registration number." }),
+    );
+    spy.mockRestore();
+  });
+
+  it("a failing email provider does not roll back or fail an already-successful approval", async () => {
+    const spy = vi
+      .spyOn(emailModule, "sendVendorApplicationApprovedEmail")
+      .mockRejectedValue(new Error("simulated provider outage"));
+    const application = await submitFullApplication();
+
+    const result = await vendorApplicationsService.approve(adminUserId, application.id);
+    expect(result.ok).toBe(true); // approval itself must still succeed
+    if (result.ok) createdVendorIds.push(result.value.vendorId);
+
+    const updated = await vendorApplicationsService.getForUser(applicantUserId);
+    expect(updated?.status).toBe("APPROVED");
+    spy.mockRestore();
   });
 });

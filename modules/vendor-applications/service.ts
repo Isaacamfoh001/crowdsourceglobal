@@ -2,6 +2,11 @@ import { prisma } from "../../lib/db";
 import { Prisma } from "../../generated/prisma/client";
 import { slugify } from "../../lib/slug";
 import { ok, err, type Result } from "../../lib/result";
+import {
+  sendVendorApplicationApprovedEmail,
+  sendVendorApplicationChangesRequestedEmail,
+  sendVendorApplicationRejectedEmail,
+} from "../../lib/email";
 import { vendorApplicationsRepository } from "./repository";
 import {
   EDITABLE_STATUSES,
@@ -15,6 +20,16 @@ import {
 } from "./types";
 
 const REVIEWABLE_STATUSES = ["SUBMITTED", "UNDER_REVIEW"];
+
+/**
+ * Fire-and-forget notification dispatch — errors are logged, never thrown,
+ * so a flaky dev-console adapter (or, later, a real email provider outage)
+ * can never surface as a failed moderation action to the admin who already
+ * successfully approved/rejected something.
+ */
+function notifySafely(send: () => Promise<void>): void {
+  send().catch((error) => console.error("Notification dispatch failed:", error));
+}
 
 function validateForSubmission(app: VendorApplicationView): Result<null> {
   if (!app.sellerType) return err("Choose how you sell before submitting.");
@@ -179,6 +194,12 @@ export const vendorApplicationsService = {
           });
           return vendor;
         });
+        // Notification dispatch happens after the transaction has already
+        // committed — a failing email provider must never roll back or
+        // block an approval that already succeeded.
+        notifySafely(() =>
+          sendVendorApplicationApprovedEmail({ to: application.applicant.email, storeName: application.displayName! }),
+        );
         return ok({ vendorId: vendor.id });
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -209,6 +230,7 @@ export const vendorApplicationsService = {
         reviewerUserId: adminUserId,
       },
     });
+    notifySafely(() => sendVendorApplicationChangesRequestedEmail({ to: application.applicant.email, reason }));
     return ok(null);
   },
 
@@ -230,6 +252,7 @@ export const vendorApplicationsService = {
         reviewerUserId: adminUserId,
       },
     });
+    notifySafely(() => sendVendorApplicationRejectedEmail({ to: application.applicant.email, reason }));
     return ok(null);
   },
 };

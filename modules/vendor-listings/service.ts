@@ -1,6 +1,36 @@
 import { vendorListingsRepository } from "./repository";
+import { vendorsRepository } from "../vendors/repository";
 import { ok, err, type Result } from "../../lib/result";
+import { sendListingApprovedEmail, sendListingChangesRequestedEmail, sendListingRejectedEmail } from "../../lib/email";
 import type { BulkTierInput, ListingFormInput, VendorListingDetail } from "./types";
+
+/**
+ * Fire-and-forget notification dispatch — errors are logged, never thrown,
+ * so a flaky dev-console adapter (or, later, a real email provider outage)
+ * can never surface as a failed moderation action to the admin who already
+ * successfully approved/rejected something.
+ */
+function notifySafely(send: () => Promise<void>): void {
+  send().catch((error) => console.error("Notification dispatch failed:", error));
+}
+
+async function notifyVendorOwner(vendorId: string, send: (email: string) => Promise<void>): Promise<void> {
+  const email = await vendorsRepository.findOwnerEmail(vendorId);
+  if (!email) return;
+  notifySafely(() => send(email));
+}
+
+/**
+ * `approvalStatus: "PENDING"` is also the schema default for a brand-new,
+ * never-submitted draft — a listing is only genuinely awaiting an admin
+ * decision once the vendor has explicitly submitted it (`submittedAt` set).
+ * Every admin decision function must gate on this, not on approvalStatus
+ * alone, or a listing could be approved/rejected before the vendor ever
+ * finished filling it in.
+ */
+function isAwaitingReview(listing: { approvalStatus: string; submittedAt: Date | null }): boolean {
+  return listing.approvalStatus === "PENDING" && listing.submittedAt !== null;
+}
 
 function validateListingContent(input: ListingFormInput): Result<null> {
   if (input.title.trim().length < 3) return err("Enter a listing title (at least 3 characters).");
@@ -176,7 +206,7 @@ export const vendorListingsService = {
   async approve(listingId: string): Promise<Result<null>> {
     const listing = await vendorListingsRepository.findForAdmin(listingId);
     if (!listing) return err("Listing not found.");
-    if (listing.approvalStatus !== "PENDING") return err("This listing is not awaiting review.");
+    if (!isAwaitingReview(listing)) return err("This listing is not awaiting review.");
 
     if (listing.pendingChanges) {
       const { listing: fields, bulkPriceTiers } = listing.pendingChanges;
@@ -198,28 +228,40 @@ export const vendorListingsService = {
     } else {
       await vendorListingsRepository.applyApprovalAndActivate(listingId, null, null);
     }
+    const approvedTitle = listing.pendingChanges?.listing.title ?? listing.title;
+    void notifyVendorOwner(listing.vendorId, (email) =>
+      sendListingApprovedEmail({ to: email, listingTitle: approvedTitle }),
+    );
     return ok(null);
   },
 
   async requestChanges(listingId: string, reason: string): Promise<Result<null>> {
     const listing = await vendorListingsRepository.findForAdmin(listingId);
     if (!listing) return err("Listing not found.");
-    if (listing.approvalStatus !== "PENDING") return err("This listing is not awaiting review.");
+    if (!isAwaitingReview(listing)) return err("This listing is not awaiting review.");
     await vendorListingsRepository.requestChanges(listingId, reason);
+    void notifyVendorOwner(listing.vendorId, (email) =>
+      sendListingChangesRequestedEmail({ to: email, listingTitle: listing.title, reason }),
+    );
     return ok(null);
   },
 
   async reject(listingId: string, reason: string): Promise<Result<null>> {
     const listing = await vendorListingsRepository.findForAdmin(listingId);
     if (!listing) return err("Listing not found.");
-    if (listing.approvalStatus !== "PENDING") return err("This listing is not awaiting review.");
+    if (!isAwaitingReview(listing)) return err("This listing is not awaiting review.");
 
     if (listing.pendingChanges) {
       // Rejecting an edit to an already-live listing discards the proposal
-      // and keeps the current public version untouched.
+      // and keeps the current public version untouched — nothing the
+      // vendor owns actually changed, so no "rejected" email here (it
+      // would misleadingly suggest their live listing was affected).
       await vendorListingsRepository.discardPendingChanges(listingId);
     } else {
       await vendorListingsRepository.reject(listingId, reason);
+      void notifyVendorOwner(listing.vendorId, (email) =>
+        sendListingRejectedEmail({ to: email, listingTitle: listing.title, reason }),
+      );
     }
     return ok(null);
   },

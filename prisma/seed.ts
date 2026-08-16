@@ -462,42 +462,50 @@ const LISTINGS: ListingSeed[] = [
 async function main() {
   console.log("Seeding catalogue data...");
 
-  // Idempotent: clear existing catalogue/pricing rows (not Identity data).
-  await prisma.vendorCostRule.deleteMany();
-  await prisma.bulkPriceTier.deleteMany();
-  await prisma.vendorListing.deleteMany();
-  await prisma.category.deleteMany();
-  await prisma.vendor.deleteMany();
-
+  // Idempotent via upsert, not delete-then-recreate. Once real commerce
+  // activity exists (Orders/Fulfilments referencing a seeded Vendor), a
+  // blanket `vendor.deleteMany()` fails on the FK (correctly — Fulfilment
+  // history must never silently cascade-delete) and leaves the DB
+  // half-reset. Upserting by each model's natural key keeps re-running the
+  // seed safe at any point in the app's lifecycle, in dev or otherwise.
   const categoryIdBySlug = new Map<string, string>();
   for (const category of CATEGORIES) {
-    const parent = await prisma.category.create({
-      data: { name: category.name, slug: category.slug },
+    const parent = await prisma.category.upsert({
+      where: { slug: category.slug },
+      create: { name: category.name, slug: category.slug },
+      update: { name: category.name },
     });
     categoryIdBySlug.set(category.slug, parent.id);
 
     for (const child of category.children ?? []) {
-      const created = await prisma.category.create({
-        data: { name: child.name, slug: child.slug, parentCategoryId: parent.id },
+      const created = await prisma.category.upsert({
+        where: { slug: child.slug },
+        create: { name: child.name, slug: child.slug, parentCategoryId: parent.id },
+        update: { name: child.name, parentCategoryId: parent.id },
       });
       categoryIdBySlug.set(child.slug, created.id);
     }
   }
-  console.log(`  Created ${categoryIdBySlug.size} categories.`);
+  console.log(`  Upserted ${categoryIdBySlug.size} categories.`);
 
   const vendorIdBySlug = new Map<string, string>();
   for (const vendor of VENDORS) {
-    const created = await prisma.vendor.create({
-      data: {
+    const created = await prisma.vendor.upsert({
+      where: { storefrontSlug: vendor.storefrontSlug },
+      create: {
         companyName: vendor.companyName,
         storefrontSlug: vendor.storefrontSlug,
         description: vendor.description,
         verificationStatus: "APPROVED",
       },
+      update: {
+        companyName: vendor.companyName,
+        description: vendor.description,
+      },
     });
     vendorIdBySlug.set(vendor.storefrontSlug, created.id);
   }
-  console.log(`  Created ${vendorIdBySlug.size} vendors.`);
+  console.log(`  Upserted ${vendorIdBySlug.size} vendors.`);
 
   let listingCount = 0;
   let bulkTierCount = 0;
@@ -508,26 +516,38 @@ async function main() {
       throw new Error(`Seed data error: unknown vendor/category for "${listing.title}"`);
     }
 
-    const created = await prisma.vendorListing.create({
-      data: {
-        vendorId,
-        categoryId,
-        title: listing.title,
-        description: listing.description,
-        specs: listing.specs ?? undefined,
-        images: [],
-        basePrice: listing.basePrice,
-        moq: listing.moq,
-        maxOq: listing.maxOq,
-        leadTimeDays: listing.leadTimeDays,
-        availableQuantity: listing.availableQuantity,
-        availabilityStatus: listing.availabilityStatus,
-        approvalStatus: "APPROVED",
-        listingStatus: "ACTIVE",
-      },
+    // No natural unique key on VendorListing — match this seed run's
+    // (vendorId, title) pair against what's already there instead.
+    const existing = await prisma.vendorListing.findFirst({
+      where: { vendorId, title: listing.title },
+      select: { id: true },
     });
+
+    const data = {
+      vendorId,
+      categoryId,
+      title: listing.title,
+      description: listing.description,
+      specs: listing.specs ?? undefined,
+      images: [],
+      basePrice: listing.basePrice,
+      moq: listing.moq,
+      maxOq: listing.maxOq,
+      leadTimeDays: listing.leadTimeDays,
+      availableQuantity: listing.availableQuantity,
+      availabilityStatus: listing.availabilityStatus,
+      approvalStatus: "APPROVED" as const,
+      listingStatus: "ACTIVE" as const,
+    };
+
+    const created = existing
+      ? await prisma.vendorListing.update({ where: { id: existing.id }, data })
+      : await prisma.vendorListing.create({ data });
     listingCount += 1;
 
+    // BulkPriceTier/VendorCostRule are pure pricing input, never referenced
+    // by Order/Fulfilment history — safe to fully replace on each run.
+    await prisma.bulkPriceTier.deleteMany({ where: { listingId: created.id } });
     if (listing.bulkTiers) {
       await prisma.bulkPriceTier.createMany({
         data: listing.bulkTiers.map((tier) => ({
@@ -541,16 +561,21 @@ async function main() {
     }
 
     // Private commercial data — never read by any public code path.
-    await prisma.vendorCostRule.create({
-      data: {
+    await prisma.vendorCostRule.upsert({
+      where: { listingId: created.id },
+      create: {
         listingId: created.id,
         vendorSupplyCost: Math.round(listing.basePrice * listing.vendorSupplyCostRatio * 100) / 100,
         marginRuleType: "PERCENTAGE",
         marginValue: listing.marginValue,
       },
+      update: {
+        vendorSupplyCost: Math.round(listing.basePrice * listing.vendorSupplyCostRatio * 100) / 100,
+        marginValue: listing.marginValue,
+      },
     });
   }
-  console.log(`  Created ${listingCount} listings with ${bulkTierCount} bulk price tiers.`);
+  console.log(`  Upserted ${listingCount} listings with ${bulkTierCount} bulk price tiers.`);
 
   console.log("Seed complete.");
 }

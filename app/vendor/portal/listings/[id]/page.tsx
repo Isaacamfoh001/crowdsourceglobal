@@ -27,7 +27,11 @@ export default async function VendorListingEditorPage({ params }: { params: Prom
   }
 
   const hasPendingChanges = listing.pendingChanges !== null;
-  const isLocked = listing.approvalStatus === "PENDING";
+  // PENDING is also the schema default for a brand-new, never-submitted
+  // draft — only treat it as "awaiting review" once the vendor has actually
+  // submitted (submittedAt set). Without this check every new draft looked
+  // locked from the moment it was created.
+  const isLocked = listing.approvalStatus === "PENDING" && listing.submittedAt !== null;
   const canSubmit = listing.listingStatus === "DRAFT" || hasPendingChanges;
 
   return (

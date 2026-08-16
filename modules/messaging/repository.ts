@@ -1,16 +1,40 @@
 import { prisma } from "../../lib/db";
 
-const conversationInclude = {
+const contextSelect = {
   contextListing: { select: { id: true, title: true, vendor: { select: { companyName: true } } } },
   contextVendor: { select: { id: true, companyName: true } },
   contextOrder: { select: { id: true, orderNumber: true } },
   vendor: { select: { id: true, companyName: true } },
   customerProfile: { select: { id: true, displayName: true, user: { select: { name: true, email: true } } } },
+} as const;
+
+// createdAt first, id as a deterministic tie-breaker for messages created
+// within the same timestamp tick (cuid is time-ordered, so this gives
+// stable ordering without needing a separate sequence column).
+const messageOrder = [{ createdAt: "asc" as const }, { id: "asc" as const }];
+
+const conversationInclude = {
+  ...contextSelect,
   messages: {
-    orderBy: { createdAt: "asc" as const },
+    orderBy: messageOrder,
     include: { senderUser: { select: { name: true } } },
   },
-} as const;
+};
+
+/**
+ * List views only ever render the most recent message as a preview — not
+ * the full thread. Reusing `conversationInclude` there would pull every
+ * historical message for every conversation in the inbox just to read the
+ * last one; this fetches exactly one message per conversation instead.
+ */
+const conversationSummaryInclude = {
+  ...contextSelect,
+  messages: {
+    orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }],
+    take: 1,
+    include: { senderUser: { select: { name: true } } },
+  },
+};
 
 export const messagingRepository = {
   // --- Customer side ---------------------------------------------------
@@ -18,7 +42,7 @@ export const messagingRepository = {
   findCustomerConversations(customerProfileId: string) {
     return prisma.conversation.findMany({
       where: { participantType: "CUSTOMER", customerProfileId },
-      include: conversationInclude,
+      include: conversationSummaryInclude,
       orderBy: { updatedAt: "desc" },
     });
   },
@@ -72,7 +96,7 @@ export const messagingRepository = {
   findVendorConversations(vendorId: string) {
     return prisma.conversation.findMany({
       where: { participantType: "VENDOR", vendorId },
-      include: conversationInclude,
+      include: conversationSummaryInclude,
       orderBy: { updatedAt: "desc" },
     });
   },
@@ -111,7 +135,7 @@ export const messagingRepository = {
   findAllForAdmin(status?: "OPEN" | "CLOSED") {
     return prisma.conversation.findMany({
       where: status ? { status } : undefined,
-      include: conversationInclude,
+      include: conversationSummaryInclude,
       orderBy: { updatedAt: "desc" },
     });
   },

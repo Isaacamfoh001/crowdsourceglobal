@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { MoneyInput, sanitizeMoneyInput as sanitizeMoneyText } from "../ui/MoneyInput";
 import { FormMessage } from "../ui/FormMessage";
 import { saveListingAction } from "../../lib/actions/vendor-listings";
 import type { VendorListingDetail } from "../../modules/vendor-listings/types";
@@ -105,12 +106,9 @@ export function ListingEditorForm({
       <section className="flex flex-col gap-4 border-t border-stone-100 pt-6">
         <h2 className="font-display text-lg font-medium text-stone-900">Pricing &amp; inventory</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input
-            label="Price (GH₵)"
+          <MoneyInput
+            label="Price"
             name="basePrice"
-            type="number"
-            step="0.01"
-            min={0}
             defaultValue={content.basePrice}
             required
             disabled={disabled || isPending}
@@ -181,12 +179,11 @@ export function ListingEditorForm({
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-stone-500">Unit price (GH₵)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 name="tierUnitPrice"
-                step="0.01"
-                min={0}
                 value={tier.unitPrice}
-                onChange={(e) => updateTier(index, "unitPrice", e.target.value)}
+                onChange={(e) => updateTier(index, "unitPrice", sanitizeMoneyText(e.target.value))}
                 disabled={disabled || isPending}
                 className="w-28 rounded-lg border border-stone-300 px-2.5 py-1.5 text-sm"
               />

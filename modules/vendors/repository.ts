@@ -73,6 +73,16 @@ export const vendorsRepository = {
     return prisma.vendor.findUnique({ where: { id: vendorId }, select: storeProfileSelect });
   },
 
+  /** Where listing/application moderation notifications for this vendor go. */
+  async findOwnerEmail(vendorId: string): Promise<string | null> {
+    const membership = await prisma.vendorMembership.findFirst({
+      where: { vendorId, role: "OWNER" },
+      select: { user: { select: { email: true } } },
+      orderBy: { createdAt: "asc" },
+    });
+    return membership?.user.email ?? null;
+  },
+
   updateStoreProfile(vendorId: string, data: Record<string, unknown>): Promise<VendorStoreProfile> {
     return prisma.vendor.update({ where: { id: vendorId }, data, select: storeProfileSelect });
   },

@@ -35,10 +35,12 @@ export function SiteHeader({
   isSignedIn,
   cartItemCount,
   hasVendorPortal = false,
+  isAdmin = false,
 }: {
   isSignedIn: boolean;
   cartItemCount: number;
   hasVendorPortal?: boolean;
+  isAdmin?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -68,6 +70,14 @@ export function SiteHeader({
                   className="text-sm font-medium text-stone-700 transition-colors hover:text-stone-900"
                 >
                   Vendor Portal
+                </Link>
+              ) : null}
+              {isAdmin ? (
+                <Link
+                  href="/admin"
+                  className="text-sm font-medium text-gold-700 transition-colors hover:text-gold-800"
+                >
+                  Admin
                 </Link>
               ) : null}
               <CartLink itemCount={cartItemCount} />
@@ -134,6 +144,15 @@ export function SiteHeader({
                     className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-stone-700 hover:bg-stone-100"
                   >
                     Vendor Portal
+                  </Link>
+                ) : null}
+                {isAdmin ? (
+                  <Link
+                    href="/admin"
+                    onClick={() => setMenuOpen(false)}
+                    className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-gold-700 hover:bg-gold-50"
+                  >
+                    Admin
                   </Link>
                 ) : null}
                 <Link

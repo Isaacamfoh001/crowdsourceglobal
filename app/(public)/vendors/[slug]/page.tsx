@@ -7,8 +7,12 @@ import { EmptyState } from "../../../../components/catalogue/EmptyState";
 import { Breadcrumbs } from "../../../../components/catalogue/Breadcrumbs";
 import { AskAboutButton } from "../../../../components/messaging/AskAboutButton";
 import { vendorsService } from "../../../../modules/vendors/service";
+import { getCurrentSession } from "../../../../modules/identity/policy";
+import { getPendingMessageIntent } from "../../../../lib/actions/messaging";
 
 type Params = { slug: string };
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
@@ -25,6 +29,9 @@ export default async function VendorStorefrontPage({ params }: { params: Promise
   }
 
   const { vendor, listings } = storefront;
+  const session = await getCurrentSession();
+  const isSignedIn = Boolean(session);
+  const resumedMessage = await getPendingMessageIntent("VENDOR", vendor.id);
 
   return (
     <div className="bg-stone-50 py-10 sm:py-14">
@@ -54,6 +61,9 @@ export default async function VendorStorefrontPage({ params }: { params: Promise
               <AskAboutButton
                 contextType="VENDOR"
                 contextRefId={vendor.id}
+                currentPath={`/vendors/${vendor.storefrontSlug}`}
+                isSignedIn={isSignedIn}
+                resumedBody={resumedMessage}
                 label="Ask about this vendor"
                 placeholder={`Ask CrownSourceGlobal about ${vendor.companyName}…`}
               />
