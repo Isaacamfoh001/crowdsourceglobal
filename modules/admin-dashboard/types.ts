@@ -10,9 +10,14 @@ export type AttentionType =
   | "MESSAGE_UNANSWERED"
   | "VENDOR_APPLICATION_PENDING"
   | "LISTING_MODERATION_PENDING"
-  | "QUOTATION_NEARING_EXPIRY";
+  | "QUOTATION_NEARING_EXPIRY"
+  | "RESOLUTION_UNASSIGNED"
+  | "RESOLUTION_STALE"
+  | "VENDOR_RESPONSE_OVERDUE"
+  | "RETURN_AWAITING_INSPECTION"
+  | "REFUND_FAILED";
 
-export type AttentionModule = "OPERATIONS" | "SOURCING" | "MESSAGES" | "VENDOR_APPLICATIONS" | "LISTINGS" | "QUOTATIONS";
+export type AttentionModule = "OPERATIONS" | "SOURCING" | "MESSAGES" | "VENDOR_APPLICATIONS" | "LISTINGS" | "QUOTATIONS" | "RESOLUTIONS";
 
 /**
  * Always derived at read time from source-of-truth domain records, never
@@ -59,6 +64,11 @@ export type SummaryCounts = {
   listingsAwaitingReview: number;
   activeSourcingRequests: number;
   unansweredConversations: number;
+  openResolutionCases: number;
+  awaitingCustomer: number;
+  awaitingVendor: number;
+  returnsAwaitingInspection: number;
+  refundsPending: number;
 };
 
 export type RecentActivityEntry = {
@@ -75,7 +85,7 @@ export type DashboardData = {
   recentActivity: RecentActivityEntry[];
 };
 
-export type SearchResultType = "ORDER" | "QUOTATION" | "SOURCING_REQUEST" | "VENDOR" | "CUSTOMER" | "LISTING" | "SHIPMENT";
+export type SearchResultType = "ORDER" | "QUOTATION" | "SOURCING_REQUEST" | "VENDOR" | "CUSTOMER" | "LISTING" | "SHIPMENT" | "RESOLUTION_CASE";
 
 export type SearchResult = {
   type: SearchResultType;

@@ -19,6 +19,11 @@ const TYPE_FILTERS: { value: AttentionType; label: string }[] = [
   { value: "VENDOR_APPLICATION_PENDING", label: "Vendor application" },
   { value: "LISTING_MODERATION_PENDING", label: "Listing review" },
   { value: "QUOTATION_NEARING_EXPIRY", label: "Quote nearing expiry" },
+  { value: "RESOLUTION_UNASSIGNED", label: "Case unassigned" },
+  { value: "RESOLUTION_STALE", label: "Case stale" },
+  { value: "VENDOR_RESPONSE_OVERDUE", label: "Vendor response overdue" },
+  { value: "RETURN_AWAITING_INSPECTION", label: "Return awaiting inspection" },
+  { value: "REFUND_FAILED", label: "Refund failed" },
 ];
 
 const SEVERITY_FILTERS: { value: AttentionSeverity; label: string }[] = [
@@ -33,6 +38,7 @@ const MODULE_FILTERS: { value: AttentionModule; label: string }[] = [
   { value: "VENDOR_APPLICATIONS", label: "Vendor applications" },
   { value: "LISTINGS", label: "Listings" },
   { value: "QUOTATIONS", label: "Quotations" },
+  { value: "RESOLUTIONS", label: "Resolutions" },
 ];
 
 type SearchParams = { type?: string; severity?: string; module?: string; assigned?: string; page?: string };

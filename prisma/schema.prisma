@@ -120,6 +120,7 @@ model CustomerProfile {
   quotations       Quotation[]
   sourcingRequests CustomSourcingRequest[]
   conversations    Conversation[]
+  resolutionCases  ResolutionCase[]
 
   @@map("customer_profile")
 }
@@ -572,11 +573,13 @@ model Order {
   originQuotationId String?    @unique
   originQuotation   Quotation? @relation(fields: [originQuotationId], references: [id])
 
-  items         OrderItem[]
-  fulfilments   Fulfilment[]
-  payments      Payment[]
-  reservations  InventoryReservation[]
-  conversations Conversation[]
+  items           OrderItem[]
+  fulfilments     Fulfilment[]
+  payments        Payment[]
+  reservations    InventoryReservation[]
+  conversations   Conversation[]
+  resolutionCases ResolutionCase[]
+  refunds         Refund[]
 
   @@index([customerProfileId])
   /// Backs the M8 admin-dashboard "Today" KPI queries (status + date range).
@@ -609,7 +612,15 @@ model OrderItem {
   vendorId String?
   vendor   Vendor? @relation(fields: [vendorId], references: [id])
 
-  fulfilmentItems FulfilmentItem[]
+  fulfilmentItems        FulfilmentItem[]
+  /// This item as the affected line in a post-purchase case (M9).
+  resolutionCaseItems    ResolutionCaseItem[]
+  /// This item as the ORIGINAL line a Replacement (M9) replaces — named
+  /// relation since Replacement also references a second, newly-created
+  /// OrderItem below.
+  replacementsAsOriginal Replacement[]        @relation("ReplacementOriginalItem")
+  /// This item AS a replacement's own zero-value line (M9) — see Replacement.
+  replacementAsNewItem   Replacement?         @relation("ReplacementNewItem")
 
   @@index([orderId])
   @@map("order_item")
@@ -657,9 +668,13 @@ model Fulfilment {
   vendorId String
   vendor   Vendor @relation(fields: [vendorId], references: [id])
 
-  items     FulfilmentItem[]
-  issues    FulfilmentIssue[]
-  shipments Shipment[]
+  items           FulfilmentItem[]
+  issues          FulfilmentIssue[]
+  shipments       Shipment[]
+  /// Cases whose primary operational context is this Fulfilment (M9) —
+  /// a case's detailed item/quantity breakdown lives on ResolutionCaseItem
+  /// regardless; this is a convenience pointer, not the source of truth.
+  resolutionCases ResolutionCase[]
 
   @@index([orderId])
   @@index([vendorId])
@@ -727,6 +742,8 @@ model FulfilmentItem {
 
   orderItemId String
   orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+
+  resolutionCaseItems ResolutionCaseItem[]
 
   @@index([fulfilmentId])
   @@index([orderItemId])
@@ -852,6 +869,8 @@ model Payment {
   orderId String
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
+  refunds Refund[]
+
   @@index([orderId])
   @@map("payment")
 }
@@ -900,6 +919,364 @@ model IdempotencyKey {
   createdAt DateTime         @default(now())
 
   @@map("idempotency_key")
+}
+
+// ---------------------------------------------------------------------------
+// M9 — Post-Purchase Resolution (cancellations, returns, replacements,
+// refund decisions)
+//
+// The central principle: one failed/damaged/wrong OrderItem never forces a
+// whole multi-vendor Order into a binary refunded/not-refunded state.
+// Resolution happens at the OrderItem/quantity level (ResolutionCaseItem),
+// never `order.refunded = true`. CrownSource staff is the sole decision
+// authority throughout — a Customer can only REQUEST a resolution, a Vendor
+// can only RESPOND to an operational request; neither can set financial
+// state, approve anything, or communicate with the other directly (reusing
+// M3 messaging's Customer↔CrownSource / Vendor↔CrownSource separation via a
+// new RESOLUTION_CASE conversation context, never a shared thread).
+//
+// Refund is a DECISION record here (M9) — real money does not move.
+// MockRefundExecutor (modules/refunds/mockExecutor.ts) stands in for a
+// future production refund-provider call, mirroring the exact same
+// provider-abstraction philosophy as MockPaymentProvider (M2/M3). Vendor
+// payout correction is out of scope (nothing has ever been paid out yet —
+// see ADR 0005); M9 only ever SETS/CLEARS the FulfilmentItem.payoutHold
+// mechanism ADR 0005 already built for exactly this purpose, never
+// PayoutAdjustment (which only makes sense once a PayoutRun has executed).
+// ---------------------------------------------------------------------------
+
+enum ResolutionCaseStatus {
+  OPEN
+  UNDER_REVIEW
+  AWAITING_CUSTOMER
+  AWAITING_VENDOR
+  RESOLUTION_APPROVED
+  RESOLUTION_IN_PROGRESS
+  RESOLVED
+  REJECTED
+  CLOSED
+}
+
+enum ResolutionIssueType {
+  CUSTOMER_CANCELLATION_REQUEST
+  VENDOR_CANNOT_FULFIL
+  ITEM_DAMAGED
+  WRONG_ITEM
+  MISSING_ITEM
+  MISSING_QUANTITY
+  ITEM_NOT_AS_DESCRIBED
+  PACKAGE_NOT_RECEIVED
+  DELIVERY_FAILURE
+  OTHER
+}
+
+/// The customer's stated preference — a request, never an entitlement. Only
+/// `ResolutionCaseItem.approvedResolution` (a ResolutionDecision, staff-set)
+/// ever has financial/operational effect.
+enum RequestedResolution {
+  CANCELLATION
+  REFUND
+  PARTIAL_REFUND
+  REPLACEMENT
+  REDELIVERY
+  OTHER
+}
+
+/// Staff's approved outcome for one ResolutionCaseItem. Deliberately the
+/// smallest set that covers every flow in this milestone's brief — not one
+/// enum value per issue-type/outcome combination.
+enum ResolutionDecision {
+  NO_ACTION
+  FULL_REFUND
+  PARTIAL_REFUND
+  REPLACEMENT
+  RETURN_AND_REFUND
+  RETURN_AND_REPLACEMENT
+  REDELIVERY
+}
+
+/// Internal-only fault attribution for a case — NEVER on any customer/vendor
+/// DTO, email, or notification (CLAUDE.md's "internal liability decision
+/// stays internal"). Feeds the FulfilmentItem.payoutHold decision; never
+/// auto-derived from issueType — always an explicit staff judgment call.
+enum ResolutionResponsibility {
+  VENDOR
+  CROWNSOURCE
+  LOGISTICS
+  CUSTOMER
+  EXTERNAL_SUPPLIER
+  SHARED_OTHER
+}
+
+/// Order-scoped (not a global flag) — an Order can have zero, one, or many
+/// cases, each covering a subset of its OrderItems/quantities via
+/// ResolutionCaseItem. `fulfilmentId` is a convenience "primary context"
+/// pointer for cases fundamentally about one Fulfilment (VENDOR_CANNOT_FULFIL,
+/// PACKAGE_NOT_RECEIVED, DELIVERY_FAILURE) — the authoritative line/quantity
+/// breakdown always lives on ResolutionCaseItem, never here.
+model ResolutionCase {
+  id         String               @id @default(cuid())
+  caseNumber String               @unique
+  status     ResolutionCaseStatus @default(OPEN)
+  issueType  ResolutionIssueType
+
+  requestedResolution RequestedResolution?
+
+  /// Customer-authored — what went wrong, in their own words.
+  customerDescription        String
+  /// Staff-authored, shown to the customer explaining the outcome — same
+  /// "explicitly customer-safe, labeled as such in the admin form" pattern
+  /// as vendor-application/listing decisionReason (M3) and sourcing's
+  /// unableToSourceReason (M6).
+  customerSafeDecisionReason String?
+
+  /// Internal-only fault attribution — never customer/vendor-visible. See
+  /// the ResolutionResponsibility doc comment above.
+  responsibility ResolutionResponsibility?
+
+  customerProfileId String
+  customerProfile   CustomerProfile @relation(fields: [customerProfileId], references: [id])
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  fulfilmentId String?
+  fulfilment   Fulfilment? @relation(fields: [fulfilmentId], references: [id])
+
+  assignedStaffId String?
+  assignedStaff   AdminUser? @relation(fields: [assignedStaffId], references: [id])
+
+  items         ResolutionCaseItem[]
+  attachments   ResolutionCaseAttachment[]
+  activities    ResolutionCaseActivity[]
+  refunds       Refund[]
+  returns       Return[]
+  replacements  Replacement[]
+  conversations Conversation[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  resolvedAt DateTime?
+  closedAt   DateTime?
+
+  @@index([customerProfileId, createdAt])
+  @@index([status, createdAt])
+  @@index([assignedStaffId, status])
+  @@index([orderId])
+  @@map("resolution_case")
+}
+
+/// The line/quantity-level resolution unit — this is where M9's central
+/// "never order.refunded = true" principle actually lives. One case may
+/// have several of these (multi-line partial resolution); one OrderItem may
+/// appear across several cases over time (each case's own
+/// approvedRefundAmount is capped server-side against the item's remaining
+/// refundable value — see modules/refunds/policy.ts).
+model ResolutionCaseItem {
+  id String @id @default(cuid())
+
+  resolutionCaseId String
+  resolutionCase   ResolutionCase @relation(fields: [resolutionCaseId], references: [id], onDelete: Cascade)
+
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+
+  /// Nullable defensively (a case could in principle be opened before this
+  /// item's Fulfilment context is resolved) — Fulfilments exist by the time
+  /// any real case is created in practice (created at Order confirmation).
+  fulfilmentItemId String?
+  fulfilmentItem   FulfilmentItem? @relation(fields: [fulfilmentItemId], references: [id])
+
+  quantityAffected Int
+
+  issueType            ResolutionIssueType
+  requestedResolution  RequestedResolution?
+  approvedResolution   ResolutionDecision?
+  /// Server-computed only — never trusts a client-submitted total. Capped
+  /// so that cumulative approved amount for one OrderItem, across every
+  /// case that has ever touched it, never exceeds that item's paid value.
+  approvedRefundAmount Decimal?             @db.Decimal(12, 2)
+  replacementQuantity  Int?
+
+  /// Which Refund execution (if any) this line's approved amount was
+  /// included in. Nullable until a Refund is actually created for it.
+  refundId String?
+  refund   Refund? @relation(fields: [refundId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([resolutionCaseId])
+  @@index([orderItemId])
+  @@map("resolution_case_item")
+}
+
+/// Evidence — reuses the exact M6 storage architecture (lib/storage.ts,
+/// lib/attachment-validation.ts): same MIME/magic-byte validation, same
+/// randomized opaque storage keys, same private-download-only access
+/// pattern. No second file-storage abstraction.
+model ResolutionCaseAttachment {
+  id String @id @default(cuid())
+
+  resolutionCaseId String
+  resolutionCase   ResolutionCase @relation(fields: [resolutionCaseId], references: [id], onDelete: Cascade)
+
+  storageKey       String
+  filename         String
+  mimeType         String
+  sizeBytes        Int
+  uploadedByUserId String
+  createdAt        DateTime @default(now())
+
+  @@index([resolutionCaseId])
+  @@map("resolution_case_attachment")
+}
+
+/// Lightweight timeline, mirroring SourcingRequestActivity (M6) exactly —
+/// not event sourcing. Also carries staff-only internal notes as
+/// `type: "internal_note"` entries (metadata.note) rather than a second,
+/// redundant notes table — this activity log is ALREADY never
+/// customer/vendor-visible, so it's the natural home for them.
+model ResolutionCaseActivity {
+  id String @id @default(cuid())
+
+  resolutionCaseId String
+  resolutionCase   ResolutionCase @relation(fields: [resolutionCaseId], references: [id], onDelete: Cascade)
+
+  type        String
+  actorUserId String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([resolutionCaseId, createdAt])
+  @@map("resolution_case_activity")
+}
+
+enum RefundStatus {
+  PENDING_APPROVAL
+  APPROVED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+/// The REFUND DECISION, not its execution against a real payment provider
+/// (deferred to M10 — see modules/refunds/mockExecutor.ts). `amount` is
+/// always itemsAmount + deliveryFeeAmount, both server-computed/validated —
+/// never a client-submitted total (CLAUDE.md's "never trust client-supplied
+/// financial totals"). `providerEventId` gives the same idempotent-retry
+/// shape MockPaymentProvider already established for charges.
+model Refund {
+  id String @id @default(cuid())
+
+  resolutionCaseId String
+  resolutionCase   ResolutionCase @relation(fields: [resolutionCaseId], references: [id])
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  paymentId String?
+  payment   Payment? @relation(fields: [paymentId], references: [id])
+
+  /// Sum of the covered ResolutionCaseItems' approvedRefundAmount.
+  itemsAmount       Decimal @db.Decimal(12, 2)
+  /// Explicit staff decision only (see docs/architecture/overview.md) — a
+  /// delivery/shipping fee is never refunded automatically.
+  deliveryFeeAmount Decimal @default(0) @db.Decimal(12, 2)
+  /// itemsAmount + deliveryFeeAmount — the actual amount executed.
+  amount            Decimal @db.Decimal(12, 2)
+  currency          String  @default("GHS")
+
+  status          RefundStatus @default(PENDING_APPROVAL)
+  providerEventId String?      @unique
+  approvedAt      DateTime?
+  processedAt     DateTime?
+  failureReason   String?
+
+  items ResolutionCaseItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([resolutionCaseId])
+  @@map("refund")
+}
+
+enum ReturnStatus {
+  APPROVED
+  IN_TRANSIT
+  RECEIVED
+  INSPECTED
+  COMPLETED
+}
+
+enum ReturnInspectionOutcome {
+  RESELLABLE
+  NOT_RESELLABLE
+}
+
+/// CrownSource-managed reverse logistics only — the Customer is never
+/// instructed to deal with the Vendor directly. Manual
+/// method/trackingReference entry for V1, no courier API (same "manual is
+/// sufficient for V1" reasoning as M4's domestic collection). `restockedAt`
+/// is the idempotency marker for the one-time inventory restock decision —
+/// restocking is never inferred merely from a refund being approved, only
+/// from an explicit RESELLABLE inspection outcome.
+model Return {
+  id String @id @default(cuid())
+
+  resolutionCaseId String
+  resolutionCase   ResolutionCase @relation(fields: [resolutionCaseId], references: [id])
+
+  status ReturnStatus @default(APPROVED)
+
+  method            String?
+  trackingReference String?
+  notes             String?
+
+  receivedAt        DateTime?
+  inspectedAt       DateTime?
+  inspectionOutcome ReturnInspectionOutcome?
+  /// Set once, guarded — the idempotency marker preventing a double-restock
+  /// if the same Return is ever touched twice.
+  restockedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([resolutionCaseId])
+  @@map("return")
+}
+
+/// A thin link record, not a parallel tracking system — the replacement's
+/// actual delivery is tracked entirely via the ordinary Fulfilment/Shipment
+/// machinery (modules/resolutions/service.ts creates a zero-value OrderItem
+/// + Fulfilment + FulfilmentItem + Shipment using the exact same shape
+/// confirmOrderPayment already uses for a normal order — see
+/// docs/workflows/workflows.md). No fake customer charge: the replacement
+/// OrderItem's unitPrice/lineTotal/vendorPayableBasis are always zero.
+model Replacement {
+  id String @id @default(cuid())
+
+  resolutionCaseId String
+  resolutionCase   ResolutionCase @relation(fields: [resolutionCaseId], references: [id])
+
+  originalOrderItemId String
+  originalOrderItem   OrderItem @relation("ReplacementOriginalItem", fields: [originalOrderItemId], references: [id])
+
+  quantity Int
+
+  /// Populated once the replacement's zero-value OrderItem (and, from it,
+  /// Fulfilment/FulfilmentItem/Shipment) has actually been created.
+  replacementOrderItemId String?    @unique
+  replacementOrderItem   OrderItem? @relation("ReplacementNewItem", fields: [replacementOrderItemId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([resolutionCaseId])
+  @@map("replacement")
 }
 
 // ---------------------------------------------------------------------------
@@ -1035,6 +1412,7 @@ model AdminUser {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   assignedSourcingRequests CustomSourcingRequest[]
+  assignedResolutionCases  ResolutionCase[]
 
   @@map("admin_user")
 }
@@ -1049,6 +1427,7 @@ enum ConversationContextType {
   VENDOR
   ORDER
   SOURCING_REQUEST
+  RESOLUTION_CASE
   GENERAL
 }
 
@@ -1089,12 +1468,21 @@ model Conversation {
   contextSourcingRequestId String?
   contextSourcingRequest   CustomSourcingRequest? @relation(fields: [contextSourcingRequestId], references: [id])
 
+  /// (M9) What a case-related conversation is about — valid for BOTH
+  /// participant types, unlike the other context fields above which only
+  /// ever populate on CUSTOMER conversations. This is what gives a
+  /// ResolutionCase two structurally separate threads (Customer↔CrownSource
+  /// and Vendor↔CrownSource) rather than one shared one.
+  contextResolutionCaseId String?
+  contextResolutionCase   ResolutionCase? @relation(fields: [contextResolutionCaseId], references: [id])
+
   messages Message[]
 
   @@index([customerProfileId])
   @@index([vendorId])
   /// Backs the staff inbox — filtered by status, ordered by recency.
   @@index([status, updatedAt])
+  @@index([contextResolutionCaseId])
   @@map("conversation")
 }
 
@@ -1371,6 +1759,18 @@ enum NotificationType {
   ADMIN_NEW_VENDOR_APPLICATION
   ADMIN_NEW_SOURCING_REQUEST
   ADMIN_NEW_MESSAGE
+  RESOLUTION_CASE_RECEIVED
+  RESOLUTION_CLARIFICATION_NEEDED
+  RESOLUTION_APPROVED
+  RETURN_APPROVED
+  REFUND_APPROVED
+  REFUND_COMPLETED
+  REPLACEMENT_CREATED
+  RESOLUTION_CASE_RESOLVED
+  RESOLUTION_VENDOR_RESPONSE_NEEDED
+  RESOLUTION_VENDOR_CASE_UPDATE
+  ADMIN_NEW_RESOLUTION_CASE
+  ADMIN_REFUND_FAILED
 }
 
 /// A structured, typed in-app notification. `title`/`body` are plain text

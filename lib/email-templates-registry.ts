@@ -1,8 +1,8 @@
 import { renderEmail, type TemplateContent } from "./email-templates";
 
 /**
- * templateKey -> content builder, one per NotificationType (24 total,
- * matching modules/notifications/types.ts exactly — 1:1 traceability from
+ * templateKey -> content builder, one per NotificationType (36 total as of
+ * M9, matching modules/notifications/types.ts exactly — 1:1 traceability from
  * event to email, mirroring the individual lib/email.ts functions this
  * registry replaces). `data` is trusted: it only ever originates from this
  * codebase's own `notificationsService.notify()` calls, never client input.
@@ -168,6 +168,81 @@ const registry: Record<string, (data: Record<string, unknown>) => TemplateConten
     intro: `${d["counterpartyName"]} sent a new message.`,
     ctaLabel: "Open inbox",
     ctaPath: `/admin/messages/${d["conversationId"]}`,
+  }),
+  "resolution-case-received": (d) => ({
+    title: "We've received your report",
+    intro: `We've received your report on order ${d["orderNumber"]} (case ${d["caseNumber"]}).`,
+    bodyLines: ["Our team will review it and get back to you through CrownSourceGlobal."],
+    ctaLabel: "View case",
+    ctaPath: `/account/resolutions/${d["caseId"]}`,
+  }),
+  "resolution-clarification-needed": (d) => ({
+    title: "We need more information from you",
+    intro: `CrownSourceGlobal needs more information about case ${d["caseNumber"]}.`,
+    ctaLabel: "Reply now",
+    ctaPath: `/account/resolutions/${d["caseId"]}`,
+  }),
+  "resolution-approved": (d) => ({
+    title: "Your case has been reviewed",
+    intro: `We've reviewed case ${d["caseNumber"]} for order ${d["orderNumber"]}: ${d["decisionReason"]}`,
+    ctaLabel: "View case",
+    ctaPath: `/account/resolutions/${d["caseId"]}`,
+  }),
+  "return-approved": (d) => ({
+    title: "Your return has been approved",
+    intro: `A return has been approved for case ${d["caseNumber"]}.`,
+    bodyLines: ["Check your case page for return instructions."],
+    ctaLabel: "View return instructions",
+    ctaPath: `/account/resolutions/${d["caseId"]}`,
+  }),
+  "refund-approved": (d) => ({
+    title: "Your refund has been approved",
+    intro: `A refund of ${d["currency"]} ${Number(d["amount"]).toFixed(2)} has been approved for case ${d["caseNumber"]}.`,
+    ctaLabel: "View case",
+    ctaPath: `/account/resolutions/${d["caseId"]}`,
+  }),
+  "refund-completed": (d) => ({
+    title: "Your refund is complete",
+    intro: `Your refund of ${d["currency"]} ${Number(d["amount"]).toFixed(2)} for case ${d["caseNumber"]} has been completed.`,
+    ctaLabel: "View case",
+    ctaPath: `/account/resolutions/${d["caseId"]}`,
+  }),
+  "replacement-created": (d) => ({
+    title: "Your replacement is being prepared",
+    intro: `A replacement is being prepared for case ${d["caseNumber"]}.`,
+    bodyLines: ["Track it just like a normal order from your account."],
+    ctaLabel: "Track replacement",
+    ctaPath: `/account/orders/${d["orderId"]}`,
+  }),
+  "resolution-case-resolved": (d) => ({
+    title: "Your case is resolved",
+    intro: `Case ${d["caseNumber"]} for order ${d["orderNumber"]} is now resolved.`,
+    ctaLabel: "View case",
+    ctaPath: `/account/resolutions/${d["caseId"]}`,
+  }),
+  "resolution-vendor-response-needed": (d) => ({
+    title: "CrownSourceGlobal needs your response",
+    intro: `CrownSourceGlobal needs your input on an order issue (case ${d["caseNumber"]}).`,
+    ctaLabel: "Respond now",
+    ctaPath: `/vendor/portal/resolutions/${d["caseId"]}`,
+  }),
+  "resolution-vendor-case-update": (d) => ({
+    title: "Update on an order issue",
+    intro: `There's an update on case ${d["caseNumber"]} affecting one of your orders.`,
+    ctaLabel: "View case",
+    ctaPath: `/vendor/portal/resolutions/${d["caseId"]}`,
+  }),
+  "admin-new-resolution-case": (d) => ({
+    title: "New resolution case",
+    intro: `New case ${d["caseNumber"]}: ${d["issueType"]} on order ${d["orderNumber"]}.`,
+    ctaLabel: "Review case",
+    ctaPath: `/admin/resolutions/${d["caseId"]}`,
+  }),
+  "admin-refund-failed": (d) => ({
+    title: "Refund failed",
+    intro: `A refund for case ${d["caseNumber"]} failed to process and needs attention.`,
+    ctaLabel: "Review refund",
+    ctaPath: `/admin/resolutions/${d["caseId"]}`,
   }),
 };
 

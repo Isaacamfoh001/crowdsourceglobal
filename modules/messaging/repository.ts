@@ -5,6 +5,7 @@ const contextSelect = {
   contextVendor: { select: { id: true, companyName: true } },
   contextOrder: { select: { id: true, orderNumber: true } },
   contextSourcingRequest: { select: { id: true, requestNumber: true } },
+  contextResolutionCase: { select: { id: true, caseNumber: true } },
   vendor: { select: { id: true, companyName: true } },
   customerProfile: { select: { id: true, userId: true, displayName: true, user: { select: { name: true, email: true } } } },
 } as const;
@@ -57,7 +58,7 @@ export const messagingRepository = {
 
   findOpenCustomerConversationByContext(
     customerProfileId: string,
-    contextType: "LISTING" | "VENDOR" | "ORDER" | "SOURCING_REQUEST",
+    contextType: "LISTING" | "VENDOR" | "ORDER" | "SOURCING_REQUEST" | "RESOLUTION_CASE",
     contextRefId: string,
   ) {
     const contextField =
@@ -67,7 +68,9 @@ export const messagingRepository = {
           ? "contextVendorId"
           : contextType === "ORDER"
             ? "contextOrderId"
-            : "contextSourcingRequestId";
+            : contextType === "SOURCING_REQUEST"
+              ? "contextSourcingRequestId"
+              : "contextResolutionCaseId";
     return prisma.conversation.findFirst({
       where: {
         participantType: "CUSTOMER",
@@ -81,11 +84,12 @@ export const messagingRepository = {
 
   async createCustomerConversation(input: {
     customerProfileId: string;
-    contextType: "LISTING" | "VENDOR" | "ORDER" | "SOURCING_REQUEST" | "GENERAL";
+    contextType: "LISTING" | "VENDOR" | "ORDER" | "SOURCING_REQUEST" | "RESOLUTION_CASE" | "GENERAL";
     contextListingId?: string;
     contextVendorId?: string;
     contextOrderId?: string;
     contextSourcingRequestId?: string;
+    contextResolutionCaseId?: string;
     senderUserId: string;
     body: string;
     /** True when CrownSource staff initiates the thread (M6 clarification-request flow) rather than the customer. */
@@ -100,6 +104,7 @@ export const messagingRepository = {
         contextVendorId: input.contextVendorId,
         contextOrderId: input.contextOrderId,
         contextSourcingRequestId: input.contextSourcingRequestId,
+        contextResolutionCaseId: input.contextResolutionCaseId,
         messages: {
           create: { senderUserId: input.senderUserId, body: input.body, senderIsStaff: input.senderIsStaff ?? false },
         },
@@ -125,13 +130,22 @@ export const messagingRepository = {
     });
   },
 
-  async createVendorConversation(input: { vendorId: string; senderUserId: string; body: string }) {
+  /** Vendor-side equivalent of findOpenCustomerConversationByContext — only RESOLUTION_CASE uses context on the vendor side today. */
+  findOpenVendorConversationByContext(vendorId: string, contextResolutionCaseId: string) {
+    return prisma.conversation.findFirst({
+      where: { participantType: "VENDOR", vendorId, status: "OPEN", contextResolutionCaseId },
+      include: conversationInclude,
+    });
+  },
+
+  async createVendorConversation(input: { vendorId: string; senderUserId: string; body: string; contextResolutionCaseId?: string; senderIsStaff?: boolean }) {
     return prisma.conversation.create({
       data: {
         participantType: "VENDOR",
-        contextType: "GENERAL",
+        contextType: input.contextResolutionCaseId ? "RESOLUTION_CASE" : "GENERAL",
         vendorId: input.vendorId,
-        messages: { create: { senderUserId: input.senderUserId, body: input.body, senderIsStaff: false } },
+        contextResolutionCaseId: input.contextResolutionCaseId,
+        messages: { create: { senderUserId: input.senderUserId, body: input.body, senderIsStaff: input.senderIsStaff ?? false } },
       },
       include: conversationInclude,
     });

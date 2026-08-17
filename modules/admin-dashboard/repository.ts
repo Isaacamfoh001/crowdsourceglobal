@@ -63,6 +63,67 @@ export const adminDashboardRepository = {
     return prisma.fulfilmentIssue.count({ where: { status: "OPEN" } });
   },
 
+  // --- M9 resolution counts ------------------------------------------------
+
+  countOpenResolutionCases() {
+    return prisma.resolutionCase.count({ where: { status: { notIn: ["RESOLVED", "REJECTED", "CLOSED"] } } });
+  },
+
+  countResolutionCasesByStatus(status: "AWAITING_CUSTOMER" | "AWAITING_VENDOR") {
+    return prisma.resolutionCase.count({ where: { status } });
+  },
+
+  countReturnsAwaitingInspection() {
+    return prisma.return.count({ where: { status: "RECEIVED" } });
+  },
+
+  countRefundsPending() {
+    return prisma.refund.count({ where: { status: { in: ["PENDING_APPROVAL", "APPROVED", "PROCESSING"] } } });
+  },
+
+  countReplacementFulfilmentsInProgress() {
+    return prisma.replacement.count({ where: { replacementOrderItem: { fulfilmentItems: { some: { fulfilment: { status: { notIn: ["DELIVERED", "COMPLETED", "CANCELLED"] } } } } } } });
+  },
+
+  // --- M9 resolution attention sources --------------------------------------
+
+  findOpenResolutionCasesForAttention() {
+    return prisma.resolutionCase.findMany({
+      where: { status: { notIn: ["RESOLVED", "REJECTED", "CLOSED"] } },
+      select: {
+        id: true,
+        caseNumber: true,
+        status: true,
+        issueType: true,
+        assignedStaffId: true,
+        updatedAt: true,
+        order: { select: { orderNumber: true } },
+      },
+    });
+  },
+
+  findReturnsAwaitingInspectionForAttention() {
+    return prisma.return.findMany({
+      where: { status: "RECEIVED" },
+      select: { id: true, updatedAt: true, resolutionCase: { select: { id: true, caseNumber: true, order: { select: { orderNumber: true } } } } },
+    });
+  },
+
+  findFailedRefundsForAttention() {
+    return prisma.refund.findMany({
+      where: { status: "FAILED" },
+      select: { id: true, updatedAt: true, resolutionCase: { select: { id: true, caseNumber: true, order: { select: { orderNumber: true } } } } },
+    });
+  },
+
+  searchResolutionCases(q: string) {
+    return prisma.resolutionCase.findMany({
+      where: { caseNumber: { contains: q, mode: "insensitive" } },
+      select: { id: true, caseNumber: true, status: true, order: { select: { orderNumber: true } } },
+      take: SEARCH_TAKE,
+    });
+  },
+
   // --- Recent activity (secondary, read-only union of existing timestamps) ---
 
   async recentActivity() {

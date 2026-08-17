@@ -17,6 +17,7 @@ const QUICK_LINKS = [
   { href: "/admin/listings", label: "Listings" },
   { href: "/admin/sourcing", label: "Sourcing" },
   { href: "/admin/quotations", label: "Quotations" },
+  { href: "/admin/resolutions", label: "Resolutions" },
   { href: "/admin/messages", label: "Messages" },
 ];
 
@@ -36,7 +37,7 @@ export default async function AdminHomePage({ searchParams }: { searchParams: Pr
   const attentionPreview = data.attentionItems.slice(0, 8);
   const visibleQuickLinks = operationalAllowed
     ? QUICK_LINKS
-    : QUICK_LINKS.filter((link) => !["/admin/operations", "/admin/messages"].includes(link.href));
+    : QUICK_LINKS.filter((link) => !["/admin/operations", "/admin/messages", "/admin/resolutions"].includes(link.href));
 
   return (
     <div className="flex flex-col gap-8">

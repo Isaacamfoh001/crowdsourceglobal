@@ -50,6 +50,9 @@ describe("adminDashboardService", () => {
   });
 
   afterAll(async () => {
+    await prisma.refund.deleteMany({ where: { orderId: { in: createdIds.orders } } });
+    await prisma.resolutionCaseItem.deleteMany({ where: { orderItem: { orderId: { in: createdIds.orders } } } });
+    await prisma.resolutionCase.deleteMany({ where: { orderId: { in: createdIds.orders } } });
     await prisma.fulfilmentIssue.deleteMany({ where: { fulfilment: { order: { id: { in: createdIds.orders } } } } });
     await prisma.fulfilment.deleteMany({ where: { orderId: { in: createdIds.orders } } });
     await prisma.orderItem.deleteMany({ where: { orderId: { in: createdIds.orders } } });
@@ -326,5 +329,54 @@ describe("adminDashboardService", () => {
     await createVendorApplication(hoursAgo(30));
     const result = await adminDashboardService.getAttentionQueue("SUPER_ADMIN", { type: "VENDOR_APPLICATION_PENDING" }, 1);
     expect(result.items.every((i) => i.type === "VENDOR_APPLICATION_PENDING")).toBe(true);
+  });
+
+  // ---- M9 resolution attention integration -----------------------------------
+
+  it("an unassigned resolution case appears as RESOLUTION_UNASSIGNED for an operational role, and not for FINANCE_ADMIN", async () => {
+    const { order } = await createOrderWithFulfilment("PREPARING", new Date());
+    const resolutionCase = await prisma.resolutionCase.create({
+      data: {
+        caseNumber: `RES-TEST-${Date.now()}`,
+        customerProfileId,
+        orderId: order.id,
+        issueType: "ITEM_DAMAGED",
+        customerDescription: "Test case.",
+        status: "UNDER_REVIEW",
+        updatedAt: hoursAgo(20), // past the 12h default unassigned threshold
+      },
+    });
+
+    const opsData = await adminDashboardService.getDashboardData("OPS_ADMIN");
+    expect(opsData.attentionItems.some((i) => i.type === "RESOLUTION_UNASSIGNED" && i.targetUrl === `/admin/resolutions/${resolutionCase.id}`)).toBe(true);
+    expect(opsData.summary.openResolutionCases).toBeGreaterThanOrEqual(1);
+
+    const financeData = await adminDashboardService.getDashboardData("FINANCE_ADMIN");
+    expect(financeData.attentionItems.some((i) => i.type === "RESOLUTION_UNASSIGNED")).toBe(false);
+    expect(financeData.summary.openResolutionCases).toBe(0);
+  });
+
+  it("a failed refund always appears as CRITICAL, and search finds the case by number", async () => {
+    const { order } = await createOrderWithFulfilment("PREPARING", new Date());
+    const resolutionCase = await prisma.resolutionCase.create({
+      data: {
+        caseNumber: `RES-TEST-${Date.now()}-B`,
+        customerProfileId,
+        orderId: order.id,
+        issueType: "ITEM_DAMAGED",
+        customerDescription: "Test case.",
+        status: "RESOLUTION_APPROVED",
+      },
+    });
+    await prisma.refund.create({
+      data: { resolutionCaseId: resolutionCase.id, orderId: order.id, itemsAmount: 50, amount: 50, status: "FAILED" },
+    });
+
+    const data = await adminDashboardService.getDashboardData("OPS_ADMIN");
+    const item = data.attentionItems.find((i) => i.type === "REFUND_FAILED" && i.targetUrl === `/admin/resolutions/${resolutionCase.id}`);
+    expect(item?.severity).toBe("CRITICAL");
+
+    const results = await adminDashboardService.search(resolutionCase.caseNumber, "OPS_ADMIN");
+    expect(results.some((r) => r.type === "RESOLUTION_CASE" && r.targetUrl === `/admin/resolutions/${resolutionCase.id}`)).toBe(true);
   });
 });

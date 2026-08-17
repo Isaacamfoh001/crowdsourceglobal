@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AlertCircle, ClipboardCheck, FileText, LayoutDashboard, MessagesSquare, PackageSearch, Search, Truck } from "lucide-react";
+import { AlertCircle, ClipboardCheck, FileText, LayoutDashboard, MessagesSquare, PackageSearch, RotateCcw, Search, Truck } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/admin/sourcing", label: "Sourcing", icon: Search },
   { href: "/admin/quotations", label: "Quotations", icon: FileText },
   { href: "/admin/operations", label: "Operations", icon: Truck },
+  { href: "/admin/resolutions", label: "Resolutions", icon: RotateCcw },
   { href: "/admin/messages", label: "Messages", icon: MessagesSquare },
 ];
 

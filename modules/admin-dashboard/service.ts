@@ -241,6 +241,117 @@ async function quotationAttention(now: Date): Promise<AttentionItem[]> {
   return items;
 }
 
+const OPEN_RESOLUTION_STATUSES_UNASSIGNED = new Set(["OPEN", "UNDER_REVIEW"]);
+
+/**
+ * M9 — three ageing-based sub-categories out of a single query. A case
+ * awaiting the CUSTOMER's reply is deliberately NOT flagged here: that
+ * direction is already covered for free by messageAttention() above (any
+ * open conversation — including a resolution case's — whose last message
+ * isn't from staff already surfaces as MESSAGE_UNANSWERED, regardless of
+ * context). VENDOR_RESPONSE_OVERDUE is the one direction messageAttention
+ * can't see: a case sitting in AWAITING_VENDOR is a case-status fact, not
+ * necessarily a message-recency fact.
+ */
+async function resolutionCaseAttention(now: Date): Promise<AttentionItem[]> {
+  const cases = await adminDashboardRepository.findOpenResolutionCasesForAttention();
+  const items: AttentionItem[] = [];
+  for (const c of cases) {
+    if (OPEN_RESOLUTION_STATUSES_UNASSIGNED.has(c.status) && !c.assignedStaffId) {
+      const hours = ageHours(c.updatedAt, now);
+      const severity = severityForAge(hours, THRESHOLDS.resolutionUnassignedWarningHours);
+      if (severity !== "NORMAL") {
+        items.push({
+          type: "RESOLUTION_UNASSIGNED",
+          module: "RESOLUTIONS",
+          severity,
+          reference: c.caseNumber,
+          description: `Case on order ${c.order.orderNumber} has no assigned staff`,
+          status: c.status,
+          ageLabel: formatAge(c.updatedAt, now),
+          ageHours: hours,
+          assignedTo: null,
+          targetUrl: `/admin/resolutions/${c.id}`,
+        });
+      }
+    } else if (c.status === "UNDER_REVIEW" && c.assignedStaffId) {
+      const hours = ageHours(c.updatedAt, now);
+      const severity = severityForAge(hours, THRESHOLDS.resolutionReviewWarningHours);
+      if (severity !== "NORMAL") {
+        items.push({
+          type: "RESOLUTION_STALE",
+          module: "RESOLUTIONS",
+          severity,
+          reference: c.caseNumber,
+          description: `Case on order ${c.order.orderNumber} has been under review with no update`,
+          status: c.status,
+          ageLabel: formatAge(c.updatedAt, now),
+          ageHours: hours,
+          assignedTo: "assigned",
+          targetUrl: `/admin/resolutions/${c.id}`,
+        });
+      }
+    } else if (c.status === "AWAITING_VENDOR") {
+      const hours = ageHours(c.updatedAt, now);
+      const severity = severityForAge(hours, THRESHOLDS.resolutionReviewWarningHours);
+      if (severity !== "NORMAL") {
+        items.push({
+          type: "VENDOR_RESPONSE_OVERDUE",
+          module: "RESOLUTIONS",
+          severity,
+          reference: c.caseNumber,
+          description: `Case on order ${c.order.orderNumber} is waiting on a vendor response`,
+          status: c.status,
+          ageLabel: formatAge(c.updatedAt, now),
+          ageHours: hours,
+          assignedTo: null,
+          targetUrl: `/admin/resolutions/${c.id}`,
+        });
+      }
+    }
+  }
+  return items;
+}
+
+async function returnInspectionAttention(now: Date): Promise<AttentionItem[]> {
+  const returns = await adminDashboardRepository.findReturnsAwaitingInspectionForAttention();
+  const items: AttentionItem[] = [];
+  for (const r of returns) {
+    const hours = ageHours(r.updatedAt, now);
+    const severity = severityForAge(hours, THRESHOLDS.returnInspectionWarningHours);
+    if (severity === "NORMAL") continue;
+    items.push({
+      type: "RETURN_AWAITING_INSPECTION",
+      module: "RESOLUTIONS",
+      severity,
+      reference: r.resolutionCase.caseNumber,
+      description: `Returned item for order ${r.resolutionCase.order.orderNumber} awaiting inspection`,
+      status: "Received",
+      ageLabel: formatAge(r.updatedAt, now),
+      ageHours: hours,
+      assignedTo: null,
+      targetUrl: `/admin/resolutions/${r.resolutionCase.id}`,
+    });
+  }
+  return items;
+}
+
+async function refundFailedAttention(now: Date): Promise<AttentionItem[]> {
+  const refunds = await adminDashboardRepository.findFailedRefundsForAttention();
+  return refunds.map((refund) => ({
+    type: "REFUND_FAILED" as const,
+    module: "RESOLUTIONS" as const,
+    severity: "CRITICAL" as const,
+    reference: refund.resolutionCase.caseNumber,
+    description: `Refund for order ${refund.resolutionCase.order.orderNumber} failed to process`,
+    status: "Failed",
+    ageLabel: formatAge(refund.updatedAt, now),
+    ageHours: ageHours(refund.updatedAt, now),
+    assignedTo: null,
+    targetUrl: `/admin/resolutions/${refund.resolutionCase.id}`,
+  }));
+}
+
 /** Fetches and normalizes every attention category the given role is permitted to see, severity-sorted, most-severe first. */
 async function collectAttentionItems(role: AdminRole, now: Date): Promise<AttentionItem[]> {
   const operationalAllowed = canAccessOperationalModules(role);
@@ -248,7 +359,9 @@ async function collectAttentionItems(role: AdminRole, now: Date): Promise<Attent
     vendorApplicationAttention(now),
     listingAttention(now),
     quotationAttention(now),
-    ...(operationalAllowed ? [sourcingAttention(now), fulfilmentAttention(now), messageAttention(now)] : []),
+    ...(operationalAllowed
+      ? [sourcingAttention(now), fulfilmentAttention(now), messageAttention(now), resolutionCaseAttention(now), returnInspectionAttention(now), refundFailedAttention(now)]
+      : []),
   ];
   const results = await Promise.all(builders.map((p) => p.catch((error) => { console.error("[admin-dashboard] attention section failed:", error); return [] as AttentionItem[]; })));
   return results.flat().sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || b.ageHours - a.ageHours);
@@ -282,6 +395,11 @@ export const adminDashboardService = {
       listingsAwaitingReview,
       activeSourcingRequests,
       unansweredConversations,
+      openResolutionCases,
+      awaitingCustomer,
+      awaitingVendor,
+      returnsAwaitingInspection,
+      refundsPending,
       recentActivity,
     ] = await Promise.all([
       safe(collectAttentionItems(role, now), []),
@@ -299,6 +417,11 @@ export const adminDashboardService = {
       safe(vendorListingsService.listPendingForAdmin().then((r) => r.length), 0),
       safe(sourcingService.listForAdmin({}).then((r) => r.filter((req) => OPEN_SOURCING_STATUSES.has(req.status)).length), 0),
       safe(operationalAllowed ? messagingRepository.findOpenConversationsForAttention().then((rows) => rows.filter((c) => c.messages[0] && !c.messages[0].senderIsStaff).length) : Promise.resolve(0), 0),
+      safe(operationalAllowed ? adminDashboardRepository.countOpenResolutionCases() : Promise.resolve(0), 0),
+      safe(operationalAllowed ? adminDashboardRepository.countResolutionCasesByStatus("AWAITING_CUSTOMER") : Promise.resolve(0), 0),
+      safe(operationalAllowed ? adminDashboardRepository.countResolutionCasesByStatus("AWAITING_VENDOR") : Promise.resolve(0), 0),
+      safe(operationalAllowed ? adminDashboardRepository.countReturnsAwaitingInspection() : Promise.resolve(0), 0),
+      safe(operationalAllowed ? adminDashboardRepository.countRefundsPending() : Promise.resolve(0), 0),
       safe(operationalAllowed ? adminDashboardRepository.recentActivity() : Promise.resolve({ approvedApplications: [], deliveredShipments: [], sourcingActivity: [] }), { approvedApplications: [], deliveredShipments: [], sourcingActivity: [] }),
     ]);
 
@@ -332,6 +455,11 @@ export const adminDashboardService = {
         listingsAwaitingReview,
         activeSourcingRequests,
         unansweredConversations,
+        openResolutionCases,
+        awaitingCustomer,
+        awaitingVendor,
+        returnsAwaitingInspection,
+        refundsPending,
       },
       todayKpis: { ordersConfirmed, ordersDelivered, sourcingRequestsSubmitted, vendorApplicationsReceived, quotesIssued },
       currentKpis: { activeVendors, activeListings, fulfilmentsInProgress },
@@ -383,12 +511,13 @@ export const adminDashboardService = {
       adminDashboardRepository.searchListings(q),
       adminDashboardRepository.searchCustomers(q),
       ...(operationalAllowed
-        ? [adminDashboardRepository.searchVendors(q), adminDashboardRepository.searchShipments(q)]
-        : [Promise.resolve([]), Promise.resolve([])]),
+        ? [adminDashboardRepository.searchVendors(q), adminDashboardRepository.searchShipments(q), adminDashboardRepository.searchResolutionCases(q)]
+        : [Promise.resolve([]), Promise.resolve([]), Promise.resolve([])]),
     ]);
-    const [vendors, shipments] = operational as [
+    const [vendors, shipments, resolutionCases] = operational as [
       Awaited<ReturnType<typeof adminDashboardRepository.searchVendors>>,
       Awaited<ReturnType<typeof adminDashboardRepository.searchShipments>>,
+      Awaited<ReturnType<typeof adminDashboardRepository.searchResolutionCases>>,
     ];
 
     const customerTargets = await Promise.all(
@@ -445,6 +574,12 @@ export const adminDashboardService = {
           sublabel: `Order ${s.fulfilment.order.orderNumber} · ${s.status}`,
           targetUrl: `/admin/operations/${s.fulfilmentId}`,
         })),
+      ...resolutionCases.map((c) => ({
+        type: "RESOLUTION_CASE" as const,
+        label: c.caseNumber,
+        sublabel: `Order ${c.order.orderNumber} · ${c.status}`,
+        targetUrl: `/admin/resolutions/${c.id}`,
+      })),
     ];
     return results;
   },

@@ -19,6 +19,9 @@ export const THRESHOLDS = {
   sourcingStaleHours: env.OPS_SOURCING_STALE_HOURS,
   fulfilmentPreparingWarningHours: env.OPS_FULFILMENT_PREPARING_WARNING_HOURS,
   sourcingDeadlineWarningDays: env.OPS_SOURCING_DEADLINE_WARNING_DAYS,
+  resolutionUnassignedWarningHours: env.OPS_RESOLUTION_UNASSIGNED_WARNING_HOURS,
+  resolutionReviewWarningHours: env.OPS_RESOLUTION_REVIEW_WARNING_HOURS,
+  returnInspectionWarningHours: env.OPS_RETURN_INSPECTION_WARNING_HOURS,
 };
 
 export function ageHours(since: Date, now: Date = new Date()): number {

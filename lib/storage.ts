@@ -76,6 +76,6 @@ class LocalDiskStorageProvider implements StorageProvider {
 export const storageProvider: StorageProvider = new LocalDiskStorageProvider();
 
 /** Opaque, non-guessable, never derived from a user-supplied filename. */
-export function generateStorageKey(): string {
-  return `sourcing-attachments/${randomUUID()}`;
+export function generateStorageKey(prefix: string = "sourcing-attachments"): string {
+  return `${prefix}/${randomUUID()}`;
 }

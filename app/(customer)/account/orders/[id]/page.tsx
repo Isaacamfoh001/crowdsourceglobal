@@ -6,10 +6,12 @@ import { FormMessage } from "../../../../../components/ui/FormMessage";
 import { OrderStatusBadge } from "../../../../../components/account/OrderStatusBadge";
 import { PackageTracking } from "../../../../../components/account/PackageTracking";
 import { AskAboutButton } from "../../../../../components/messaging/AskAboutButton";
+import { CaseStatusBadge } from "../../../../../components/resolutions/CaseStatusBadge";
 import { formatPrice } from "../../../../../lib/format";
 import { requireSession, getCurrentCustomerProfile } from "../../../../../modules/identity/policy";
 import { ordersService } from "../../../../../modules/orders/service";
 import { fulfilmentService } from "../../../../../modules/fulfilment/service";
+import { resolutionsService } from "../../../../../modules/resolutions/service";
 
 type Params = { id: string };
 
@@ -43,6 +45,10 @@ export default async function OrderDetailPage({
     order.status === "CONFIRMED" || order.status === "FULFILLING" || order.status === "COMPLETED"
       ? await fulfilmentService.getCustomerTracking(id, customerProfile.id)
       : [];
+
+  const allCases = await resolutionsService.listForCustomer(customerProfile.id);
+  const orderCases = allCases.filter((c) => c.orderId === id);
+  const canReportProblem = order.status === "CONFIRMED" || order.status === "FULFILLING" || order.status === "COMPLETED";
 
   const showConfirmationBanner = confirmed === "true" && order.status === "CONFIRMED";
 
@@ -96,7 +102,7 @@ export default async function OrderDetailPage({
           {tracking.map((pkg, index) => (
             <PackageTracking key={pkg.fulfilmentId} tracking={pkg} orderId={order.id} multiPackage={tracking.length > 1} index={index} />
           ))}
-          <div>
+          <div className="flex flex-wrap items-center gap-4">
             <AskAboutButton
               contextType="ORDER"
               contextRefId={order.id}
@@ -105,7 +111,28 @@ export default async function OrderDetailPage({
               label="Get help with this delivery"
               placeholder="e.g. My package hasn't arrived, or the status looks wrong…"
             />
+            {canReportProblem ? (
+              <Link href={`/account/resolutions/new?orderId=${order.id}`} className="text-sm font-medium text-brand-700 hover:underline">
+                Report a problem / request cancellation
+              </Link>
+            ) : null}
           </div>
+        </div>
+      ) : null}
+
+      {orderCases.length > 0 ? (
+        <div className="rounded-2xl border border-stone-200 bg-white p-5">
+          <h2 className="font-display text-base font-medium text-stone-900">Issue reported</h2>
+          <ul className="mt-3 flex flex-col gap-2">
+            {orderCases.map((c) => (
+              <li key={c.id}>
+                <Link href={`/account/resolutions/${c.id}`} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-stone-50">
+                  <span className="text-sm text-stone-700">{c.caseNumber}</span>
+                  <CaseStatusBadge status={c.status} label={c.statusLabel} />
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 

@@ -11,7 +11,7 @@ import { err, ok, type Result } from "../result";
 import { safeRedirect } from "../safe-redirect";
 
 const contextualMessageSchema = z.object({
-  contextType: z.enum(["LISTING", "VENDOR", "ORDER", "SOURCING_REQUEST"]),
+  contextType: z.enum(["LISTING", "VENDOR", "ORDER", "SOURCING_REQUEST", "RESOLUTION_CASE"]),
   contextRefId: z.string().trim().min(1),
   body: z.string().trim().min(1, "Write a message before sending."),
 });
@@ -143,4 +143,19 @@ export async function vendorReplyAction(_prevState: Result<null> | null, formDat
   if (!result.ok) return result;
   revalidatePath(`/vendor/portal/messages/${conversationId}`);
   return ok(null);
+}
+
+/** Vendor proactively messaging CrownSource about a specific resolution case (M9). */
+export async function startVendorResolutionConversationAction(_prevState: Result<null> | null, formData: FormData): Promise<Result<null>> {
+  const { vendorId, session } = await requireVendorPortalContext("/vendor/portal/resolutions");
+  const caseId = String(formData.get("caseId") ?? "");
+  const body = String(formData.get("body") ?? "");
+  const result = await messagingService.startOrContinueVendorContextual({
+    vendorId,
+    senderUserId: session.user.id,
+    contextResolutionCaseId: caseId,
+    body,
+  });
+  if (!result.ok) return result;
+  redirect(`/vendor/portal/messages/${result.value.conversationId}`);
 }

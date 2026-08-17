@@ -41,6 +41,22 @@ const POLICY: Record<NotificationType, Policy> = {
   ADMIN_NEW_VENDOR_APPLICATION: { required: true },
   ADMIN_NEW_SOURCING_REQUEST: { required: true },
   ADMIN_NEW_MESSAGE: { required: true },
+  // M9 — post-purchase resolution. Case lifecycle/financial-outcome events
+  // are REQUIRED (a customer's money/order is directly at stake); only the
+  // informational "case closed out" notice is optional, mapped to the same
+  // ORDERS_DELIVERY category the rest of order-progress uses.
+  RESOLUTION_CASE_RECEIVED: { required: true },
+  RESOLUTION_CLARIFICATION_NEEDED: { required: true },
+  RESOLUTION_APPROVED: { required: true },
+  RETURN_APPROVED: { required: true },
+  REFUND_APPROVED: { required: true },
+  REFUND_COMPLETED: { required: true },
+  REPLACEMENT_CREATED: { required: true },
+  RESOLUTION_CASE_RESOLVED: { required: false, category: "ORDERS_DELIVERY" },
+  RESOLUTION_VENDOR_RESPONSE_NEEDED: { required: true },
+  RESOLUTION_VENDOR_CASE_UPDATE: { required: false, category: "ORDERS_DELIVERY" },
+  ADMIN_NEW_RESOLUTION_CASE: { required: true },
+  ADMIN_REFUND_FAILED: { required: true },
 };
 
 const CATEGORY_FIELD: Record<NotificationCategory, keyof PreferencesView> = {

@@ -46,6 +46,13 @@ const envSchema = z.object({
   OPS_SOURCING_STALE_HOURS: z.coerce.number().positive().default(24),
   OPS_FULFILMENT_PREPARING_WARNING_HOURS: z.coerce.number().positive().default(48),
   OPS_SOURCING_DEADLINE_WARNING_DAYS: z.coerce.number().positive().default(3),
+  /**
+   * M9 post-purchase resolution — same "operational default, not a
+   * contractual SLA" reasoning as the M8 OPS_* vars above.
+   */
+  OPS_RESOLUTION_UNASSIGNED_WARNING_HOURS: z.coerce.number().positive().default(12),
+  OPS_RESOLUTION_REVIEW_WARNING_HOURS: z.coerce.number().positive().default(24),
+  OPS_RETURN_INSPECTION_WARNING_HOURS: z.coerce.number().positive().default(48),
 });
 
 function loadEnv() {
@@ -66,6 +73,9 @@ function loadEnv() {
     OPS_SOURCING_STALE_HOURS: process.env["OPS_SOURCING_STALE_HOURS"] || undefined,
     OPS_FULFILMENT_PREPARING_WARNING_HOURS: process.env["OPS_FULFILMENT_PREPARING_WARNING_HOURS"] || undefined,
     OPS_SOURCING_DEADLINE_WARNING_DAYS: process.env["OPS_SOURCING_DEADLINE_WARNING_DAYS"] || undefined,
+    OPS_RESOLUTION_UNASSIGNED_WARNING_HOURS: process.env["OPS_RESOLUTION_UNASSIGNED_WARNING_HOURS"] || undefined,
+    OPS_RESOLUTION_REVIEW_WARNING_HOURS: process.env["OPS_RESOLUTION_REVIEW_WARNING_HOURS"] || undefined,
+    OPS_RETURN_INSPECTION_WARNING_HOURS: process.env["OPS_RETURN_INSPECTION_WARNING_HOURS"] || undefined,
   });
 
   if (!parsed.success) {

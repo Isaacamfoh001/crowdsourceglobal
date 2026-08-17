@@ -1,5 +1,5 @@
 export type ConversationParticipantType = "CUSTOMER" | "VENDOR";
-export type ConversationContextType = "LISTING" | "VENDOR" | "ORDER" | "SOURCING_REQUEST" | "GENERAL";
+export type ConversationContextType = "LISTING" | "VENDOR" | "ORDER" | "SOURCING_REQUEST" | "RESOLUTION_CASE" | "GENERAL";
 export type ConversationStatus = "OPEN" | "CLOSED";
 
 export type MessageView = {

@@ -13,6 +13,9 @@ export function SummaryCards({ summary, operationalAllowed }: { summary: Summary
           { label: "Ready for collection", count: summary.readyForCollection, href: "/admin/operations?status=READY" },
           { label: "Delivery issues", count: summary.deliveryIssues, href: "/admin/operations?status=EXCEPTION", emphasize: summary.deliveryIssues > 0 },
           { label: "Unanswered conversations", count: summary.unansweredConversations, href: "/admin/messages" },
+          { label: "Open resolution cases", count: summary.openResolutionCases, href: "/admin/resolutions" },
+          { label: "Returns awaiting inspection", count: summary.returnsAwaitingInspection, href: "/admin/resolutions" },
+          { label: "Refunds pending", count: summary.refundsPending, href: "/admin/resolutions" },
         ] satisfies Card[])
       : []),
   ];

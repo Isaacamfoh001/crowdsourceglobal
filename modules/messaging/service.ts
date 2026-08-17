@@ -52,6 +52,9 @@ function contextLabel(row: RawConversation): string {
   if (row.contextSourcingRequest) {
     return `About sourcing request ${row.contextSourcingRequest.requestNumber}`;
   }
+  if (row.contextResolutionCase) {
+    return `About case ${row.contextResolutionCase.caseNumber}`;
+  }
   return "General";
 }
 
@@ -120,7 +123,7 @@ export const messagingService = {
   async startOrContinueContextual(input: {
     customerProfileId: string;
     senderUserId: string;
-    contextType: "LISTING" | "VENDOR" | "ORDER" | "SOURCING_REQUEST";
+    contextType: "LISTING" | "VENDOR" | "ORDER" | "SOURCING_REQUEST" | "RESOLUTION_CASE";
     contextRefId: string;
     body: string;
   }): Promise<Result<{ conversationId: string }>> {
@@ -144,6 +147,12 @@ export const messagingService = {
         select: { id: true },
       });
       if (!request) return err("Sourcing request not found.");
+    } else if (input.contextType === "RESOLUTION_CASE") {
+      const resolutionCase = await prisma.resolutionCase.findFirst({
+        where: { id: input.contextRefId, customerProfileId: input.customerProfileId },
+        select: { id: true },
+      });
+      if (!resolutionCase) return err("Case not found.");
     } else {
       return err("Invalid conversation context.");
     }
@@ -168,6 +177,7 @@ export const messagingService = {
       contextVendorId: input.contextType === "VENDOR" ? input.contextRefId : undefined,
       contextOrderId: input.contextType === "ORDER" ? input.contextRefId : undefined,
       contextSourcingRequestId: input.contextType === "SOURCING_REQUEST" ? input.contextRefId : undefined,
+      contextResolutionCaseId: input.contextType === "RESOLUTION_CASE" ? input.contextRefId : undefined,
       senderUserId: input.senderUserId,
       body: input.body,
     });
@@ -211,6 +221,37 @@ export const messagingService = {
   async startVendorConversation(vendorId: string, senderUserId: string, body: string): Promise<Result<{ conversationId: string }>> {
     if (body.trim().length === 0) return err("Write a message before sending.");
     const created = await messagingRepository.createVendorConversation({ vendorId, senderUserId, body });
+    const firstMessage = created.messages.at(-1);
+    if (firstMessage) {
+      onMessagePersisted({ id: firstMessage.id, conversationId: created.id, senderIsStaff: false });
+      void notifyStaffOfNewMessage(created.id, firstMessage.id, created.vendor?.companyName ?? "A vendor");
+    }
+    return ok({ conversationId: created.id });
+  },
+
+  /** Vendor-initiated equivalent of startOrContinueContextual (M9) — a Vendor proactively messaging CrownSource about a resolution case, before staff has necessarily asked anything. */
+  async startOrContinueVendorContextual(input: {
+    vendorId: string;
+    senderUserId: string;
+    contextResolutionCaseId: string;
+    body: string;
+  }): Promise<Result<{ conversationId: string }>> {
+    if (input.body.trim().length === 0) return err("Write a message before sending.");
+
+    const existing = await messagingRepository.findOpenVendorConversationByContext(input.vendorId, input.contextResolutionCaseId);
+    if (existing) {
+      const message = await messagingRepository.addMessage(existing.id, input.senderUserId, input.body, false);
+      onMessagePersisted({ id: message.id, conversationId: existing.id, senderIsStaff: false });
+      void notifyStaffOfNewMessage(existing.id, message.id, existing.vendor?.companyName ?? "A vendor");
+      return ok({ conversationId: existing.id });
+    }
+
+    const created = await messagingRepository.createVendorConversation({
+      vendorId: input.vendorId,
+      contextResolutionCaseId: input.contextResolutionCaseId,
+      senderUserId: input.senderUserId,
+      body: input.body,
+    });
     const firstMessage = created.messages.at(-1);
     if (firstMessage) {
       onMessagePersisted({ id: firstMessage.id, conversationId: created.id, senderIsStaff: false });
@@ -304,7 +345,7 @@ export const messagingService = {
   async staffStartOrContinueContextual(input: {
     customerProfileId: string;
     staffUserId: string;
-    contextType: "SOURCING_REQUEST";
+    contextType: "SOURCING_REQUEST" | "RESOLUTION_CASE";
     contextRefId: string;
     body: string;
   }): Promise<Result<{ conversationId: string }>> {
@@ -324,7 +365,43 @@ export const messagingService = {
     const created = await messagingRepository.createCustomerConversation({
       customerProfileId: input.customerProfileId,
       contextType: input.contextType,
-      contextSourcingRequestId: input.contextRefId,
+      contextSourcingRequestId: input.contextType === "SOURCING_REQUEST" ? input.contextRefId : undefined,
+      contextResolutionCaseId: input.contextType === "RESOLUTION_CASE" ? input.contextRefId : undefined,
+      senderUserId: input.staffUserId,
+      body: input.body,
+      senderIsStaff: true,
+    });
+    const firstMessage = created.messages.at(-1);
+    if (firstMessage) {
+      onMessagePersisted({ id: firstMessage.id, conversationId: created.id, senderIsStaff: true });
+    }
+    return ok({ conversationId: created.id });
+  },
+
+  /**
+   * Vendor-side equivalent of staffStartOrContinueContextual (M9) — CrownSource
+   * asking a Vendor for operational input on a resolution case, before the
+   * Vendor has necessarily said anything themselves. Reuses the same
+   * find-open-conversation-by-context dedup as every other contextual thread.
+   */
+  async staffStartOrContinueVendorContextual(input: {
+    vendorId: string;
+    staffUserId: string;
+    contextResolutionCaseId: string;
+    body: string;
+  }): Promise<Result<{ conversationId: string }>> {
+    if (input.body.trim().length === 0) return err("Write a message before sending.");
+
+    const existing = await messagingRepository.findOpenVendorConversationByContext(input.vendorId, input.contextResolutionCaseId);
+    if (existing) {
+      const message = await messagingRepository.addMessage(existing.id, input.staffUserId, input.body, true);
+      onMessagePersisted({ id: message.id, conversationId: existing.id, senderIsStaff: true });
+      return ok({ conversationId: existing.id });
+    }
+
+    const created = await messagingRepository.createVendorConversation({
+      vendorId: input.vendorId,
+      contextResolutionCaseId: input.contextResolutionCaseId,
       senderUserId: input.staffUserId,
       body: input.body,
       senderIsStaff: true,

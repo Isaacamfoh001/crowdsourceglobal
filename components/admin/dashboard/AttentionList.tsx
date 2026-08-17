@@ -9,6 +9,7 @@ const MODULE_LABELS: Record<AttentionItem["module"], string> = {
   VENDOR_APPLICATIONS: "Vendor applications",
   LISTINGS: "Listings",
   QUOTATIONS: "Quotations",
+  RESOLUTIONS: "Resolutions",
 };
 
 export function AttentionList({ items, emptyMessage }: { items: AttentionItem[]; emptyMessage: string }) {

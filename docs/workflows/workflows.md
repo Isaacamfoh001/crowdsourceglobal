@@ -96,6 +96,8 @@ Scheduled job claims ELIGIBLE, non-held FulfilmentItems per vendor → PayoutRun
 
 There is deliberately no full accounting ledger — `payoutHold` and `PayoutAdjustment` are the complete mechanism. See ADR 0005.
 
+**M9 implementation note:** this table described the mechanism during architecture planning, before any code existed. M9 is its first real implementation — `resolutionsService.approveResolution()` is what actually sets `payoutHold` (row 2, "vendor-fault" decided via the case's `responsibility` field), and inventory-reservation release (row 5) is Workflow U above. `PayoutAdjustment` (row 3) remains unbuilt — nothing has been paid out yet (no `PayoutRun` exists until M11), so there is nothing yet to net a correction against. Refund creation/approval/execution itself is Workflows T/V above, not this table.
+
 ## L. Buyer → CrownSource Messaging
 
 `Conversation(participantType = customer, context = product|order|quotation|custom_request|storefront|general)` created from the relevant trigger → Messages exchanged, always with CrownSourceGlobal as the counterparty, never a Vendor.
@@ -264,3 +266,120 @@ Domain transition commits (e.g. vendorApplicationsService.approve())
 **Multi-role recipients.** A User who is simultaneously a Customer, a Vendor owner, and a SUPER_ADMIN receives every notification addressed to their `User.id` in one stream, correctly routed by `targetUrl` to the right portal for each event — a customer-facing order confirmation links into `/account/...`, a vendor-facing new-order event links into `/vendor/portal/...`, an admin-facing event links into `/admin/...`. Two genuinely distinct events (e.g. "your order was confirmed" as the customer, "you have a new order" as the vendor owner) both appear; they are never collapsed into each other. Only a true retry of the *same* event, for the same recipient, collapses via the `eventKey` dedup.
 
 **What is NOT built.** No WebSocket/SSE transport, no typing/presence/read-receipts, no push notifications, no email delivery-status webhooks (accepted/delivered/bounced/complained) — the `EmailDeliveryJob`/provider boundary is a clean integration point for these later, but none is wired in V1. See `/docs/architecture/overview.md`'s "Notifications & Email Delivery" section for the provider abstraction, dedup mechanism, and the deliberate auth-email exception (verification/password-reset stay direct, not routed through this workflow).
+
+## T. Post-Purchase Resolution — Case Lifecycle *(added M9)*
+
+```
+Customer opens an eligible Order → "Report a problem" / "Request cancellation"
+  → picks issue type + affected item(s)/quantity + description (+ optional
+    evidence) → resolutionsService.submitCase validates ownership, quantity
+    caps, and (for cancellation) that the Fulfilment hasn't already been
+    delivered → ResolutionCase created, status OPEN, customer + all admins
+    notified (RESOLUTION_CASE_RECEIVED / ADMIN_NEW_RESOLUTION_CASE)
+  → Staff: Start review (OPEN → UNDER_REVIEW)
+  → [optional] Staff requests customer clarification (→ AWAITING_CUSTOMER) —
+    reuses M3 messaging via a RESOLUTION_CASE-context Customer↔CrownSource
+    conversation; customer replies; staff resumes (→ UNDER_REVIEW)
+  → [optional] Staff requests vendor input (→ AWAITING_VENDOR) — a SEPARATE
+    Vendor↔CrownSource conversation, same case, structurally distinct thread;
+    vendor never sees the customer conversation or contact details; vendor
+    replies; staff resumes (→ UNDER_REVIEW)
+  → Staff decides: per affected line, an approvedResolution (NO_ACTION,
+    FULL_REFUND, PARTIAL_REFUND, REPLACEMENT, RETURN_AND_REFUND,
+    RETURN_AND_REPLACEMENT, REDELIVERY), server-validated against what
+    remains refundable/resolvable for that OrderItem across every case that
+    has ever touched it — never a client-submitted total
+  → resolutionsService.approveResolution (ONE transaction): case →
+    RESOLUTION_APPROVED; creates a Refund (already APPROVED, amount =
+    server-computed sum) if any line is refund-bearing; creates a Return
+    (APPROVED) if any line requires one; creates a Replacement record per
+    replacement line; sets FulfilmentItem.payoutHold if responsibility =
+    VENDOR; cancels the named Fulfilment (+ releases its inventory
+    reservation) if this was an approved cancellation — customer notified
+    with the plain-language decision reason
+  → [if refund-bearing, no return required] Staff processes the refund via
+    modules/refunds/mockExecutor.ts (mock — no real money moves) → COMPLETED
+    or FAILED (retryable, claim-guarded so it can never execute twice)
+  → [if return required] see Workflow V below — refund is NOT processed
+    until the return reaches INSPECTED
+  → [if replacement] see Workflow W below
+  → Staff: Mark resolved (RESOLUTION_APPROVED/RESOLUTION_IN_PROGRESS →
+    RESOLVED, customer + any involved vendor notified) → Close (→ CLOSED)
+```
+
+Alternative path: Staff rejects at any point before approval (`REJECTED`, with a customer-safe reason) — no refund/return/replacement side effects fire.
+
+## U. Cancellation Eligibility & Inventory Restore *(added M9)*
+
+```
+Customer requests cancellation on a specific Fulfilment
+  → modules/resolutions/policy.ts classifies eligibility from the
+    Fulfilment's CURRENT status (a hint, not a gate — every cancellation
+    still goes through the same staff approval as any other case):
+      PENDING            → SAFE (vendor hasn't started)
+      PREPARING/READY/
+      DISPATCHED         → NEEDS_REVIEW (already in motion)
+      DELIVERED+         → BLOCKED at submission — case creation itself is
+                            rejected; the customer is redirected to the
+                            report-a-problem/return flow instead
+  → Staff approves with cancelFulfilmentId set → Fulfilment.status →
+    CANCELLED (guarded: only from PENDING/PREPARING/READY, re-checked
+    server-side even if the eligibility hint said SAFE earlier) →
+    InventoryReservation → RELEASED → VendorListing.availableQuantity
+    incremented back by the cancelled quantity
+```
+
+A damaged-item refund with **no** cancellation touches inventory not at all — the goods physically exist and were delivered; there is nothing to restock. Restocking only ever happens via this cancellation path or via Workflow V's return-inspection outcome — never automatically from a refund being approved.
+
+## V. Return + Refund Sequencing *(added M9)*
+
+```
+Staff approves RETURN_AND_REFUND (or RETURN_AND_REPLACEMENT) for one or
+more case lines → Return created, status APPROVED → Refund created
+alongside it, status APPROVED, but NOT processed yet — the refund is a
+recorded decision; execution deliberately waits for inspection
+  → Staff records return transit (method + optional tracking reference) →
+    IN_TRANSIT
+  → Staff confirms CrownSource received the item → RECEIVED
+  → Staff inspects → INSPECTED, with an outcome:
+      RESELLABLE     → inventory restocked (VendorListing.availableQuantity
+                        incremented), Return.restockedAt set — guarded so
+                        this can only ever happen once per Return
+      NOT_RESELLABLE → no restock
+  → Staff processes the already-approved Refund via the mock executor →
+    COMPLETED
+  → Staff marks the Return COMPLETED (informational close-out)
+```
+
+A resolution that does NOT require physical goods to move back (e.g. a straightforward damaged-item refund where CrownSource doesn't need the item returned) skips this entirely — staff simply doesn't choose a RETURN_* decision, and the refund processes immediately after approval (Workflow T). The return requirement is always an explicit staff choice per case, never an automatic function of issue type.
+
+## W. Replacement — Reusing M4 Fulfilment Tracking *(added M9)*
+
+```
+Staff approves REPLACEMENT (or RETURN_AND_REPLACEMENT) for a case line,
+with a replacementQuantity ≤ the line's affected quantity → Replacement
+record created (resolutionCaseId, originalOrderItemId, quantity) — no
+Fulfilment exists yet
+  → Staff: Create replacement order (a separate, explicit action — staff
+    controls WHEN the actual replacement work begins)
+  → resolutionsService.createReplacementFulfilment:
+      - if the original line was listing-backed: atomic conditional
+        decrement of VendorListing.availableQuantity (same guarded
+        check-and-decrement as ordinary checkout — Workflow G) — fails
+        cleanly with a clear error if stock is insufficient
+      - a NEW OrderItem is created on the SAME Order: unitPrice = 0,
+        lineTotal = 0, vendorPayableBasis = 0 (no fake customer charge;
+        the original commercial record is completely untouched)
+      - a Fulfilment + FulfilmentItem + Shipment are created for it, using
+        the EXACT SAME construction shape confirmOrderPayment already uses
+        for a normal order (modules/orders/service.ts's per-vendor fan-out)
+      - Vendor notified (VENDOR_NEW_ORDER — the same notification a real
+        new order gets, since operationally it is one)
+  → The replacement Fulfilment progresses through the ordinary
+    PENDING → PREPARING → READY → DISPATCHED → DELIVERED lifecycle
+    (Workflow H/N, entirely unmodified) — visible in the SAME vendor
+    portal Operations pages and the SAME customer order-tracking UI. No
+    separate replacement-tracking UI exists or is needed.
+```
+
+Replacement source is always the same Vendor as the original line in V1 (`originalOrderItem.vendorId`) — alternate-vendor or CrownSource-custom-source replacement is an explicitly deferred follow-up (M9 spec §25), not built now.
