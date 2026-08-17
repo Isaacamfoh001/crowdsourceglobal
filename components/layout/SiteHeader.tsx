@@ -6,6 +6,8 @@ import { Menu, ShoppingBag, X } from "lucide-react";
 import { Logo } from "./Logo";
 import { Button } from "../ui/Button";
 import { SignOutButton } from "../auth/SignOutButton";
+import { NotificationBell } from "../notifications/NotificationBell";
+import type { NotificationView } from "../../modules/notifications/types";
 
 const NAV_LINKS = [
   { href: "/shop", label: "Shop" },
@@ -36,11 +38,15 @@ export function SiteHeader({
   cartItemCount,
   hasVendorPortal = false,
   isAdmin = false,
+  unreadNotificationCount = 0,
+  recentNotifications = [],
 }: {
   isSignedIn: boolean;
   cartItemCount: number;
   hasVendorPortal?: boolean;
   isAdmin?: boolean;
+  unreadNotificationCount?: number;
+  recentNotifications?: NotificationView[];
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -81,6 +87,7 @@ export function SiteHeader({
                 </Link>
               ) : null}
               <CartLink itemCount={cartItemCount} />
+              <NotificationBell unreadCount={unreadNotificationCount} recent={recentNotifications} />
               <Link
                 href="/account"
                 className="text-sm font-medium text-stone-700 transition-colors hover:text-stone-900"
@@ -106,6 +113,7 @@ export function SiteHeader({
 
         <div className="flex items-center gap-1 lg:hidden">
           {isSignedIn ? <CartLink itemCount={cartItemCount} /> : null}
+          {isSignedIn ? <NotificationBell unreadCount={unreadNotificationCount} recent={recentNotifications} /> : null}
           <button
             type="button"
             onClick={() => setMenuOpen((open) => !open)}

@@ -23,12 +23,24 @@ export const fulfilmentRepository = {
     const fulfilment = await prisma.fulfilment.findUnique({
       where: { id: fulfilmentId },
       select: {
-        order: { select: { orderNumber: true, customerProfile: { select: { user: { select: { email: true } } } } } },
+        order: {
+          select: {
+            id: true,
+            orderNumber: true,
+            customerProfile: { select: { userId: true, user: { select: { email: true } } } },
+          },
+        },
         vendor: { select: { id: true } },
       },
     });
     if (!fulfilment) return null;
-    return { orderNumber: fulfilment.order.orderNumber, customerEmail: fulfilment.order.customerProfile.user.email, vendorId: fulfilment.vendor.id };
+    return {
+      orderId: fulfilment.order.id,
+      orderNumber: fulfilment.order.orderNumber,
+      customerUserId: fulfilment.order.customerProfile.userId,
+      customerEmail: fulfilment.order.customerProfile.user.email,
+      vendorId: fulfilment.vendor.id,
+    };
   },
 
 

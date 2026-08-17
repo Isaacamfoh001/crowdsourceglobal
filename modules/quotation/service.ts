@@ -4,7 +4,8 @@ import { resolveUnitPrice } from "../pricing/resolveUnitPrice";
 import { generateQuoteReference } from "../../lib/quote-number";
 import { env } from "../../lib/env";
 import { ok, err, type Result } from "../../lib/result";
-import { sendQuoteIssuedEmail } from "../../lib/email";
+import { notificationsService } from "../notifications/service";
+import { notificationLinks } from "../notifications/links";
 import { quotationRepository } from "./repository";
 import type {
   AdminQuotationDetailView,
@@ -17,10 +18,6 @@ import type {
 } from "./types";
 
 const MAX_DRAFT_LINES = 20;
-
-function notifySafely(send: () => Promise<void>): void {
-  send().catch((error) => console.error("Notification dispatch failed:", error));
-}
 
 function deriveEffectiveStatus(status: string, expiresAt: Date): QuotationEffectiveStatus {
   if (status === "ISSUED" && expiresAt.getTime() < Date.now()) {
@@ -83,6 +80,7 @@ export const quotationService = {
    */
   async generateFromDraft(
     customerProfileId: string,
+    customerUserId: string,
     customerEmail: string,
     rawDraftLines: QuoteDraftLine[],
   ): Promise<Result<{ quotationId: string; reference: string }>> {
@@ -157,19 +155,25 @@ export const quotationService = {
           items: preparedItems,
         });
 
-        notifySafely(() =>
-          sendQuoteIssuedEmail({
+        const expiresAtText = quotation.expiresAt.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+        await notificationsService.notify({
+          recipientUserId: customerUserId,
+          type: "QUOTE_ISSUED",
+          title: "Your quotation is ready",
+          body: `Your CrownSourceGlobal quotation ${quotation.reference} is ready: ${currency} ${subtotal.toFixed(2)}.`,
+          targetUrl: notificationLinks.customerQuote(quotation.id),
+          eventKey: `quote-issued:${quotation.id}`,
+          email: {
             to: customerEmail,
-            reference: quotation.reference,
-            total: subtotal,
-            currency,
-            expiresAt: quotation.expiresAt.toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            }),
-          }),
-        );
+            subject: "Your quotation is ready",
+            templateKey: "quote-issued",
+            templateData: { reference: quotation.reference, total: subtotal, currency, expiresAt: expiresAtText, quotationId: quotation.id },
+          },
+        });
 
         return ok({ quotationId: quotation.id, reference: quotation.reference });
       } catch (error) {

@@ -2,10 +2,13 @@ import { Logo } from "../../../components/layout/Logo";
 import { SignOutButton } from "../../../components/auth/SignOutButton";
 import { Container } from "../../../components/ui/Container";
 import { AdminNav } from "../../../components/admin/AdminNav";
+import { NotificationBell } from "../../../components/notifications/NotificationBell";
 import { requireAdminSession } from "../../../modules/administration/policy";
+import { notificationsService } from "../../../modules/notifications/service";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { admin } = await requireAdminSession("/admin");
+  const { admin, session } = await requireAdminSession("/admin");
+  const bellData = await notificationsService.getBellData(session.user.id);
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -15,7 +18,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Logo onDark />
             <span className="hidden text-sm text-stone-400 sm:inline">/ Admin ({admin.role})</span>
           </div>
-          <SignOutButton size="sm" />
+          <div className="flex items-center gap-2">
+            <NotificationBell unreadCount={bellData.unreadCount} recent={bellData.recent} onDark />
+            <SignOutButton size="sm" />
+          </div>
         </div>
       </header>
 

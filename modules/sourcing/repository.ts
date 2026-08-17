@@ -269,7 +269,7 @@ export const sourcingRepository = {
       select: {
         requestNumber: true,
         customerProfileId: true,
-        customerProfile: { select: { user: { select: { email: true } } } },
+        customerProfile: { select: { userId: true, user: { select: { email: true } } } },
       },
     });
   },

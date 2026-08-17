@@ -2,12 +2,9 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../lib/db";
 import { quotationService } from "./service";
 import { ordersService } from "../orders/service";
-import * as emailModule from "../../lib/email";
+import * as emailProviderModule from "../../lib/email-provider";
+import { processEmailQueue } from "../../lib/email-worker";
 import type { DeliveryInfo } from "../orders/types";
-
-async function flush() {
-  await new Promise((resolve) => setTimeout(resolve, 150));
-}
 
 const deliveryInfo: DeliveryInfo = {
   recipientName: "Ama Customer",
@@ -23,6 +20,7 @@ describe("quotationService / ordersService.createOrderFromQuotation", () => {
   let vendorAId: string;
   let vendorBId: string;
   let customerAId: string;
+  let customerAUserId: string;
   let customerAEmail: string;
   let customerBId: string;
 
@@ -57,6 +55,7 @@ describe("quotationService / ordersService.createOrderFromQuotation", () => {
       data: { id: `m5-customer-a-${suffix}`, name: "Customer A", email: `m5.customer.a.${suffix}@example.com` },
     });
     createdUserIds.push(userA.id);
+    customerAUserId = userA.id;
     customerAEmail = userA.email;
     const customerA = await prisma.customerProfile.create({ data: { userId: userA.id, displayName: "Customer A" } });
     customerAId = customerA.id;
@@ -132,7 +131,7 @@ describe("quotationService / ordersService.createOrderFromQuotation", () => {
   }
 
   async function generate(customerProfileId: string, email: string, lines: { listingId: string; quantity: number }[]) {
-    const result = await quotationService.generateFromDraft(customerProfileId, email, lines);
+    const result = await quotationService.generateFromDraft(customerProfileId, customerAUserId, email, lines);
     if (result.ok) createdQuotationIds.push(result.value.quotationId);
     return result;
   }
@@ -440,26 +439,33 @@ describe("quotationService / ordersService.createOrderFromQuotation", () => {
 
   // ---- Email ----------------------------------------------------
 
-  it("dispatches a quote-issued email exactly once", async () => {
-    const spy = vi.spyOn(emailModule, "sendQuoteIssuedEmail").mockResolvedValue(undefined);
+  it("dispatches a quote-issued notification and email exactly once", async () => {
     const listing = await seedListing({ vendorId: vendorAId, basePrice: 40, availableQuantity: 100 });
 
     const result = await generate(customerAId, customerAEmail, [{ listingId: listing.id, quantity: 2 }]);
     expect(result.ok).toBe(true);
-    await flush();
+    if (!result.ok) return;
 
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ to: customerAEmail }));
-    spy.mockRestore();
+    // Checked at the DB layer, not via a spy on the shared emailProvider
+    // singleton — every test file in this suite shares one Postgres
+    // instance, so a global send-call-count assertion is fragile; "exactly
+    // one job was enqueued for this specific quotation, for the right
+    // recipient" is not (the eventKey's uniqueness constraint is the
+    // actual dedup guarantee, tested directly here).
+    const notification = await prisma.notification.findFirst({ where: { eventKey: `quote-issued:${result.value.quotationId}` } });
+    expect(notification).not.toBeNull();
+    const jobs = await prisma.emailDeliveryJob.findMany({ where: { notificationId: notification!.id } });
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]?.to).toBe(customerAEmail);
   });
 
   it("does not fail quote issuance when email delivery fails", async () => {
-    const spy = vi.spyOn(emailModule, "sendQuoteIssuedEmail").mockRejectedValue(new Error("simulated outage"));
+    const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValue(new Error("simulated outage"));
     const listing = await seedListing({ vendorId: vendorAId, basePrice: 40, availableQuantity: 100 });
 
     const result = await generate(customerAId, customerAEmail, [{ listingId: listing.id, quantity: 2 }]);
     expect(result.ok).toBe(true);
-    await flush();
+    await processEmailQueue();
 
     if (result.ok) {
       const quotation = await prisma.quotation.findUnique({ where: { id: result.value.quotationId } });

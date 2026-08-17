@@ -5,12 +5,9 @@ import { logisticsService } from "../logistics/service";
 import { cartService } from "../cart/service";
 import { ordersService } from "../orders/service";
 import { messagingService } from "../messaging/service";
-import * as emailModule from "../../lib/email";
+import * as emailProviderModule from "../../lib/email-provider";
+import { processEmailQueue } from "../../lib/email-worker";
 import type { DeliveryInfo } from "../orders/types";
-
-async function flush() {
-  await new Promise((resolve) => setTimeout(resolve, 150));
-}
 
 const deliveryInfo: DeliveryInfo = {
   recipientName: "Ama Customer",
@@ -144,13 +141,13 @@ describe("fulfilmentService", () => {
     if (!orderResult.ok) throw new Error(orderResult.error);
     createdOrderIds.push(orderResult.value.orderId);
 
-    const { newVendorIds } = await ordersService.confirmOrderPayment(orderResult.value.orderId);
+    const { newFulfilments } = await ordersService.confirmOrderPayment(orderResult.value.orderId);
 
     const fulfilments = await prisma.fulfilment.findMany({ where: { orderId: orderResult.value.orderId } });
     const domesticFulfilment = fulfilments.find((f) => f.vendorId === domesticVendorId)!;
     const internationalFulfilment = fulfilments.find((f) => f.vendorId === internationalVendorId)!;
 
-    return { orderId: orderResult.value.orderId, domesticFulfilment, internationalFulfilment, newVendorIds, domesticListing, internationalListing };
+    return { orderId: orderResult.value.orderId, domesticFulfilment, internationalFulfilment, newFulfilments, domesticListing, internationalListing };
   }
 
   // --- Multi-vendor + origin routing -------------------------------------
@@ -451,9 +448,7 @@ describe("fulfilmentService", () => {
 
   // --- Notifications ---------------------------------------------------
 
-  it("dispatches a new-order email to each vendor exactly once, not on idempotent re-confirmation", async () => {
-    const spy = vi.spyOn(emailModule, "sendNewOrderToVendorEmail").mockResolvedValue(undefined);
-
+  it("dispatches a new-order notification to each vendor exactly once, not on idempotent re-confirmation", async () => {
     const domesticListing = await prisma.vendorListing.create({
       data: { vendorId: domesticVendorId, categoryId, title: "Notif Test Item", description: "Test.", basePrice: 100, moq: 1, availableQuantity: 10, approvalStatus: "APPROVED", listingStatus: "ACTIVE" },
     });
@@ -464,23 +459,21 @@ describe("fulfilmentService", () => {
     createdOrderIds.push(orderResult.value.orderId);
 
     const first = await ordersService.confirmOrderPayment(orderResult.value.orderId);
-    expect(first.newVendorIds).toEqual([domesticVendorId]);
+    expect(first.newFulfilments.map((f) => f.vendorId)).toEqual([domesticVendorId]);
 
     const second = await ordersService.confirmOrderPayment(orderResult.value.orderId); // idempotent replay
-    expect(second.newVendorIds).toEqual([]);
-
-    spy.mockRestore();
+    expect(second.newFulfilments).toEqual([]);
   });
 
   it("email delivery failure does not roll back an already-committed collection confirmation", async () => {
-    const spy = vi.spyOn(emailModule, "sendPackageCollectedEmail").mockRejectedValue(new Error("simulated outage"));
+    const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValue(new Error("simulated outage"));
     const { domesticFulfilment } = await placeMultiVendorOrder();
     await fulfilmentService.startPreparing(domesticVendorId, domesticFulfilment.id);
     await fulfilmentService.markReady(domesticVendorId, domesticFulfilment.id);
 
     const confirm = await fulfilmentService.confirmCollectedOrReceived(domesticFulfilment.id, "admin-user-id", null);
     expect(confirm.ok).toBe(true); // must still succeed
-    await flush();
+    await processEmailQueue();
 
     const fulfilment = await prisma.fulfilment.findUnique({ where: { id: domesticFulfilment.id } });
     expect(fulfilment?.status).toBe("DISPATCHED");

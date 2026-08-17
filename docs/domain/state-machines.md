@@ -18,6 +18,9 @@ Authoritative states and legal transitions for the entities whose lifecycle matt
 | **FulfilmentIssue** *(added M4)* | OPEN → RESOLVED | RESOLVED | Vendor (report — only while the parent Fulfilment is PENDING/PREPARING/READY), Admin (resolve, which also resumes the parent Fulfilment to PREPARING) | — |
 | **FulfilmentItem payout eligibility** | NOT_ELIGIBLE → ELIGIBLE → ON_HOLD ⇄ ELIGIBLE → CLAIMED | CLAIMED | System (Fulfilment reaches COMPLETED), Admin (hold/release), PayoutRun (claim) | Unique constraint: one claim per FulfilmentItem, ever |
 | **PayoutRun** | DRAFT → PROCESSING → PAID \| FAILED (retry = new run) | PAID, FAILED | System (scheduled batch), Admin (manual trigger/mark paid) | New PayoutRun per attempt |
+| **EmailDeliveryJob** *(implemented M7)* | PENDING → SENDING → SENT \| FAILED; FAILED → (retry) SENDING while `attempts < maxAttempts`, else FAILED is terminal | SENT; FAILED once `attempts = maxAttempts` | System (`notify()` creates PENDING; the drain worker claims/sends/marks) | Claim is an atomic guarded `updateMany` (`where: {id, status: eligible.status}`) — the cross-process mutual-exclusion mechanism when multiple drain calls run concurrently. Bounded backoff on failure: `[1m, 5m, 30m, 2h, 12h]` indexed by attempt count, capped at the last value. An exhausted job (`attempts = maxAttempts`, `status = FAILED`) is never reclaimed — the claim query's `attempts < maxAttempts` filter excludes it permanently; no separate terminal enum value needed. |
+
+**Notification read state** *(implemented M7)* is a simple two-state flag, not a full machine: unread (`readAt = null`) on creation → read (`readAt` set) via `markRead`/`markAllRead`, both scoped to the owning `recipientUserId` and idempotent (marking an already-read notification read again is a no-op, not an error).
 
 ## Notes
 

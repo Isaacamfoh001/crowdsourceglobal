@@ -23,6 +23,16 @@ const envSchema = z.object({
    * than a number buried inside modules/quotation/service.ts.
    */
   QUOTE_VALIDITY_DAYS: z.coerce.number().int().positive().default(7),
+  /**
+   * M7 email delivery. "console" (default) logs to the server console —
+   * safe for dev/test with zero configuration. "resend" requires
+   * RESEND_API_KEY and EMAIL_FROM; lib/email-provider.ts fails fast at
+   * import time if selected without them, rather than surfacing a
+   * confusing failure deep inside a background job later.
+   */
+  EMAIL_PROVIDER: z.enum(["console", "resend"]).default("console"),
+  EMAIL_FROM: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
 });
 
 function loadEnv() {
@@ -34,6 +44,9 @@ function loadEnv() {
     GOOGLE_CLIENT_SECRET: process.env["GOOGLE_CLIENT_SECRET"] || undefined,
     NEXT_PUBLIC_APP_URL: process.env["NEXT_PUBLIC_APP_URL"],
     QUOTE_VALIDITY_DAYS: process.env["QUOTE_VALIDITY_DAYS"] || undefined,
+    EMAIL_PROVIDER: process.env["EMAIL_PROVIDER"] || undefined,
+    EMAIL_FROM: process.env["EMAIL_FROM"] || undefined,
+    RESEND_API_KEY: process.env["RESEND_API_KEY"] || undefined,
   });
 
   if (!parsed.success) {

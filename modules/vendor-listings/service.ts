@@ -1,23 +1,33 @@
 import { vendorListingsRepository } from "./repository";
 import { vendorsRepository } from "../vendors/repository";
+import { notificationsService } from "../notifications/service";
+import { notificationLinks } from "../notifications/links";
 import { ok, err, type Result } from "../../lib/result";
-import { sendListingApprovedEmail, sendListingChangesRequestedEmail, sendListingRejectedEmail } from "../../lib/email";
 import type { BulkTierInput, ListingFormInput, VendorListingDetail } from "./types";
+import type { NotificationType } from "../notifications/types";
 
-/**
- * Fire-and-forget notification dispatch — errors are logged, never thrown,
- * so a flaky dev-console adapter (or, later, a real email provider outage)
- * can never surface as a failed moderation action to the admin who already
- * successfully approved/rejected something.
- */
-function notifySafely(send: () => Promise<void>): void {
-  send().catch((error) => console.error("Notification dispatch failed:", error));
-}
-
-async function notifyVendorOwner(vendorId: string, send: (email: string) => Promise<void>): Promise<void> {
-  const email = await vendorsRepository.findOwnerEmail(vendorId);
-  if (!email) return;
-  notifySafely(() => send(email));
+async function notifyVendorOwner(params: {
+  vendorId: string;
+  listingId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  eventKey: string;
+  emailTemplateKey: string;
+  emailSubject: string;
+  emailData: Record<string, unknown>;
+}): Promise<void> {
+  const owner = await vendorsRepository.findOwnerUserIdAndEmail(params.vendorId);
+  if (!owner) return;
+  await notificationsService.notify({
+    recipientUserId: owner.userId,
+    type: params.type,
+    title: params.title,
+    body: params.body,
+    targetUrl: notificationLinks.vendorListing(params.listingId),
+    eventKey: params.eventKey,
+    email: { to: owner.email, subject: params.emailSubject, templateKey: params.emailTemplateKey, templateData: params.emailData },
+  });
 }
 
 /**
@@ -229,9 +239,17 @@ export const vendorListingsService = {
       await vendorListingsRepository.applyApprovalAndActivate(listingId, null, null);
     }
     const approvedTitle = listing.pendingChanges?.listing.title ?? listing.title;
-    void notifyVendorOwner(listing.vendorId, (email) =>
-      sendListingApprovedEmail({ to: email, listingTitle: approvedTitle }),
-    );
+    await notifyVendorOwner({
+      vendorId: listing.vendorId,
+      listingId,
+      type: "LISTING_APPROVED",
+      title: "Listing approved",
+      body: `Your listing "${approvedTitle}" is now live on CrownSourceGlobal.`,
+      eventKey: `listing-approved:${listingId}:${Date.now()}`,
+      emailTemplateKey: "listing-approved",
+      emailSubject: "Your listing is now live",
+      emailData: { listingTitle: approvedTitle },
+    });
     return ok(null);
   },
 
@@ -240,9 +258,17 @@ export const vendorListingsService = {
     if (!listing) return err("Listing not found.");
     if (!isAwaitingReview(listing)) return err("This listing is not awaiting review.");
     await vendorListingsRepository.requestChanges(listingId, reason);
-    void notifyVendorOwner(listing.vendorId, (email) =>
-      sendListingChangesRequestedEmail({ to: email, listingTitle: listing.title, reason }),
-    );
+    await notifyVendorOwner({
+      vendorId: listing.vendorId,
+      listingId,
+      type: "LISTING_CHANGES_REQUESTED",
+      title: "Changes requested",
+      body: `CrownSourceGlobal requested changes to "${listing.title}": ${reason}`,
+      eventKey: `listing-changes-requested:${listingId}:${Date.now()}`,
+      emailTemplateKey: "listing-changes-requested",
+      emailSubject: "Changes requested on your listing",
+      emailData: { listingTitle: listing.title, reason, listingId },
+    });
     return ok(null);
   },
 
@@ -254,14 +280,22 @@ export const vendorListingsService = {
     if (listing.pendingChanges) {
       // Rejecting an edit to an already-live listing discards the proposal
       // and keeps the current public version untouched — nothing the
-      // vendor owns actually changed, so no "rejected" email here (it
-      // would misleadingly suggest their live listing was affected).
+      // vendor owns actually changed, so no "rejected" notification here
+      // (it would misleadingly suggest their live listing was affected).
       await vendorListingsRepository.discardPendingChanges(listingId);
     } else {
       await vendorListingsRepository.reject(listingId, reason);
-      void notifyVendorOwner(listing.vendorId, (email) =>
-        sendListingRejectedEmail({ to: email, listingTitle: listing.title, reason }),
-      );
+      await notifyVendorOwner({
+        vendorId: listing.vendorId,
+        listingId,
+        type: "LISTING_REJECTED",
+        title: "Listing not approved",
+        body: `Your listing "${listing.title}" was not approved: ${reason}`,
+        eventKey: `listing-rejected:${listingId}:${Date.now()}`,
+        emailTemplateKey: "listing-rejected",
+        emailSubject: "Your listing was not approved",
+        emailData: { listingTitle: listing.title, reason },
+      });
     }
     return ok(null);
   },

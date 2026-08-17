@@ -3,28 +3,40 @@ import { Prisma } from "../../generated/prisma/client";
 import { ordersRepository } from "../orders/repository";
 import { ordersService } from "../orders/service";
 import { vendorsRepository } from "../vendors/repository";
+import { notificationsService } from "../notifications/service";
+import { notificationLinks } from "../notifications/links";
 import { mockPaymentProvider } from "./mockProvider";
 import { ok, err, type Result } from "../../lib/result";
-import { sendNewOrderToVendorEmail } from "../../lib/email";
 import type { MockPaymentOutcome } from "./types";
-
-function notifySafely(send: () => Promise<void>): void {
-  send().catch((error) => console.error("Notification dispatch failed:", error));
-}
 
 /**
  * Post-commit notification boundary: fires only after confirmOrderPayment's
  * own transaction has already committed, and only for vendors that
  * genuinely received a NEW Fulfilment this call — never on an idempotent
  * re-confirmation (protects both payment idempotency and against duplicate
- * "new order" emails). A failing email provider can never roll back or
- * block the payment confirmation that already succeeded.
+ * "new order" notifications).
  */
-async function notifyVendorsOfNewOrder(vendorIds: string[], orderNumber: string): Promise<void> {
-  for (const vendorId of vendorIds) {
-    const email = await vendorsRepository.findOwnerEmail(vendorId);
-    if (!email) continue;
-    notifySafely(() => sendNewOrderToVendorEmail({ to: email, orderNumber }));
+async function notifyVendorsOfNewOrder(
+  fulfilments: { vendorId: string; fulfilmentId: string }[],
+  orderNumber: string,
+): Promise<void> {
+  for (const { vendorId, fulfilmentId } of fulfilments) {
+    const owner = await vendorsRepository.findOwnerUserIdAndEmail(vendorId);
+    if (!owner) continue;
+    await notificationsService.notify({
+      recipientUserId: owner.userId,
+      type: "VENDOR_NEW_ORDER",
+      title: "New order to prepare",
+      body: `You have a new order to prepare: ${orderNumber}.`,
+      targetUrl: notificationLinks.vendorOrder(fulfilmentId),
+      eventKey: `vendor-new-order:${fulfilmentId}`,
+      email: {
+        to: owner.email,
+        subject: "You have a new order to prepare",
+        templateKey: "vendor-new-order",
+        templateData: { orderNumber, fulfilmentId },
+      },
+    });
   }
 }
 
@@ -105,9 +117,25 @@ export const paymentsService = {
     }
 
     if (providerResult.succeeded) {
-      const { newVendorIds } = await ordersService.confirmOrderPayment(orderId);
-      if (newVendorIds.length > 0) {
-        void notifyVendorsOfNewOrder(newVendorIds, order.orderNumber);
+      const { newFulfilments, customerUserId } = await ordersService.confirmOrderPayment(orderId);
+      if (customerUserId) {
+        await notificationsService.notify({
+          recipientUserId: customerUserId,
+          type: "ORDER_CONFIRMED",
+          title: "Order confirmed",
+          body: `Your CrownSourceGlobal order ${order.orderNumber} is confirmed and vendors have been notified.`,
+          targetUrl: notificationLinks.customerOrder(orderId),
+          eventKey: `order-confirmed:${orderId}`,
+          email: {
+            to: order.customerProfile.user.email,
+            subject: "Your order is confirmed",
+            templateKey: "order-confirmed",
+            templateData: { orderNumber: order.orderNumber, orderId },
+          },
+        });
+      }
+      if (newFulfilments.length > 0) {
+        void notifyVendorsOfNewOrder(newFulfilments, order.orderNumber);
       }
     }
 

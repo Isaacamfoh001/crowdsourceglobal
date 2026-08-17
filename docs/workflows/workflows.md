@@ -231,3 +231,36 @@ quantity, optional specifications/deadline/budget/attachments
 ```
 
 CrownSource operations is the sole intermediary throughout: Customer ↔ CrownSourceGlobal ↔ Supplier/Vendor, never Customer ↔ Supplier. There is no self-serve "any Vendor can bid on this request" mechanism — this is not a public marketplace RFQ. Customs/duties/import-freight costs and AI-driven sourcing automation are both explicitly out of scope for M6, per the same reasoning as M4's customs deferral.
+
+## S. Notifications & Email Delivery *(added M7)*
+
+```
+Domain transition commits (e.g. vendorApplicationsService.approve())
+  → await notificationsService.notify({recipientUserId, type, title, body,
+      targetUrl, eventKey, email?}) — a fast local DB write, not a slow
+      external call, so every caller awaits it (unlike the old per-module
+      notifySafely(() => sendXEmail(...)) fire-and-forget pattern it replaced)
+  → Notification row created (always, in-app) — dedup on
+    (recipientUserId, eventKey): a retried callback/double-click/duplicate
+    webhook produces at most one row, safely, via a caught P2002
+  → if `email` was passed AND the type's policy allows it for this
+    recipient's preferences (REQUIRED types always do; the three optional
+    categories respect NotificationPreference): EmailDeliveryJob created
+    in the same transaction as the Notification, status PENDING
+  → notify() returns — the domain transition's own success/failure was
+    NEVER contingent on any of the above; a notifications-table hiccup is
+    caught and logged, never propagated
+  → separately, asynchronously: processEmailQueue() drains eligible jobs
+    (claim → render template → provider.send → mark SENT, or mark FAILED
+    with bounded backoff) — triggered as a fire-and-forget dev-convenience
+    kick right after notify(), AND by scripts/process-email-jobs.ts on a
+    real schedule in production; neither call path is the source of
+    delivery correctness — the persisted, durably-claimed job row is
+  → recipient sees the in-app notification via the bell/notification
+    center immediately regardless of email outcome; if the email send
+    succeeds, they also receive it in their inbox
+```
+
+**Multi-role recipients.** A User who is simultaneously a Customer, a Vendor owner, and a SUPER_ADMIN receives every notification addressed to their `User.id` in one stream, correctly routed by `targetUrl` to the right portal for each event — a customer-facing order confirmation links into `/account/...`, a vendor-facing new-order event links into `/vendor/portal/...`, an admin-facing event links into `/admin/...`. Two genuinely distinct events (e.g. "your order was confirmed" as the customer, "you have a new order" as the vendor owner) both appear; they are never collapsed into each other. Only a true retry of the *same* event, for the same recipient, collapses via the `eventKey` dedup.
+
+**What is NOT built.** No WebSocket/SSE transport, no typing/presence/read-receipts, no push notifications, no email delivery-status webhooks (accepted/delivered/bounced/complained) — the `EmailDeliveryJob`/provider boundary is a clean integration point for these later, but none is wired in V1. See `/docs/architecture/overview.md`'s "Notifications & Email Delivery" section for the provider abstraction, dedup mechanism, and the deliberate auth-email exception (verification/password-reset stay direct, not routed through this workflow).

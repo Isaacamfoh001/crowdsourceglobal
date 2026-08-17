@@ -399,19 +399,28 @@ export const ordersService = {
    * produced Fulfilments", not vendor-scoped uniqueness).
    */
   /**
-   * Returns the vendorIds that received a NEW Fulfilment this call (empty
-   * on an idempotent no-op re-confirmation) — the caller uses this to
-   * dispatch "you have a new order" notifications exactly once per real
+   * Returns the Fulfilments newly created this call — one per distinct
+   * vendor, empty on an idempotent no-op re-confirmation — plus the
+   * customer's own userId so the caller can dispatch "order confirmed" and
+   * per-vendor "new order" notifications exactly once per real
    * confirmation, never on a repeat/duplicate webhook-equivalent call.
    */
-  async confirmOrderPayment(orderId: string): Promise<{ newVendorIds: string[] }> {
+  async confirmOrderPayment(
+    orderId: string,
+  ): Promise<{ newFulfilments: { vendorId: string; fulfilmentId: string }[]; customerUserId: string | null }> {
     return prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { id: orderId },
-        select: { id: true, status: true, fulfilmentsCreatedAt: true, items: true },
+        select: {
+          id: true,
+          status: true,
+          fulfilmentsCreatedAt: true,
+          items: true,
+          customerProfile: { select: { userId: true } },
+        },
       });
       if (!order || order.status === "CONFIRMED") {
-        return { newVendorIds: [] }; // already confirmed — nothing to do (idempotent no-op)
+        return { newFulfilments: [], customerUserId: null }; // already confirmed — nothing to do (idempotent no-op)
       }
 
       await tx.order.update({
@@ -425,12 +434,12 @@ export const ordersService = {
       });
 
       if (order.fulfilmentsCreatedAt) {
-        return { newVendorIds: [] }; // Fulfilments already created for this confirmation
+        return { newFulfilments: [], customerUserId: null }; // Fulfilments already created for this confirmation
       }
 
       const itemsByVendor = new Map<string, typeof order.items>();
       for (const item of order.items) {
-        if (!item.vendorId) continue; // custom-sourcing aggregate lines (not used in M2) have no single vendor
+        if (!item.vendorId) continue; // custom-sourcing aggregate lines have no single vendor
         const group = itemsByVendor.get(item.vendorId) ?? [];
         group.push(item);
         itemsByVendor.set(item.vendorId, group);
@@ -442,6 +451,8 @@ export const ordersService = {
         select: { id: true },
       });
 
+      const newFulfilments: { vendorId: string; fulfilmentId: string }[] = [];
+
       for (const [vendorId, items] of itemsByVendor) {
         const vendor = await tx.vendor.findUnique({ where: { id: vendorId }, select: { country: true } });
         // Snapshotted at creation time, per the same principle as OrderItem
@@ -451,6 +462,7 @@ export const ordersService = {
           : "DOMESTIC_COLLECTION";
 
         const fulfilment = await tx.fulfilment.create({ data: { orderId, vendorId, origin } });
+        newFulfilments.push({ vendorId, fulfilmentId: fulfilment.id });
         await tx.fulfilmentItem.createMany({
           data: items.map((item) => ({
             fulfilmentId: fulfilment.id,
@@ -469,7 +481,7 @@ export const ordersService = {
       }
 
       await tx.order.update({ where: { id: orderId }, data: { fulfilmentsCreatedAt: new Date() } });
-      return { newVendorIds: [...itemsByVendor.keys()] };
+      return { newFulfilments, customerUserId: order.customerProfile.userId };
     });
   },
 

@@ -88,6 +88,16 @@ export const vendorsRepository = {
     return membership?.user.email ?? null;
   },
 
+  /** Same "oldest OWNER membership" resolution as findOwnerEmail, plus the userId M7 notifications need as recipientUserId. */
+  async findOwnerUserIdAndEmail(vendorId: string): Promise<{ userId: string; email: string } | null> {
+    const membership = await prisma.vendorMembership.findFirst({
+      where: { vendorId, role: "OWNER" },
+      select: { userId: true, user: { select: { email: true } } },
+      orderBy: { createdAt: "asc" },
+    });
+    return membership ? { userId: membership.userId, email: membership.user.email } : null;
+  },
+
   updateStoreProfile(vendorId: string, data: Record<string, unknown>): Promise<VendorStoreProfile> {
     return prisma.vendor.update({ where: { id: vendorId }, data, select: storeProfileSelect });
   },

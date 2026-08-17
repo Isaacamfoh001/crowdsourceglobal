@@ -38,6 +38,9 @@ model User {
   adminUser         AdminUser?
   sentMessages      Message[]
 
+  notifications          Notification[]
+  notificationPreference NotificationPreference?
+
   @@unique([email])
   @@map("user")
 }
@@ -1315,4 +1318,150 @@ model SourcingRequestActivity {
 
   @@index([sourcingRequestId, createdAt])
   @@map("sourcing_request_activity")
+}
+
+// ---------------------------------------------------------------------------
+// M7 — Notifications, Production Communications & User Attention
+//
+// The domain-event / communication-channel separation is structural, not
+// just a convention: every M0–M6 module now calls
+// modules/notifications/service.ts's `notify()` instead of touching
+// lib/email.ts directly. `notify()` persists a Notification (always) and,
+// only when the event type warrants it, an EmailDeliveryJob (durable,
+// retryable) — never a synchronous provider call inside a request. A
+// Notification's `recipientUserId` is deliberately a single User id (not a
+// role-specific table) — a User who is Customer + Vendor owner + Admin sees
+// one deduplicated stream, regardless of which portal shell renders it.
+// ---------------------------------------------------------------------------
+
+enum NotificationType {
+  VENDOR_APPLICATION_SUBMITTED
+  VENDOR_APPLICATION_APPROVED
+  VENDOR_APPLICATION_CHANGES_REQUESTED
+  VENDOR_APPLICATION_REJECTED
+  LISTING_APPROVED
+  LISTING_CHANGES_REQUESTED
+  LISTING_REJECTED
+  ORDER_CONFIRMED
+  VENDOR_NEW_ORDER
+  COLLECTION_SCHEDULED
+  PACKAGE_COLLECTED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  DELIVERY_ISSUE
+  FULFILMENT_ISSUE_RESOLVED
+  QUOTE_ISSUED
+  SOURCING_REQUEST_SUBMITTED
+  SOURCING_CLARIFICATION_NEEDED
+  SOURCING_QUOTE_READY
+  SOURCING_UNABLE_TO_SOURCE
+  STAFF_REPLY
+  VENDOR_STAFF_REPLY
+  ADMIN_NEW_VENDOR_APPLICATION
+  ADMIN_NEW_SOURCING_REQUEST
+  ADMIN_NEW_MESSAGE
+}
+
+/// A structured, typed in-app notification. `title`/`body` are plain text
+/// (never raw HTML — CLAUDE.md's "do not persist arbitrary HTML" instinct
+/// applied here), `targetUrl` is always an app-relative path built from
+/// known route shapes in code (modules/notifications/links.ts), never
+/// derived from a request Host header or client input — no open-redirect
+/// surface. `eventKey` + the `(recipientUserId, eventKey)` unique
+/// constraint is the dedup guarantee: a retried domain action (double-click,
+/// duplicate webhook-equivalent call, worker retry) calling `notify()`
+/// again for the same logical event is a caught no-op, never a duplicate
+/// row — safe even when the same event fans out to many recipients (e.g.
+/// one new sourcing request notifying every admin), since the key is scoped
+/// per-recipient, not global.
+model Notification {
+  id String @id @default(cuid())
+
+  recipientUserId String
+  recipient       User   @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  type      NotificationType
+  title     String
+  body      String
+  targetUrl String
+
+  eventKey String
+
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  emailJob EmailDeliveryJob?
+
+  @@unique([recipientUserId, eventKey])
+  @@index([recipientUserId, createdAt])
+  @@index([recipientUserId, readAt])
+  @@map("notification")
+}
+
+enum EmailDeliveryStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+}
+
+/// Durable, retryable email delivery — deliberately NOT a generic
+/// BackgroundJob table (that would be speculative infrastructure for a
+/// currently-single job type; see docs/architecture/overview.md). A worker
+/// claims eligible rows via a guarded `updateMany` (status IN
+/// (PENDING,FAILED) AND availableAt <= now), the same optimistic-claim
+/// pattern already used for every state-machine transition in this
+/// codebase — two concurrent worker runs can never double-send the same
+/// job. `@@unique([notificationId])` makes a job 1:1 with its Notification,
+/// so even a caller that accidentally invokes `notify()` twice for the same
+/// event (already prevented by Notification's own dedup key) could never
+/// produce two email jobs for one notification either.
+model EmailDeliveryJob {
+  id String @id @default(cuid())
+
+  notificationId String?       @unique
+  notification   Notification? @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  to           String
+  subject      String
+  templateKey  String
+  templateData Json
+
+  status      EmailDeliveryStatus @default(PENDING)
+  attempts    Int                 @default(0)
+  maxAttempts Int                 @default(5)
+  /// Bounded-backoff eligibility gate — never retried before this instant.
+  availableAt DateTime            @default(now())
+  lastError   String?
+  sentAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, availableAt])
+  @@map("email_delivery_job")
+}
+
+/// One row per User (not per role) — a User who is both a Customer and a
+/// Vendor owner sets their email preferences once. Only gates the EMAIL
+/// channel; in-app Notifications always fire regardless (see
+/// modules/notifications/service.ts). A missing row is treated as
+/// all-categories-on in code — no backfill migration needed for existing
+/// users. REQUIRED notification types (moderation outcomes, order
+/// confirmation, submission receipts, unable-to-source) ignore these
+/// entirely — there is no column that could even suppress them.
+model NotificationPreference {
+  id String @id @default(cuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  ordersDeliveryEmail     Boolean @default(true)
+  quotationsSourcingEmail Boolean @default(true)
+  messagesEmail           Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_preference")
 }

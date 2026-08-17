@@ -3,10 +3,13 @@ import { Logo } from "../../../components/layout/Logo";
 import { SignOutButton } from "../../../components/auth/SignOutButton";
 import { Container } from "../../../components/ui/Container";
 import { PortalNav } from "../../../components/vendor-portal/PortalNav";
+import { NotificationBell } from "../../../components/notifications/NotificationBell";
 import { requireVendorPortalContext } from "../../../modules/vendors/policy";
+import { notificationsService } from "../../../modules/notifications/service";
 
 export default async function VendorPortalLayout({ children }: { children: React.ReactNode }) {
-  const { vendor } = await requireVendorPortalContext("/vendor/portal");
+  const { vendor, session } = await requireVendorPortalContext("/vendor/portal");
+  const bellData = await notificationsService.getBellData(session.user.id);
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -20,6 +23,7 @@ export default async function VendorPortalLayout({ children }: { children: React
             <Link href="/shop" className="hidden text-sm font-medium text-stone-600 hover:text-stone-900 sm:inline">
               View marketplace
             </Link>
+            <NotificationBell unreadCount={bellData.unreadCount} recent={bellData.recent} />
             <SignOutButton size="sm" />
           </div>
         </div>

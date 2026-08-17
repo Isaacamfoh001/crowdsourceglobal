@@ -2,11 +2,8 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../lib/db";
 import { vendorListingsService } from "./service";
 import { cartService } from "../cart/service";
-import * as emailModule from "../../lib/email";
-
-async function flushMicrotasks() {
-  await new Promise((resolve) => setTimeout(resolve, 150));
-}
+import * as emailProviderModule from "../../lib/email-provider";
+import { processEmailQueue } from "../../lib/email-worker";
 
 /** Integration tests against the real local Postgres dev database. */
 describe("vendorListingsService", () => {
@@ -413,45 +410,47 @@ describe("vendorListingsService", () => {
       await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
     });
 
-    it("emails the vendor owner when a first-time listing is approved", async () => {
-      const spy = vi.spyOn(emailModule, "sendListingApprovedEmail").mockResolvedValue(undefined);
+    it("notifies and emails the vendor owner when a first-time listing is approved", async () => {
       const listingId = await createTrackedDraft(vendorAId);
       await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId }, []);
       await vendorListingsService.submitForReview(vendorAId, listingId);
 
       await vendorListingsService.approve(listingId);
-      await flushMicrotasks();
 
+      // Checked at the DB layer rather than via a spy on the shared
+      // emailProvider singleton — every test file in this suite shares one
+      // Postgres instance, so a global send-call-count assertion is
+      // fragile; "was the right job enqueued for the right recipient" is not.
       const ownerEmail = (await prisma.user.findUnique({ where: { id: ownerUserId } }))!.email;
-      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ to: ownerEmail, listingTitle: validContent.title }));
-      spy.mockRestore();
+      const notification = await prisma.notification.findFirst({ where: { eventKey: { startsWith: `listing-approved:${listingId}:` } } });
+      expect(notification).not.toBeNull();
+      const job = await prisma.emailDeliveryJob.findFirst({ where: { notificationId: notification!.id } });
+      expect(job?.to).toBe(ownerEmail);
+      expect((job?.templateData as Record<string, unknown>)?.["listingTitle"]).toBe(validContent.title);
     });
 
-    it("emails the vendor owner with the reason when changes are requested", async () => {
-      const spy = vi.spyOn(emailModule, "sendListingChangesRequestedEmail").mockResolvedValue(undefined);
+    it("notifies and emails the vendor owner with the reason when changes are requested", async () => {
       const listingId = await createTrackedDraft(vendorAId);
       await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId }, []);
       await vendorListingsService.submitForReview(vendorAId, listingId);
 
       await vendorListingsService.requestChanges(listingId, "Add more product photos.");
-      await flushMicrotasks();
 
-      expect(spy).toHaveBeenCalledWith(
-        expect.objectContaining({ reason: "Add more product photos.", listingTitle: validContent.title }),
-      );
-      spy.mockRestore();
+      const notification = await prisma.notification.findFirst({ where: { eventKey: { startsWith: `listing-changes-requested:${listingId}:` } } });
+      expect(notification).not.toBeNull();
+      const job = await prisma.emailDeliveryJob.findFirst({ where: { notificationId: notification!.id } });
+      expect((job?.templateData as Record<string, unknown>)?.["reason"]).toBe("Add more product photos.");
     });
 
     it("a failing email provider does not roll back or fail an already-successful approval", async () => {
-      const spy = vi
-        .spyOn(emailModule, "sendListingApprovedEmail")
-        .mockRejectedValue(new Error("simulated provider outage"));
       const listingId = await createTrackedDraft(vendorAId);
       await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId }, []);
       await vendorListingsService.submitForReview(vendorAId, listingId);
 
+      const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValue(new Error("simulated provider outage"));
       const approveResult = await vendorListingsService.approve(listingId);
       expect(approveResult.ok).toBe(true); // approval itself must still succeed
+      await processEmailQueue();
 
       const listing = await prisma.vendorListing.findUnique({ where: { id: listingId } });
       expect(listing?.approvalStatus).toBe("APPROVED");

@@ -1,11 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../lib/db";
 import { vendorApplicationsService } from "./service";
-import * as emailModule from "../../lib/email";
-
-async function flushMicrotasks() {
-  await new Promise((resolve) => setTimeout(resolve, 150));
-}
+import * as emailProviderModule from "../../lib/email-provider";
+import { processEmailQueue } from "../../lib/email-worker";
 
 /** Integration tests against the real local Postgres dev database. */
 describe("vendorApplicationsService", () => {
@@ -202,45 +199,46 @@ describe("vendorApplicationsService", () => {
     expect(updated?.decisionReason).toBe("Unable to verify identity.");
   });
 
-  it("emails the applicant when their application is approved", async () => {
-    const spy = vi.spyOn(emailModule, "sendVendorApplicationApprovedEmail").mockResolvedValue(undefined);
+  it("notifies and emails the applicant when their application is approved", async () => {
     const application = await submitFullApplication();
 
     const result = await vendorApplicationsService.approve(adminUserId, application.id);
     expect(result.ok).toBe(true);
     if (result.ok) createdVendorIds.push(result.value.vendorId);
-    await flushMicrotasks();
 
+    // Checked at the DB layer rather than via a spy on the shared emailProvider
+    // singleton — this suite's tests share one Postgres instance with every
+    // other test file, so a global send-call-count assertion is fragile;
+    // "was the right job enqueued for the right recipient" is not.
     const applicantEmail = (await prisma.user.findUnique({ where: { id: applicantUserId } }))!.email;
-    expect(spy).toHaveBeenCalledWith(
-      expect.objectContaining({ to: applicantEmail, storeName: validBusiness.displayName }),
-    );
-    spy.mockRestore();
+    const notification = await prisma.notification.findFirst({ where: { eventKey: `vendor-application-approved:${application.id}` } });
+    expect(notification).not.toBeNull();
+    const job = await prisma.emailDeliveryJob.findFirst({ where: { notificationId: notification!.id } });
+    expect(job?.to).toBe(applicantEmail);
+    expect(job?.templateKey).toBe("vendor-application-approved");
   });
 
-  it("emails the applicant with the reason when changes are requested", async () => {
-    const spy = vi.spyOn(emailModule, "sendVendorApplicationChangesRequestedEmail").mockResolvedValue(undefined);
+  it("notifies and emails the applicant with the reason when changes are requested", async () => {
     const application = await submitFullApplication();
 
     await vendorApplicationsService.requestChanges(adminUserId, application.id, "Add your registration number.");
-    await flushMicrotasks();
 
     const applicantEmail = (await prisma.user.findUnique({ where: { id: applicantUserId } }))!.email;
-    expect(spy).toHaveBeenCalledWith(
-      expect.objectContaining({ to: applicantEmail, reason: "Add your registration number." }),
-    );
-    spy.mockRestore();
+    const notification = await prisma.notification.findFirst({ where: { eventKey: { startsWith: `vendor-application-changes-requested:${application.id}:` } } });
+    expect(notification).not.toBeNull();
+    const job = await prisma.emailDeliveryJob.findFirst({ where: { notificationId: notification!.id } });
+    expect(job?.to).toBe(applicantEmail);
+    expect((job?.templateData as Record<string, unknown>)?.["reason"]).toBe("Add your registration number.");
   });
 
   it("a failing email provider does not roll back or fail an already-successful approval", async () => {
-    const spy = vi
-      .spyOn(emailModule, "sendVendorApplicationApprovedEmail")
-      .mockRejectedValue(new Error("simulated provider outage"));
     const application = await submitFullApplication();
+    const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValue(new Error("simulated provider outage"));
 
     const result = await vendorApplicationsService.approve(adminUserId, application.id);
     expect(result.ok).toBe(true); // approval itself must still succeed
     if (result.ok) createdVendorIds.push(result.value.vendorId);
+    await processEmailQueue();
 
     const updated = await vendorApplicationsService.getForUser(applicantUserId);
     expect(updated?.status).toBe("APPROVED");

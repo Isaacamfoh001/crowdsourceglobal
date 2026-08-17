@@ -3,10 +3,41 @@ import { messagingRepository } from "./repository";
 import { onMessagePersisted } from "./events";
 import { catalogueRepository } from "../catalogue/repository";
 import { vendorsRepository } from "../vendors/repository";
+import { administrationRepository } from "../administration/repository";
+import { notificationsService } from "../notifications/service";
+import { notificationLinks } from "../notifications/links";
 import { ok, err, type Result } from "../../lib/result";
 import type { ConversationDetail, ConversationSummary, MessageView, AdminConversationSummary } from "./types";
 
 type RawConversation = Awaited<ReturnType<typeof messagingRepository.findAllForAdmin>>[number];
+
+/**
+ * Staff-attention notification for an inbound customer/vendor message —
+ * every send is a genuinely new event (message.id is naturally unique), so
+ * the eventKey needs no extra timestamp component. Broadcasts to every
+ * admin (same pattern as new-vendor-application/new-sourcing-request) —
+ * there is no per-conversation assignment concept for messaging in M7, see
+ * docs/domain/entities.md.
+ */
+async function notifyStaffOfNewMessage(conversationId: string, messageId: string, counterpartyName: string): Promise<void> {
+  const admins = await administrationRepository.listAllForNotification();
+  for (const admin of admins) {
+    await notificationsService.notify({
+      recipientUserId: admin.userId,
+      type: "ADMIN_NEW_MESSAGE",
+      title: "New message needs a reply",
+      body: `${counterpartyName} sent a new message.`,
+      targetUrl: notificationLinks.adminMessage(conversationId),
+      eventKey: `admin-new-message:${messageId}:${admin.userId}`,
+      email: {
+        to: admin.user.email,
+        subject: "New message needs a reply",
+        templateKey: "admin-new-message",
+        templateData: { counterpartyName, conversationId },
+      },
+    });
+  }
+}
 
 function contextLabel(row: RawConversation): string {
   if (row.contextListing) {
@@ -125,6 +156,8 @@ export const messagingService = {
     if (existing) {
       const message = await messagingRepository.addMessage(existing.id, input.senderUserId, input.body, false);
       onMessagePersisted({ id: message.id, conversationId: existing.id, senderIsStaff: false });
+      const counterpartyName = existing.customerProfile?.displayName ?? existing.customerProfile?.user.name ?? "A customer";
+      void notifyStaffOfNewMessage(existing.id, message.id, counterpartyName);
       return ok({ conversationId: existing.id });
     }
 
@@ -141,6 +174,8 @@ export const messagingService = {
     const firstMessage = created.messages.at(-1);
     if (firstMessage) {
       onMessagePersisted({ id: firstMessage.id, conversationId: created.id, senderIsStaff: false });
+      const counterpartyName = created.customerProfile?.displayName ?? created.customerProfile?.user.name ?? "A customer";
+      void notifyStaffOfNewMessage(created.id, firstMessage.id, counterpartyName);
     }
     return ok({ conversationId: created.id });
   },
@@ -156,6 +191,8 @@ export const messagingService = {
     if (!conversation) return err("Conversation not found.");
     const message = await messagingRepository.addMessage(conversationId, senderUserId, body, false);
     onMessagePersisted({ id: message.id, conversationId, senderIsStaff: false });
+    const counterpartyName = conversation.customerProfile?.displayName ?? conversation.customerProfile?.user.name ?? "A customer";
+    void notifyStaffOfNewMessage(conversationId, message.id, counterpartyName);
     return ok(null);
   },
 
@@ -177,6 +214,7 @@ export const messagingService = {
     const firstMessage = created.messages.at(-1);
     if (firstMessage) {
       onMessagePersisted({ id: firstMessage.id, conversationId: created.id, senderIsStaff: false });
+      void notifyStaffOfNewMessage(created.id, firstMessage.id, created.vendor?.companyName ?? "A vendor");
     }
     return ok({ conversationId: created.id });
   },
@@ -192,6 +230,7 @@ export const messagingService = {
     if (!conversation) return err("Conversation not found.");
     const message = await messagingRepository.addMessage(conversationId, senderUserId, body, false);
     onMessagePersisted({ id: message.id, conversationId, senderIsStaff: false });
+    void notifyStaffOfNewMessage(conversationId, message.id, conversation.vendor?.companyName ?? "A vendor");
     return ok(null);
   },
 
@@ -213,6 +252,42 @@ export const messagingService = {
     if (!conversation) return err("Conversation not found.");
     const message = await messagingRepository.addMessage(conversationId, staffUserId, body, true);
     onMessagePersisted({ id: message.id, conversationId, senderIsStaff: true });
+
+    if (conversation.participantType === "CUSTOMER" && conversation.customerProfile) {
+      await notificationsService.notify({
+        recipientUserId: conversation.customerProfile.userId,
+        type: "STAFF_REPLY",
+        title: "CrownSourceGlobal replied to your message",
+        body: "You have a new reply from CrownSourceGlobal.",
+        targetUrl: notificationLinks.customerMessage(conversationId),
+        eventKey: `staff-reply:${message.id}`,
+        email: {
+          to: conversation.customerProfile.user.email,
+          subject: "CrownSourceGlobal replied to your message",
+          templateKey: "staff-reply",
+          templateData: { conversationId },
+        },
+      });
+    } else if (conversation.participantType === "VENDOR" && conversation.vendor) {
+      const owner = await vendorsRepository.findOwnerUserIdAndEmail(conversation.vendor.id);
+      if (owner) {
+        await notificationsService.notify({
+          recipientUserId: owner.userId,
+          type: "VENDOR_STAFF_REPLY",
+          title: "CrownSourceGlobal replied to your message",
+          body: "You have a new reply from CrownSourceGlobal.",
+          targetUrl: notificationLinks.vendorMessage(conversationId),
+          eventKey: `vendor-staff-reply:${message.id}`,
+          email: {
+            to: owner.email,
+            subject: "CrownSourceGlobal replied to your message",
+            templateKey: "vendor-staff-reply",
+            templateData: { conversationId },
+          },
+        });
+      }
+    }
+
     return ok(null);
   },
 

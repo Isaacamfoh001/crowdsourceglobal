@@ -16,8 +16,8 @@ export const administrationRepository = {
     });
   },
 
-  /** Feeds the M6 "new sourcing request" staff notification. */
-  listAllEmails() {
-    return prisma.adminUser.findMany({ select: { user: { select: { email: true } } } });
+  /** Feeds M7 staff-attention notifications (new vendor application, new sourcing request, new message). */
+  listAllForNotification() {
+    return prisma.adminUser.findMany({ select: { userId: true, user: { select: { email: true } } } });
   },
 };

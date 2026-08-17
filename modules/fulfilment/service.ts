@@ -1,15 +1,9 @@
 import { fulfilmentRepository } from "./repository";
 import { logisticsRepository } from "../logistics/repository";
 import { vendorsRepository } from "../vendors/repository";
+import { notificationsService } from "../notifications/service";
+import { notificationLinks } from "../notifications/links";
 import { ok, err, type Result } from "../../lib/result";
-import {
-  sendCollectionScheduledEmail,
-  sendFulfilmentIssueResolvedEmail,
-  sendPackageCollectedEmail,
-  sendOutForDeliveryEmail,
-  sendDeliveredEmail,
-  sendDeliveryIssueEmail,
-} from "../../lib/email";
 import type {
   AdminFulfilmentDetail,
   AdminFulfilmentSummary,
@@ -67,10 +61,6 @@ function toShipmentView(raw: {
 }
 
 const ISSUE_REPORTABLE_STATUSES = ["PENDING", "PREPARING", "READY"];
-
-function notifySafely(send: () => Promise<void>): void {
-  send().catch((error) => console.error("Notification dispatch failed:", error));
-}
 
 export const fulfilmentService = {
   // --- Vendor --------------------------------------------------------------
@@ -225,15 +215,23 @@ export const fulfilmentService = {
     if (data.scheduledAt) {
       const context = await fulfilmentRepository.findNotificationContext(fulfilmentId);
       if (context) {
-        const vendorEmail = await vendorsRepository.findOwnerEmail(context.vendorId);
-        if (vendorEmail) {
-          notifySafely(() =>
-            sendCollectionScheduledEmail({
-              to: vendorEmail,
-              orderNumber: context.orderNumber,
-              scheduledAt: data.scheduledAt!.toLocaleString("en-GB"),
-            }),
-          );
+        const owner = await vendorsRepository.findOwnerUserIdAndEmail(context.vendorId);
+        if (owner) {
+          const scheduledAtText = data.scheduledAt.toLocaleString("en-GB");
+          await notificationsService.notify({
+            recipientUserId: owner.userId,
+            type: "COLLECTION_SCHEDULED",
+            title: "Collection scheduled",
+            body: `Collection for order ${context.orderNumber} has been scheduled: ${scheduledAtText}.`,
+            targetUrl: notificationLinks.vendorOrder(fulfilmentId),
+            eventKey: `collection-scheduled:${fulfilmentId}:${data.scheduledAt.getTime()}`,
+            email: {
+              to: owner.email,
+              subject: "Collection scheduled",
+              templateKey: "collection-scheduled",
+              templateData: { orderNumber: context.orderNumber, scheduledAt: scheduledAtText, fulfilmentId },
+            },
+          });
         }
       }
     }
@@ -249,7 +247,20 @@ export const fulfilmentService = {
     if (!applied) return err("This order isn't awaiting collection/receipt.");
     const context = await fulfilmentRepository.findNotificationContext(fulfilmentId);
     if (context) {
-      notifySafely(() => sendPackageCollectedEmail({ to: context.customerEmail, orderNumber: context.orderNumber }));
+      await notificationsService.notify({
+        recipientUserId: context.customerUserId,
+        type: "PACKAGE_COLLECTED",
+        title: "Your order is on its way",
+        body: `Your order ${context.orderNumber} has been collected and is on its way.`,
+        targetUrl: notificationLinks.customerOrder(context.orderId),
+        eventKey: `package-collected:${fulfilmentId}`,
+        email: {
+          to: context.customerEmail,
+          subject: "Your order is on its way",
+          templateKey: "package-collected",
+          templateData: { orderNumber: context.orderNumber, orderId: context.orderId },
+        },
+      });
     }
     return ok(null);
   },
@@ -264,7 +275,20 @@ export const fulfilmentService = {
     if (!applied) return err("This shipment isn't in transit.");
     const context = await fulfilmentRepository.findNotificationContext(fulfilmentId);
     if (context) {
-      notifySafely(() => sendOutForDeliveryEmail({ to: context.customerEmail, orderNumber: context.orderNumber }));
+      await notificationsService.notify({
+        recipientUserId: context.customerUserId,
+        type: "OUT_FOR_DELIVERY",
+        title: "Out for delivery",
+        body: `Your order ${context.orderNumber} is out for delivery today.`,
+        targetUrl: notificationLinks.customerOrder(context.orderId),
+        eventKey: `out-for-delivery:${fulfilmentId}`,
+        email: {
+          to: context.customerEmail,
+          subject: "Your order is out for delivery",
+          templateKey: "out-for-delivery",
+          templateData: { orderNumber: context.orderNumber, orderId: context.orderId },
+        },
+      });
     }
     return ok(null);
   },
@@ -276,7 +300,20 @@ export const fulfilmentService = {
     if (!applied) return err("This shipment isn't out for delivery.");
     const context = await fulfilmentRepository.findNotificationContext(fulfilmentId);
     if (context) {
-      notifySafely(() => sendDeliveredEmail({ to: context.customerEmail, orderNumber: context.orderNumber }));
+      await notificationsService.notify({
+        recipientUserId: context.customerUserId,
+        type: "DELIVERED",
+        title: "Order delivered",
+        body: `Your order ${context.orderNumber} has been delivered.`,
+        targetUrl: notificationLinks.customerOrder(context.orderId),
+        eventKey: `delivered:${fulfilmentId}`,
+        email: {
+          to: context.customerEmail,
+          subject: "Your order has been delivered",
+          templateKey: "delivered",
+          templateData: { orderNumber: context.orderNumber, orderId: context.orderId },
+        },
+      });
     }
     return ok(null);
   },
@@ -291,7 +328,20 @@ export const fulfilmentService = {
     if (!applied) return err("This shipment can't be marked as a failed delivery right now.");
     const context = await fulfilmentRepository.findNotificationContext(fulfilmentId);
     if (context) {
-      notifySafely(() => sendDeliveryIssueEmail({ to: context.customerEmail, orderNumber: context.orderNumber, notes }));
+      await notificationsService.notify({
+        recipientUserId: context.customerUserId,
+        type: "DELIVERY_ISSUE",
+        title: "Delivery problem",
+        body: `There was a problem delivering order ${context.orderNumber}: ${notes}`,
+        targetUrl: notificationLinks.customerOrder(context.orderId),
+        eventKey: `delivery-issue:${fulfilmentId}:${Date.now()}`,
+        email: {
+          to: context.customerEmail,
+          subject: "There was a problem delivering your order",
+          templateKey: "delivery-issue",
+          templateData: { orderNumber: context.orderNumber, orderId: context.orderId, notes },
+        },
+      });
     }
     return ok(null);
   },
@@ -307,9 +357,22 @@ export const fulfilmentService = {
     if (!result) return err("This issue is already resolved.");
     const context = await fulfilmentRepository.findNotificationContext(result.fulfilmentId);
     if (context) {
-      const vendorEmail = await vendorsRepository.findOwnerEmail(context.vendorId);
-      if (vendorEmail) {
-        notifySafely(() => sendFulfilmentIssueResolvedEmail({ to: vendorEmail, orderNumber: context.orderNumber, resolutionNotes }));
+      const owner = await vendorsRepository.findOwnerUserIdAndEmail(context.vendorId);
+      if (owner) {
+        await notificationsService.notify({
+          recipientUserId: owner.userId,
+          type: "FULFILMENT_ISSUE_RESOLVED",
+          title: "Order issue resolved",
+          body: `The issue on order ${context.orderNumber} has been resolved: ${resolutionNotes}`,
+          targetUrl: notificationLinks.vendorOrder(result.fulfilmentId),
+          eventKey: `fulfilment-issue-resolved:${issueId}`,
+          email: {
+            to: owner.email,
+            subject: "Order issue resolved",
+            templateKey: "fulfilment-issue-resolved",
+            templateData: { orderNumber: context.orderNumber, resolutionNotes, fulfilmentId: result.fulfilmentId },
+          },
+        });
       }
     }
     return ok(null);

@@ -5,13 +5,10 @@ import { quotationService } from "../quotation/service";
 import { ordersService } from "../orders/service";
 import { messagingService } from "../messaging/service";
 import { validateAttachment } from "../../lib/attachment-validation";
-import * as emailModule from "../../lib/email";
+import * as emailProviderModule from "../../lib/email-provider";
+import { processEmailQueue } from "../../lib/email-worker";
 import type { DeliveryInfo } from "../orders/types";
 import type { SourcingRequestInput } from "./types";
-
-async function flush() {
-  await new Promise((resolve) => setTimeout(resolve, 150));
-}
 
 const deliveryInfo: DeliveryInfo = {
   recipientName: "Ama Customer",
@@ -377,17 +374,24 @@ describe("sourcingService", () => {
     expect(serialized).not.toContain("vendorPayableBasis");
   });
 
-  it("dispatches a quote-ready email exactly once and doesn't fail issuance when delivery fails", async () => {
-    const spy = vi.spyOn(emailModule, "sendSourcingQuoteReadyEmail").mockResolvedValue(undefined);
+  it("dispatches a quote-ready notification and email exactly once, and doesn't fail issuance when delivery fails", async () => {
     const { quote } = await sourceAndQuote();
     expect(quote.ok).toBe(true);
-    await flush();
-    expect(spy).toHaveBeenCalledTimes(1);
-    spy.mockRestore();
+    if (!quote.ok) return;
 
-    const spyFail = vi.spyOn(emailModule, "sendSourcingQuoteReadyEmail").mockRejectedValue(new Error("outage"));
+    // Checked at the DB layer, not via a spy on the shared emailProvider
+    // singleton — every test file in this suite shares one Postgres
+    // instance, so a global send-call-count assertion is fragile; "exactly
+    // one job was enqueued for this specific quotation" is not (the
+    // eventKey's uniqueness constraint is the actual dedup guarantee).
+    const notification = await prisma.notification.findFirst({ where: { eventKey: `sourcing-quote-ready:${quote.value.quotationId}` } });
+    expect(notification).not.toBeNull();
+    const jobs = await prisma.emailDeliveryJob.findMany({ where: { notificationId: notification!.id } });
+    expect(jobs).toHaveLength(1);
+
+    const spyFail = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValue(new Error("outage"));
     const { quote: quote2 } = await sourceAndQuote();
-    await flush();
+    await processEmailQueue();
     expect(quote2.ok).toBe(true); // issuance itself unaffected
     spyFail.mockRestore();
   });
@@ -546,16 +550,18 @@ describe("sourcingService", () => {
   // ---- Unable to source ----------------------------------------------------
 
   it("marks a request unable to source with a customer-safe reason and notifies the customer", async () => {
-    const spy = vi.spyOn(emailModule, "sendSourcingUnableToSourceEmail").mockResolvedValue(undefined);
     const created = await submit(customerAId, customerAEmail);
     if (!created.ok) return;
     await sourcingService.moveToUnderReview(created.value.id);
 
     const result = await sourcingService.markUnableToSource(created.value.id, "We couldn't find a supplier meeting the timeline.");
     expect(result.ok).toBe(true);
-    await flush();
-    expect(spy).toHaveBeenCalledTimes(1);
-    spy.mockRestore();
+
+    // Checked at the DB layer — see the sibling quote-ready test's comment.
+    const notification = await prisma.notification.findFirst({ where: { eventKey: `sourcing-unable-to-source:${created.value.id}` } });
+    expect(notification).not.toBeNull();
+    const jobs = await prisma.emailDeliveryJob.findMany({ where: { notificationId: notification!.id } });
+    expect(jobs).toHaveLength(1);
 
     const detail = await sourcingService.getDetailForCustomer(created.value.id, customerAId);
     expect(detail?.status).toBe("UNABLE_TO_SOURCE");

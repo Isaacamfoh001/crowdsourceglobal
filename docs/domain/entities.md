@@ -112,7 +112,13 @@ The third purchasing path (see workflows.md's "Purchasing Paths" summary and Wor
 
 **Message** — id `PK`, conversationId `FK→Conversation IDX`, senderUserId `FK→User`, body, createdAt.
 
-**Notification** — id `PK`, userId `FK→User IDX`, eventType, payload (JSON), channel, deliveryStatus, readAt (nullable), createdAt.
+## Notifications *(implemented M7)*
+
+**Notification** — id `PK`, recipientUserId `FK→User IDX, onDelete Cascade`, type (`NotificationType`, 24-value enum spanning vendor applications, listings, orders/fulfilment/delivery, quotations, custom sourcing, messaging, and admin-facing events), title, body, targetUrl (app-relative, built only from `modules/notifications/links.ts` — never client-supplied or Host-header-derived), eventKey (dedup key, scoped per-recipient), readAt (nullable), createdAt. `@@unique([recipientUserId, eventKey])` — the entire dedup/idempotency guarantee for "one business event → one notification per recipient," even under retried callbacks or double-clicks. `@@index([recipientUserId, createdAt])` and `@@index([recipientUserId, readAt])` back the notification list and unread-count queries respectively. No raw HTML is stored — `title`/`body` are structured plain text; email rendering is a separate concern (see below). No separate role-scoped recipient table: `recipientUserId` is Better Auth's `User.id` directly, which is what gives a multi-role User (Customer + Vendor + Admin) one deduplicated stream.
+
+**EmailDeliveryJob** — id `PK`, notificationId `FK→Notification UQ, onDelete Cascade` (nullable — a job always maps to at most one Notification, 1:1), to, subject, templateKey, templateData (JSON), status (`PENDING|SENDING|SENT|FAILED`), attempts (int, default 0), maxAttempts (int, default 5), availableAt (default now — the backoff eligibility gate), lastError (nullable), sentAt (nullable), createdAt, updatedAt. `@@index([status, availableAt])` backs the worker's candidate-batch claim query. Deliberately a dedicated table, not a generic `BackgroundJob` — email is the only async job type in the system today (see `/docs/architecture/overview.md`'s "Notifications & Email Delivery" section for the full reasoning and the generalization path if a second job type emerges).
+
+**NotificationPreference** — id `PK`, userId `FK→User UQ, onDelete Cascade`, ordersDeliveryEmail (boolean, default true), quotationsSourcingEmail (boolean, default true), messagesEmail (boolean, default true), createdAt, updatedAt. Three togglable categories only — not an enterprise per-event-type matrix. `modules/notifications/policy.ts`'s static map decides which `NotificationType`s are gated by which category, and which are `required: true` (never gated at all — moderation outcomes, commerce-critical confirmations, and admin-facing events). In-app notifications are never gated by this table; it only ever governs the email channel.
 
 ## Operational / Cross-Cutting
 
@@ -120,7 +126,7 @@ The third purchasing path (see workflows.md's "Purchasing Paths" summary and Wor
 
 **IdempotencyKey** — id `PK`, key `UQ`, scope (`checkout|webhook|payout_claim`), resultRef, createdAt.
 
-**BackgroundJob** — id `PK`, type, payload (JSON), status (`pending|processing|done|failed`), attempts, runAfter, createdAt.
+**BackgroundJob** — planned generic shape for future async job types; not yet implemented. M7 built `EmailDeliveryJob` (above) as a dedicated table for the one async job type that exists today rather than generalizing ahead of a second use case — see `/docs/architecture/overview.md`.
 
 **AuditEvent** — id `PK`, actorUserId `FK→User` (nullable for system), action, targetType, targetId, metadata (JSON), createdAt `IDX`.
 

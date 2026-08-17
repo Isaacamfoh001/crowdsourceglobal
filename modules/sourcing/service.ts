@@ -3,13 +3,8 @@ import { generateSourcingRequestNumber } from "../../lib/sourcing-number";
 import { storageProvider, generateStorageKey } from "../../lib/storage";
 import { validateAttachment, sanitizeFilename, MAX_ATTACHMENTS_PER_REQUEST } from "../../lib/attachment-validation";
 import { ok, err, type Result } from "../../lib/result";
-import {
-  sendSourcingRequestSubmittedEmail,
-  sendNewSourcingRequestToStaffEmail,
-  sendSourcingClarificationNeededEmail,
-  sendSourcingQuoteReadyEmail,
-  sendSourcingUnableToSourceEmail,
-} from "../../lib/email";
+import { notificationsService } from "../notifications/service";
+import { notificationLinks } from "../notifications/links";
 import { administrationRepository } from "../administration/repository";
 import { messagingService } from "../messaging/service";
 import { quotationService } from "../quotation/service";
@@ -43,14 +38,23 @@ const STATUS_LABELS: Record<SourcingRequestStatus, string> = {
 
 const CANCELLABLE_STATUSES: SourcingRequestStatus[] = ["SUBMITTED", "UNDER_REVIEW", "SOURCING", "AWAITING_CUSTOMER"];
 
-function notifySafely(send: () => Promise<void>): void {
-  send().catch((error) => console.error("Notification dispatch failed:", error));
-}
-
-async function notifyStaffOfNewRequest(requestNumber: string, title: string): Promise<void> {
-  const admins = await administrationRepository.listAllEmails();
+async function notifyStaffOfNewRequest(requestId: string, requestNumber: string, title: string): Promise<void> {
+  const admins = await administrationRepository.listAllForNotification();
   for (const admin of admins) {
-    notifySafely(() => sendNewSourcingRequestToStaffEmail({ to: admin.user.email, requestNumber, title }));
+    await notificationsService.notify({
+      recipientUserId: admin.userId,
+      type: "ADMIN_NEW_SOURCING_REQUEST",
+      title: "New sourcing request",
+      body: `New custom sourcing request ${requestNumber}: "${title}".`,
+      targetUrl: notificationLinks.adminSourcing(requestId),
+      eventKey: `admin-new-sourcing-request:${requestId}`,
+      email: {
+        to: admin.user.email,
+        subject: "New sourcing request",
+        templateKey: "admin-new-sourcing-request",
+        templateData: { requestNumber, title, requestId },
+      },
+    });
   }
 }
 
@@ -128,8 +132,21 @@ export const sourcingService = {
           submittedByUserId,
         );
 
-        notifySafely(() => sendSourcingRequestSubmittedEmail({ to: customerEmail, requestNumber: created.requestNumber }));
-        void notifyStaffOfNewRequest(created.requestNumber, input.title.trim());
+        await notificationsService.notify({
+          recipientUserId: submittedByUserId,
+          type: "SOURCING_REQUEST_SUBMITTED",
+          title: "Request received",
+          body: `We've received your sourcing request ${created.requestNumber}.`,
+          targetUrl: notificationLinks.customerSourcing(created.id),
+          eventKey: `sourcing-request-submitted:${created.id}`,
+          email: {
+            to: customerEmail,
+            subject: "We've received your sourcing request",
+            templateKey: "sourcing-request-submitted",
+            templateData: { requestNumber: created.requestNumber, requestId: created.id },
+          },
+        });
+        await notifyStaffOfNewRequest(created.id, created.requestNumber, input.title.trim());
 
         return ok({ id: created.id, requestNumber: created.requestNumber });
       } catch (error) {
@@ -366,9 +383,20 @@ export const sourcingService = {
     if (!messageResult.ok) return messageResult;
 
     await sourcingRepository.createActivity(id, "clarification_requested", staffUserId);
-    notifySafely(() =>
-      sendSourcingClarificationNeededEmail({ to: context.customerProfile.user.email, requestNumber: context.requestNumber }),
-    );
+    await notificationsService.notify({
+      recipientUserId: context.customerProfile.userId,
+      type: "SOURCING_CLARIFICATION_NEEDED",
+      title: "We need more information from you",
+      body: `CrownSourceGlobal needs more information about your sourcing request ${context.requestNumber}.`,
+      targetUrl: notificationLinks.customerSourcing(id),
+      eventKey: `sourcing-clarification-needed:${id}:${Date.now()}`,
+      email: {
+        to: context.customerProfile.user.email,
+        subject: "We need more information from you",
+        templateKey: "sourcing-clarification-needed",
+        templateData: { requestNumber: context.requestNumber, requestId: id },
+      },
+    });
     return ok(null);
   },
 
@@ -514,13 +542,20 @@ export const sourcingService = {
 
     const context = await sourcingRepository.findOwnerEmailAndNumber(id);
     if (context) {
-      notifySafely(() =>
-        sendSourcingQuoteReadyEmail({
+      await notificationsService.notify({
+        recipientUserId: context.customerProfile.userId,
+        type: "SOURCING_QUOTE_READY",
+        title: "Your sourcing quotation is ready",
+        body: `Your quotation for sourcing request ${context.requestNumber} is ready: ${result.value.reference}.`,
+        targetUrl: notificationLinks.customerSourcing(id),
+        eventKey: `sourcing-quote-ready:${result.value.quotationId}`,
+        email: {
           to: context.customerProfile.user.email,
-          requestNumber: context.requestNumber,
-          reference: result.value.reference,
-        }),
-      );
+          subject: "Your sourcing quotation is ready",
+          templateKey: "sourcing-quote-ready",
+          templateData: { requestNumber: context.requestNumber, reference: result.value.reference, requestId: id },
+        },
+      });
     }
 
     return result;
@@ -537,13 +572,20 @@ export const sourcingService = {
 
     const context = await sourcingRepository.findOwnerEmailAndNumber(id);
     if (context) {
-      notifySafely(() =>
-        sendSourcingUnableToSourceEmail({
+      await notificationsService.notify({
+        recipientUserId: context.customerProfile.userId,
+        type: "SOURCING_UNABLE_TO_SOURCE",
+        title: "We couldn't source this request",
+        body: `We're unable to source your request ${context.requestNumber}: ${customerSafeReason.trim()}`,
+        targetUrl: notificationLinks.customerSourcing(id),
+        eventKey: `sourcing-unable-to-source:${id}`,
+        email: {
           to: context.customerProfile.user.email,
-          requestNumber: context.requestNumber,
-          reason: customerSafeReason.trim(),
-        }),
-      );
+          subject: "We couldn't source this request",
+          templateKey: "sourcing-unable-to-source",
+          templateData: { requestNumber: context.requestNumber, reason: customerSafeReason.trim(), requestId: id },
+        },
+      });
     }
     return ok(null);
   },

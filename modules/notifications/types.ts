@@ -1,0 +1,65 @@
+export type NotificationType =
+  | "VENDOR_APPLICATION_SUBMITTED"
+  | "VENDOR_APPLICATION_APPROVED"
+  | "VENDOR_APPLICATION_CHANGES_REQUESTED"
+  | "VENDOR_APPLICATION_REJECTED"
+  | "LISTING_APPROVED"
+  | "LISTING_CHANGES_REQUESTED"
+  | "LISTING_REJECTED"
+  | "ORDER_CONFIRMED"
+  | "VENDOR_NEW_ORDER"
+  | "COLLECTION_SCHEDULED"
+  | "PACKAGE_COLLECTED"
+  | "OUT_FOR_DELIVERY"
+  | "DELIVERED"
+  | "DELIVERY_ISSUE"
+  | "FULFILMENT_ISSUE_RESOLVED"
+  | "QUOTE_ISSUED"
+  | "SOURCING_REQUEST_SUBMITTED"
+  | "SOURCING_CLARIFICATION_NEEDED"
+  | "SOURCING_QUOTE_READY"
+  | "SOURCING_UNABLE_TO_SOURCE"
+  | "STAFF_REPLY"
+  | "VENDOR_STAFF_REPLY"
+  | "ADMIN_NEW_VENDOR_APPLICATION"
+  | "ADMIN_NEW_SOURCING_REQUEST"
+  | "ADMIN_NEW_MESSAGE";
+
+export type NotificationCategory = "ORDERS_DELIVERY" | "QUOTATIONS_SOURCING" | "MESSAGES";
+
+export type EmailPayload = {
+  to: string;
+  subject: string;
+  templateKey: string;
+  templateData: Record<string, unknown>;
+};
+
+export type NotifyInput = {
+  recipientUserId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  targetUrl: string;
+  /** Dedup key, scoped per-recipient — see schema.prisma's Notification doc comment. */
+  eventKey: string;
+  /** Omit entirely for a purely in-app event; present to also queue an email (subject to preference gating unless REQUIRED). */
+  email?: EmailPayload;
+};
+
+export type NotificationView = {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  targetUrl: string;
+  readAt: Date | null;
+  createdAt: Date;
+};
+
+export type PreferencesView = {
+  ordersDeliveryEmail: boolean;
+  quotationsSourcingEmail: boolean;
+  messagesEmail: boolean;
+};
+
+export type PreferencesInput = Partial<PreferencesView>;

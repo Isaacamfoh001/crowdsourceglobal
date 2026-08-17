@@ -36,7 +36,15 @@ export const ordersRepository = {
   findOwnershipAndStatus(orderId: string, customerProfileId: string) {
     return prisma.order.findFirst({
       where: { id: orderId, customerProfileId },
-      select: { id: true, status: true, paymentStatus: true, total: true, currency: true, orderNumber: true },
+      select: {
+        id: true,
+        status: true,
+        paymentStatus: true,
+        total: true,
+        currency: true,
+        orderNumber: true,
+        customerProfile: { select: { user: { select: { email: true } } } },
+      },
     });
   },
 

@@ -2,11 +2,9 @@ import { prisma } from "../../lib/db";
 import { Prisma } from "../../generated/prisma/client";
 import { slugify } from "../../lib/slug";
 import { ok, err, type Result } from "../../lib/result";
-import {
-  sendVendorApplicationApprovedEmail,
-  sendVendorApplicationChangesRequestedEmail,
-  sendVendorApplicationRejectedEmail,
-} from "../../lib/email";
+import { notificationsService } from "../notifications/service";
+import { notificationLinks } from "../notifications/links";
+import { administrationRepository } from "../administration/repository";
 import { vendorApplicationsRepository } from "./repository";
 import {
   EDITABLE_STATUSES,
@@ -21,14 +19,24 @@ import {
 
 const REVIEWABLE_STATUSES = ["SUBMITTED", "UNDER_REVIEW"];
 
-/**
- * Fire-and-forget notification dispatch — errors are logged, never thrown,
- * so a flaky dev-console adapter (or, later, a real email provider outage)
- * can never surface as a failed moderation action to the admin who already
- * successfully approved/rejected something.
- */
-function notifySafely(send: () => Promise<void>): void {
-  send().catch((error) => console.error("Notification dispatch failed:", error));
+async function notifyStaffOfNewApplication(companyName: string, applicationId: string): Promise<void> {
+  const admins = await administrationRepository.listAllForNotification();
+  for (const admin of admins) {
+    await notificationsService.notify({
+      recipientUserId: admin.userId,
+      type: "ADMIN_NEW_VENDOR_APPLICATION",
+      title: "New vendor application",
+      body: `A new vendor application from "${companyName}" needs review.`,
+      targetUrl: notificationLinks.adminVendorApplication(applicationId),
+      eventKey: `admin-new-vendor-application:${applicationId}`,
+      email: {
+        to: admin.user.email,
+        subject: "New vendor application",
+        templateKey: "admin-new-vendor-application",
+        templateData: { companyName, applicationId },
+      },
+    });
+  }
 }
 
 function validateForSubmission(app: VendorApplicationView): Result<null> {
@@ -122,6 +130,26 @@ export const vendorApplicationsService = {
       submittedAt: new Date(),
       decisionReason: null,
     });
+
+    const storeName = draft.value.displayName ?? "your business";
+    await notificationsService.notify({
+      recipientUserId: userId,
+      type: "VENDOR_APPLICATION_SUBMITTED",
+      title: "Application received",
+      body: `We've received your CrownSourceGlobal vendor application for "${storeName}".`,
+      targetUrl: notificationLinks.vendorOnboardingStatus(),
+      eventKey: `vendor-application-submitted:${draft.value.id}`,
+      email: draft.value.contactEmail
+        ? {
+            to: draft.value.contactEmail,
+            subject: "We've received your vendor application",
+            templateKey: "vendor-application-submitted",
+            templateData: { storeName },
+          }
+        : undefined,
+    });
+    await notifyStaffOfNewApplication(storeName, draft.value.id);
+
     return ok(null);
   },
 
@@ -197,9 +225,20 @@ export const vendorApplicationsService = {
         // Notification dispatch happens after the transaction has already
         // committed — a failing email provider must never roll back or
         // block an approval that already succeeded.
-        notifySafely(() =>
-          sendVendorApplicationApprovedEmail({ to: application.applicant.email, storeName: application.displayName! }),
-        );
+        await notificationsService.notify({
+          recipientUserId: application.applicantUserId,
+          type: "VENDOR_APPLICATION_APPROVED",
+          title: "Application approved",
+          body: `Your vendor application for "${application.displayName}" has been approved.`,
+          targetUrl: notificationLinks.vendorPortal(),
+          eventKey: `vendor-application-approved:${application.id}`,
+          email: {
+            to: application.applicant.email,
+            subject: "Your CrownSourceGlobal vendor application was approved",
+            templateKey: "vendor-application-approved",
+            templateData: { storeName: application.displayName },
+          },
+        });
         return ok({ vendorId: vendor.id });
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -221,7 +260,7 @@ export const vendorApplicationsService = {
     if (!REVIEWABLE_STATUSES.includes(application.status)) {
       return err("This application is not awaiting review.");
     }
-    await prisma.vendorApplication.update({
+    const updated = await prisma.vendorApplication.update({
       where: { id: applicationId },
       data: {
         status: "CHANGES_REQUESTED",
@@ -230,7 +269,20 @@ export const vendorApplicationsService = {
         reviewerUserId: adminUserId,
       },
     });
-    notifySafely(() => sendVendorApplicationChangesRequestedEmail({ to: application.applicant.email, reason }));
+    await notificationsService.notify({
+      recipientUserId: application.applicantUserId,
+      type: "VENDOR_APPLICATION_CHANGES_REQUESTED",
+      title: "Changes requested",
+      body: `CrownSourceGlobal has requested changes to your vendor application: ${reason}`,
+      targetUrl: notificationLinks.vendorOnboardingStatus(),
+      eventKey: `vendor-application-changes-requested:${applicationId}:${updated.reviewedAt!.getTime()}`,
+      email: {
+        to: application.applicant.email,
+        subject: "Changes requested on your vendor application",
+        templateKey: "vendor-application-changes-requested",
+        templateData: { reason },
+      },
+    });
     return ok(null);
   },
 
@@ -243,7 +295,7 @@ export const vendorApplicationsService = {
     if (!REVIEWABLE_STATUSES.includes(application.status)) {
       return err("This application is not awaiting review.");
     }
-    await prisma.vendorApplication.update({
+    const updated = await prisma.vendorApplication.update({
       where: { id: applicationId },
       data: {
         status: "REJECTED",
@@ -252,7 +304,20 @@ export const vendorApplicationsService = {
         reviewerUserId: adminUserId,
       },
     });
-    notifySafely(() => sendVendorApplicationRejectedEmail({ to: application.applicant.email, reason }));
+    await notificationsService.notify({
+      recipientUserId: application.applicantUserId,
+      type: "VENDOR_APPLICATION_REJECTED",
+      title: "Application not approved",
+      body: `Your CrownSourceGlobal vendor application was not approved: ${reason}`,
+      targetUrl: notificationLinks.vendorOnboardingStatus(),
+      eventKey: `vendor-application-rejected:${applicationId}:${updated.reviewedAt!.getTime()}`,
+      email: {
+        to: application.applicant.email,
+        subject: "Your CrownSourceGlobal vendor application was not approved",
+        templateKey: "vendor-application-rejected",
+        templateData: { reason },
+      },
+    });
     return ok(null);
   },
 };

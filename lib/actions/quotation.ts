@@ -155,7 +155,7 @@ export async function generateQuoteAction(
   }
 
   const draftLines = await getQuoteDraftLines();
-  const result = await quotationService.generateFromDraft(customerProfile.id, session.user.email, draftLines);
+  const result = await quotationService.generateFromDraft(customerProfile.id, session.user.id, session.user.email, draftLines);
   if (!result.ok) {
     return result;
   }

@@ -6,7 +6,7 @@ const contextSelect = {
   contextOrder: { select: { id: true, orderNumber: true } },
   contextSourcingRequest: { select: { id: true, requestNumber: true } },
   vendor: { select: { id: true, companyName: true } },
-  customerProfile: { select: { id: true, displayName: true, user: { select: { name: true, email: true } } } },
+  customerProfile: { select: { id: true, userId: true, displayName: true, user: { select: { name: true, email: true } } } },
 } as const;
 
 // createdAt first, id as a deterministic tie-breaker for messages created
