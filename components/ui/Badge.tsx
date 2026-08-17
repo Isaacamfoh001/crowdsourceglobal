@@ -1,10 +1,11 @@
-type BadgeTone = "brand" | "gold" | "neutral" | "onDark";
+type BadgeTone = "brand" | "gold" | "neutral" | "onDark" | "danger";
 
 const toneClasses: Record<BadgeTone, string> = {
   brand: "bg-brand-100 text-brand-800",
   gold: "bg-gold-100 text-gold-800",
   neutral: "bg-stone-100 text-stone-700",
   onDark: "bg-white/10 text-white",
+  danger: "bg-red-100 text-red-800",
 };
 
 export function Badge({

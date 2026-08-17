@@ -167,6 +167,7 @@ export const vendorListingsRepository = {
         approvalStatus: true,
         listingStatus: true,
         pendingChanges: true,
+        submittedAt: true,
         updatedAt: true,
         vendor: { select: { id: true, companyName: true } },
       },
@@ -182,6 +183,9 @@ export const vendorListingsRepository = {
       isEdit: row.pendingChanges !== null,
       vendorId: row.vendor.id,
       vendorName: row.vendor.companyName,
+      /// Non-null here — the `submittedAt: { not: null }` filter above
+      /// guarantees it, but Prisma's generated type can't express that.
+      submittedAt: row.submittedAt as Date,
       updatedAt: row.updatedAt,
     }));
   },

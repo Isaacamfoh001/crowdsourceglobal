@@ -244,8 +244,10 @@ export const sourcingService = {
       status: row.status,
       statusLabel: STATUS_LABELS[row.status],
       submittedAt: row.submittedAt,
+      updatedAt: row.updatedAt,
       requiredByDate: row.requiredByDate,
       customerName: row.customerProfile.displayName,
+      assignedStaffId: row.assignedStaffId,
       assignedStaffName: row.assignedStaff?.user.name ?? null,
       hasQuotation: row.quotations.length > 0,
     }));

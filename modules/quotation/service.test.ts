@@ -460,7 +460,7 @@ describe("quotationService / ordersService.createOrderFromQuotation", () => {
   });
 
   it("does not fail quote issuance when email delivery fails", async () => {
-    const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValue(new Error("simulated outage"));
+    const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValueOnce(new Error("simulated outage"));
     const listing = await seedListing({ vendorId: vendorAId, basePrice: 40, availableQuantity: 100 });
 
     const result = await generate(customerAId, customerAEmail, [{ listingId: listing.id, quantity: 2 }]);

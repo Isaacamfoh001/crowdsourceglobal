@@ -94,10 +94,14 @@ export type AdminFulfilmentSummary = {
   orderNumber: string;
   vendorId: string;
   vendorName: string;
+  vendorLeadTimeDays: number | null;
   createdAt: Date;
+  updatedAt: Date;
   itemCount: number;
   hasOpenIssue: boolean;
   shipmentStatus: ShipmentStatus | null;
+  shipmentShippedAt: Date | null;
+  shipmentReceivedAt: Date | null;
 };
 
 export type AdminFulfilmentDetail = AdminFulfilmentSummary & {

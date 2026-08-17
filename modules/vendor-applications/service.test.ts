@@ -233,7 +233,7 @@ describe("vendorApplicationsService", () => {
 
   it("a failing email provider does not roll back or fail an already-successful approval", async () => {
     const application = await submitFullApplication();
-    const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValue(new Error("simulated provider outage"));
+    const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValueOnce(new Error("simulated provider outage"));
 
     const result = await vendorApplicationsService.approve(adminUserId, application.id);
     expect(result.ok).toBe(true); // approval itself must still succeed

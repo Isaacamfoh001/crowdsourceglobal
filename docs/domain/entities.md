@@ -130,6 +130,10 @@ The third purchasing path (see workflows.md's "Purchasing Paths" summary and Wor
 
 **AuditEvent** — id `PK`, actorUserId `FK→User` (nullable for system), action, targetType, targetId, metadata (JSON), createdAt `IDX`.
 
+## Admin Operations Dashboard *(implemented M8 — no new persisted entities)*
+
+Deliberately introduces **no new database table**. The M8 admin dashboard's "attention items" (`modules/admin-dashboard/types.ts`'s `AttentionItem`) are computed at read time from fields that already exist on `VendorApplication`, `VendorListing`, `CustomSourcingRequest`, `Fulfilment`/`FulfilmentIssue`/`Shipment`, `Conversation`/`Message`, and `Quotation` — never stored anywhere themselves. If a future reader is looking for an `AttentionItem` or similar table in this document and doesn't find one, that's correct, not an omission — see `/docs/architecture/overview.md`'s "Admin Operations Dashboard" section for the full reasoning. Five indexes were added to support the new query shapes this derivation requires: `VendorApplication(status, submittedAt)`, `VendorListing(approvalStatus, submittedAt)`, `Fulfilment(status, updatedAt)`, `Quotation(status, expiresAt)`, `Order(status, createdAt)`.
+
 ## Invariant Enforcement Summary
 
 - **Historical pricing:** `OrderItem`/`FulfilmentItem` store values directly; they never foreign-key into live `Pricing`/`VendorCostRule`.

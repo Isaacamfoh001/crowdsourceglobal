@@ -23,6 +23,7 @@ Authoritative summary of the approved V1 architecture. See `/docs/domain/entitie
 | Messaging | Contextual two-way conversation, two shapes only (Customer↔CSG, CSG↔Vendor) |
 | Notifications | Domain event → in-app record → (optionally) queued email, decoupled from every other domain — `modules/notifications` (implemented M7) |
 | Administration | Permission/operational surface over other domains — not a parallel business-logic layer |
+| Admin Operations Dashboard | Read-only aggregation over every other domain's existing tables — "what needs CrownSource attention right now" — `modules/admin-dashboard` + `modules/operations` (implemented M8) |
 | Audit | Append-only record of who-did-what across all domains |
 
 **Structural note:** there is no canonical cross-vendor `Product` entity. `VendorListing` is the sellable unit — see ADR 0003.
@@ -38,6 +39,7 @@ Authoritative summary of the approved V1 architecture. See `/docs/domain/entitie
 - **Messaging: Customer-thread vs. Vendor-thread** — never merged, structurally preventing a direct Customer↔Vendor channel.
 - **Identity vs. business-profile data** — auth mechanics stay independent of "who is this business."
 - **Domain event vs. communication channel** *(M7)* — no domain service (vendor applications, listings, orders, fulfilment, quotation, sourcing, messaging) knows about Resend, email templates, or the job queue. Every one of them calls a single `notificationsService.notify()`; the notification module alone decides whether/how an email is queued. See "Notifications & Email Delivery" below.
+- **Operational visibility vs. domain mutation** *(M8)* — `modules/admin-dashboard` only ever reads other modules' data (via their existing repositories/services wherever one already exists, or a small number of new bounded read queries where none did) and never writes to them. Every "quick action" a dashboard surface offers is a link to the existing module's own page, which calls that module's own existing service — the dashboard never grows its own parallel mutation path.
 
 ## Application Architecture Shape
 
@@ -107,6 +109,10 @@ Background/async work (webhook post-processing, email, PDF generation, inventory
   /notifications              types, policy (required-vs-optional email), links (deep-link builders),
                                repository, service — implemented M7
   /administration             permission/policy surface, no duplicated business logic
+  /operations                 M8 — centralized ageing thresholds + classification (policy.ts only,
+                               no repository/service — this module has no persisted state of its own)
+  /admin-dashboard            M8 — read-only aggregation: types, repository (KPI counts + bounded
+                               search queries), service (attention-item derivation, role filtering)
   /audit
   # each module: service.ts, repository.ts, policy.ts (authorization), types.ts, *.test.ts
 /prisma                      schema.prisma, migrations
@@ -128,6 +134,21 @@ Background/async work (webhook post-processing, email, PDF generation, inventory
 ## Admin Permission Model
 
 Three roles for V1: `SUPER_ADMIN` (full access), `OPS_ADMIN` (vendors, listings, orders, fulfilment, custom sourcing, messaging), `FINANCE_ADMIN` (payments, refunds, payouts). Splitting finance out is the one granularity worth having given real money movement.
+
+**Capability matrix (documented M8, enforced since M3/M4 — not new)**:
+
+| Area | SUPER_ADMIN | OPS_ADMIN | FINANCE_ADMIN |
+|---|---|---|---|
+| Vendor applications | ✓ | ✓ | ✓ *(unrestricted since M3 — unchanged)* |
+| Listing moderation | ✓ | ✓ | ✓ *(unrestricted since M3 — unchanged)* |
+| Custom sourcing | ✓ | ✓ | ✓ *(unrestricted since M6 — unchanged)* |
+| Quotations (view) | ✓ | ✓ | ✓ *(unrestricted since M5/M6 — unchanged)* |
+| Operations / fulfilment / logistics | ✓ | ✓ | ✗ *(`allowedRoles` since M4)* |
+| Messaging | ✓ | ✓ | ✗ *(`allowedRoles` since M3)* |
+| Admin dashboard | ✓ full | ✓ full | ✓ non-operational sections/counts only |
+| Admin search | ✓ all categories | ✓ all categories | ✓ excludes vendor/shipment/order/operational results |
+
+This is not a new RBAC framework — it is simply `requireAdminSession`'s existing per-route `allowedRoles` parameter, already in use since M3/M4, now also mirrored by `modules/operations/policy.ts`'s `canAccessOperationalModules()` for the M8 dashboard/search surfaces so they never link a role at a route it can't open.
 
 ## Notifications & Email Delivery *(implemented M7)*
 
@@ -151,6 +172,24 @@ Three roles for V1: `SUPER_ADMIN` (full access), `OPS_ADMIN` (vendors, listings,
 
 **Future realtime path.** Nothing in this design blocks adding a WebSocket/SSE layer later: a future publisher would simply also emit `NotificationCreated`/`MessageCreated` from inside `notify()`/`messagingService`, alongside the DB write it already does. No realtime transport exists in V1, and none is required to add it later without redesigning the persistence boundary.
 
+## Admin Operations Dashboard *(implemented M8)*
+
+**Purpose.** `/admin` answers one question: *what needs CrownSource attention right now?* It is a read-only aggregation layer sitting above the existing per-domain admin surfaces (vendor applications, listings, sourcing, quotations, operations, messages) — it does not rebuild, replace, or duplicate any of them. Every attention item and search result deep-links back to the real, existing detail page for that record.
+
+**Derived, not persisted.** There is no `AttentionItem` database table. Every attention item (`modules/admin-dashboard/types.ts`'s `AttentionItem`) is computed at read time from source-of-truth domain records already in the database — a vendor application's `submittedAt`, a fulfilment's `status`/`updatedAt`, a conversation's last message's `senderIsStaff`, and so on. This is what makes items disappear automatically the moment the underlying condition resolves (a vendor application gets approved, a conversation gets a staff reply, a fulfilment issue gets resolved) — there is no separate "mark resolved" action to forget, and no second system that could drift out of sync with the real one.
+
+**Severity is a shared, centralized curve.** `modules/operations/policy.ts` holds every ageing threshold (`OPS_VENDOR_APPLICATION_WARNING_HOURS`, `OPS_LISTING_REVIEW_WARNING_HOURS`, `OPS_MESSAGE_RESPONSE_WARNING_HOURS`, `OPS_SOURCING_STALE_HOURS`, `OPS_FULFILMENT_PREPARING_WARNING_HOURS`, `OPS_SOURCING_DEADLINE_WARNING_DAYS`) plus the classification functions that turn an age into a severity. These are documented operational defaults, not contractual SLAs (same pattern as M5's `QUOTE_VALIDITY_DAYS`) — PROJECT.md does not mandate exact figures, so they're configurable via environment variables rather than buried as magic numbers. The escalation curve is uniform across every ageing-based category: below the threshold is `NORMAL` (routine, not shown as an attention row — only reflected in a plain count elsewhere on the dashboard); the threshold up to 2× is `NEEDS_ATTENTION`; 2× or beyond is `CRITICAL`. A structural failure (an unresolved fulfilment exception, a failed delivery) is always `CRITICAL` regardless of age — it isn't "getting worse over time," it's already broken.
+
+**Lead-time-aware fulfilment ageing, with a documented limitation.** Per-fulfilment ageing for "stuck in preparation" prefers the vendor's own promised lead time (`Vendor.leadTimeDaysDefault`) over the global default when set. No `OrderItem`/`FulfilmentItem` lead-time *snapshot* exists in the schema (unlike pricing, which is always snapshotted at order-confirmation time) — this is a known gap, not an oversight: adding one speculatively, only to feed a staff-triage heuristic, would be exactly the kind of premature schema expansion CLAUDE.md's overengineering guidance warns against. The current vendor lead time is used as a best-effort *operational* signal only, never as commercial/authoritative data — if the vendor's lead time changes after an order is placed, in-flight ageing calculations use the new value. A future lead-time snapshot column is the natural fix if this class of drift ever becomes a real problem.
+
+**Role/access mirrors existing route gating exactly — never invents new restrictions.** `modules/operations/policy.ts`'s `canAccessOperationalModules(role)` returns `true` for `SUPER_ADMIN`/`OPS_ADMIN` and `false` for `FINANCE_ADMIN`, mirroring the `allowedRoles` arrays already enforced on the Messages/Operations/Logistics routes since M3/M4 (`requireAdminSession(path, ["SUPER_ADMIN", "OPS_ADMIN"])`). The dashboard service uses this single function to decide which attention categories, summary counts, and search result types to include for a given role — so a card or search result never points a role at a route that would 404 them. Vendor-applications/listings/sourcing/quotations remain open to all three admin roles on the dashboard, exactly as their underlying routes already are today — M8 deliberately neither widens nor narrows any existing access boundary.
+
+**Search.** One bounded, parallel-query service — `Promise.all` across Order/Quotation/CustomSourcingRequest/Vendor/CustomerProfile/VendorListing/Shipment, each an exact or `ILIKE`, `take: 6` query. No dedicated search infrastructure (no Elasticsearch/Algolia/Meilisearch) — PostgreSQL is sufficient at this scale, per CLAUDE.md §16. Two entities have no dedicated admin detail page today (Order, Customer) — search results for them link to the closest real existing surface instead of inventing a new one: an Order result links to its first Fulfilment's `/admin/operations/[id]` page; a Customer result links to their most recent Quotation or Order. A dedicated `/admin/orders/[id]` or customer-360 page is a natural, explicitly deferred future addition, not built now (CLAUDE.md §25's "do not build a full customer-360/CRM profile in M8").
+
+**Privacy.** The aggregation layer never selects `VendorCostRule`/`vendorPayableBasis`/vendor pickup contact fields, and the message-attention query (`messagingRepository.findOpenConversationsForAttention`) deliberately never selects `Message.body` at all — "awaiting staff reply" is derived purely from who sent the last message and when, so raw message content can never leak into a cross-module summary. See the M8 privacy sweep in the milestone report for the full review.
+
+**Safe KPIs only.** "Today" (orders confirmed, orders delivered, sourcing requests submitted, vendor applications received, quotes issued — each backed by a real, existing timestamp field, not an invented one) and "Current" (active vendors/listings, fulfilments in progress). No GMV, revenue, margin, conversion rate, or AOV — real payment/financial infrastructure doesn't exist yet, so none of those figures would be authoritative. The "Today" block supports a date-range switch (today/7d/30d); the attention queue deliberately does not — it always reflects current unresolved work, never hidden behind a date filter.
+
 ## Security Summary
 
 Full detail in `/docs/workflows/workflows.md` and the decision records; the headline mechanisms:
@@ -162,3 +201,4 @@ Full detail in `/docs/workflows/workflows.md` and the decision records; the head
 - Fulfilment creation and payout claiming are idempotent via database uniqueness constraints, not application-level locking alone.
 - Every domain service emits an `AuditEvent` inline with its own state-changing transaction.
 - Notification read/list/mark-read queries are always scoped by session-derived `recipientUserId`; `targetUrl` deep links are built server-side from known route shapes (`modules/notifications/links.ts`), never from a client value or a request Host header — no open-redirect surface.
+- The M8 admin dashboard/attention queue/search are all gated by `requireAdminSession`; the calling admin's `role` (server-derived from the session, never client-supplied) determines which attention categories, counts, and search result types are included — a query string can filter *within* what a role is already permitted to see, never expand it.

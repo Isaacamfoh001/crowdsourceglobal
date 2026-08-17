@@ -142,11 +142,16 @@ export const fulfilmentRepository = {
         status: true,
         origin: true,
         createdAt: true,
-        vendor: { select: { id: true, companyName: true } },
+        updatedAt: true,
+        vendor: { select: { id: true, companyName: true, leadTimeDaysDefault: true } },
         order: { select: { orderNumber: true } },
         items: { select: { id: true } },
         issues: { where: { status: "OPEN" }, select: { id: true } },
-        shipments: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true } },
+        shipments: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { status: true, shippedAt: true, receivedAt: true },
+        },
       },
       orderBy: { createdAt: "asc" },
     });
@@ -161,6 +166,7 @@ export const fulfilmentRepository = {
           select: {
             id: true,
             companyName: true,
+            leadTimeDaysDefault: true,
             pickupAddressLine1: true,
             pickupContactName: true,
             pickupContactPhone: true,

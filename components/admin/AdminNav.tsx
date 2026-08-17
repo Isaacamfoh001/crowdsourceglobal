@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardCheck, FileText, MessagesSquare, PackageSearch, Search, Truck } from "lucide-react";
+import { AlertCircle, ClipboardCheck, FileText, LayoutDashboard, MessagesSquare, PackageSearch, Search, Truck } from "lucide-react";
 
 const NAV_ITEMS = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/admin/attention", label: "Attention required", icon: AlertCircle },
   { href: "/admin/vendor-applications", label: "Vendor applications", icon: ClipboardCheck },
   { href: "/admin/listings", label: "Listings", icon: PackageSearch },
   { href: "/admin/sourcing", label: "Sourcing", icon: Search },
@@ -19,7 +21,7 @@ export function AdminNav() {
   return (
     <nav className="flex gap-2 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0">
       {NAV_ITEMS.map((item) => {
-        const isActive = pathname.startsWith(item.href);
+        const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
         return (
           <Link
             key={item.href}

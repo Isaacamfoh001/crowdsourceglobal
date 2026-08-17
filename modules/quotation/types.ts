@@ -65,6 +65,7 @@ export type QuotationDetailView = {
 };
 
 export type AdminQuotationSummaryView = QuotationSummaryView & {
+  origin: "INSTANT" | "CUSTOM_SOURCING";
   customerName: string;
   customerEmail: string;
 };

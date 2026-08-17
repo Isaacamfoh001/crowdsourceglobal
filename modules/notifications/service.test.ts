@@ -382,7 +382,13 @@ describe("notificationsService", () => {
     // persistence never depends on the email provider's outcome. The
     // FAILED-status/backoff mechanics themselves are covered directly,
     // without going through the contended shared queue, below.
-    const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValue(new Error("simulated outage"));
+    //
+    // Rejects only the *next* call (not persistently): processEmailQueue()
+    // drains up to 50 eligible jobs per call from the whole shared table,
+    // not just this test's own — a persistent rejection would fail every
+    // other test file's concurrently-pending job it happens to also pick
+    // up in the same drain, not just this one.
+    const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValueOnce(new Error("simulated outage"));
 
     const key = eventKey();
     await notificationsService.notify({
@@ -404,6 +410,11 @@ describe("notificationsService", () => {
 
   it("markJobFailed records the error and schedules a future retry", async () => {
     const key = eventKey();
+    // No email payload here (see the exhausted-attempts test above for why):
+    // the job row is inserted directly, already parked with a far-future
+    // availableAt, so it's never eligible for any concurrent drain — from
+    // this test's own notify() kick or another test file's — to claim and
+    // mutate before markJobFailed runs below.
     const notification = await notificationsRepository.create({
       recipientUserId: userAId,
       type: "DELIVERY_ISSUE",
@@ -411,15 +422,23 @@ describe("notificationsService", () => {
       body: "There was an issue with your delivery.",
       targetUrl: notificationLinks.customerOrder("order-retry"),
       eventKey: key,
-      email: { to: userAEmail, subject: "Delivery issue", templateKey: "delivery-issue", templateData: {} },
     });
-    const job = await prisma.emailDeliveryJob.findFirst({ where: { notificationId: notification!.id } });
-    expect(job).not.toBeNull();
+    expect(notification).not.toBeNull();
+    const job = await prisma.emailDeliveryJob.create({
+      data: {
+        notificationId: notification!.id,
+        to: userAEmail,
+        subject: "Delivery issue",
+        templateKey: "delivery-issue",
+        templateData: {},
+        availableAt: new Date(Date.now() + 10 * 60_000),
+      },
+    });
 
     const retryAt = new Date(Date.now() + 5 * 60_000);
-    await notificationsRepository.markJobFailed(job!.id, "simulated outage", retryAt);
+    await notificationsRepository.markJobFailed(job.id, "simulated outage", retryAt);
 
-    const updated = await prisma.emailDeliveryJob.findUnique({ where: { id: job!.id } });
+    const updated = await prisma.emailDeliveryJob.findUnique({ where: { id: job.id } });
     expect(updated?.status).toBe("FAILED");
     expect(updated?.lastError).toBe("simulated outage");
     expect(updated?.availableAt.getTime()).toBe(retryAt.getTime());
@@ -427,6 +446,17 @@ describe("notificationsService", () => {
 
   it("stops retrying a job once it has exhausted its maxAttempts", async () => {
     const key = eventKey();
+    // The Notification is created without an email payload, and the
+    // EmailDeliveryJob is inserted separately, already attempts=maxAttempts
+    // and status=FAILED — i.e. it is *never* PENDING/eligible at any point.
+    // Creating it eligible first and then updating it to exhausted (as an
+    // earlier version of this test did) leaves a real window where a
+    // concurrent drain from another test file — this suite shares one
+    // Postgres job queue across every test file — can claim and complete
+    // it with its own unmocked provider before the update lands, and that
+    // claim's own markJobSent() write can land *after* the update,
+    // clobbering it back to SENT. Never exposing an eligible row at all
+    // removes the race entirely rather than racing to win it.
     const notification = await notificationsRepository.create({
       recipientUserId: userAId,
       type: "DELIVERY_ISSUE",
@@ -434,24 +464,25 @@ describe("notificationsService", () => {
       body: "There was an issue with your delivery.",
       targetUrl: notificationLinks.customerOrder("order-exhausted"),
       eventKey: key,
-      email: { to: userAEmail, subject: "Delivery issue", templateKey: "delivery-issue", templateData: {} },
     });
-    const job = await prisma.emailDeliveryJob.findFirst({ where: { notificationId: notification!.id } });
-    expect(job).not.toBeNull();
-
-    // Simulate "just exhausted its final attempt" directly — attempts at
-    // the cap, status FAILED, per markJobFailed's own exhausted-job
-    // convention (no new availableAt). claimNextJob's candidate filter
-    // checks `attempts < maxAttempts` in application code, so this row can
-    // never be claimed again by anyone, regardless of what the shared
-    // queue's other concurrent activity looks like — the assertion below
-    // holds deterministically even though processEmailQueue() below is a
-    // real call against the shared table.
-    await prisma.emailDeliveryJob.update({ where: { id: job!.id }, data: { attempts: job!.maxAttempts, status: "FAILED" } });
+    expect(notification).not.toBeNull();
+    const maxAttempts = 5;
+    const job = await prisma.emailDeliveryJob.create({
+      data: {
+        notificationId: notification!.id,
+        to: userAEmail,
+        subject: "Delivery issue",
+        templateKey: "delivery-issue",
+        templateData: {},
+        attempts: maxAttempts,
+        maxAttempts,
+        status: "FAILED",
+      },
+    });
 
     await processEmailQueue();
-    const afterDrain = await prisma.emailDeliveryJob.findUnique({ where: { id: job!.id } });
+    const afterDrain = await prisma.emailDeliveryJob.findUnique({ where: { id: job.id } });
     expect(afterDrain?.status).toBe("FAILED");
-    expect(afterDrain?.attempts).toBe(job!.maxAttempts); // never reclaimed
+    expect(afterDrain?.attempts).toBe(maxAttempts); // never reclaimed
   });
 });

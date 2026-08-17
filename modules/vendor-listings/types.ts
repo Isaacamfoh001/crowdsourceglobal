@@ -67,6 +67,7 @@ export type AdminListingSummary = {
   isEdit: boolean;
   vendorName: string;
   vendorId: string;
+  submittedAt: Date;
   updatedAt: Date;
 };
 

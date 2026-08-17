@@ -163,4 +163,30 @@ export const messagingRepository = {
       include: conversationInclude,
     });
   },
+
+  /**
+   * For the M8 admin-dashboard attention aggregation only — deliberately
+   * never selects `Message.body`. A conversation "needs a staff reply" is
+   * derivable from who sent the *last* message and when, without ever
+   * pulling message content into a cross-module dashboard summary (see
+   * docs/architecture/overview.md's privacy review — message content stays
+   * behind the authorized single-conversation view).
+   */
+  findOpenConversationsForAttention() {
+    return prisma.conversation.findMany({
+      where: { status: "OPEN" },
+      select: {
+        id: true,
+        participantType: true,
+        updatedAt: true,
+        customerProfile: { select: { displayName: true } },
+        vendor: { select: { companyName: true } },
+        messages: {
+          orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }],
+          take: 1,
+          select: { senderIsStaff: true, createdAt: true },
+        },
+      },
+    });
+  },
 };

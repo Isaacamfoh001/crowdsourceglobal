@@ -447,7 +447,7 @@ describe("vendorListingsService", () => {
       await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId }, []);
       await vendorListingsService.submitForReview(vendorAId, listingId);
 
-      const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValue(new Error("simulated provider outage"));
+      const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValueOnce(new Error("simulated provider outage"));
       const approveResult = await vendorListingsService.approve(listingId);
       expect(approveResult.ok).toBe(true); // approval itself must still succeed
       await processEmailQueue();

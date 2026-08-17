@@ -308,6 +308,8 @@ model VendorListing {
   @@index([vendorId])
   @@index([categoryId])
   @@index([approvalStatus, listingStatus])
+  /// Backs the M8 admin-dashboard listing-moderation attention/ageing query.
+  @@index([approvalStatus, submittedAt])
   @@map("vendor_listing")
 }
 
@@ -480,6 +482,8 @@ model Quotation {
   @@index([customerProfileId])
   @@index([status])
   @@index([sourcingRequestId])
+  /// Backs the M8 admin-dashboard custom-quote nearing-expiry attention query.
+  @@index([status, expiresAt])
   @@map("quotation")
 }
 
@@ -575,6 +579,8 @@ model Order {
   conversations Conversation[]
 
   @@index([customerProfileId])
+  /// Backs the M8 admin-dashboard "Today" KPI queries (status + date range).
+  @@index([status, createdAt])
   @@map("order")
 }
 
@@ -660,6 +666,9 @@ model Fulfilment {
   @@index([vendorId, status])
   /// Backs the admin Operations queue — filtered by status without a vendor.
   @@index([status])
+  /// Backs the M8 admin-dashboard "overdue" attention query (status +
+  /// how long it's been sitting there).
+  @@index([status, updatedAt])
   @@map("fulfilment")
 }
 
@@ -974,6 +983,8 @@ model VendorApplication {
   vendor   Vendor? @relation(fields: [vendorId], references: [id])
 
   @@index([status])
+  /// Backs the M8 admin-dashboard vendor-application attention/ageing query.
+  @@index([status, submittedAt])
   @@map("vendor_application")
 }
 

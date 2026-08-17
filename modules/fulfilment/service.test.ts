@@ -466,7 +466,7 @@ describe("fulfilmentService", () => {
   });
 
   it("email delivery failure does not roll back an already-committed collection confirmation", async () => {
-    const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValue(new Error("simulated outage"));
+    const spy = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValueOnce(new Error("simulated outage"));
     const { domesticFulfilment } = await placeMultiVendorOrder();
     await fulfilmentService.startPreparing(domesticVendorId, domesticFulfilment.id);
     await fulfilmentService.markReady(domesticVendorId, domesticFulfilment.id);

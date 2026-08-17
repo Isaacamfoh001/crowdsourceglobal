@@ -33,6 +33,19 @@ const envSchema = z.object({
   EMAIL_PROVIDER: z.enum(["console", "resend"]).default("console"),
   EMAIL_FROM: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
+  /**
+   * M8 admin operations dashboard. These are operational defaults for
+   * staff-attention ageing, NOT contractual SLAs — PROJECT.md does not
+   * mandate exact figures, so they're documented, configurable V1 values
+   * (same reasoning as QUOTE_VALIDITY_DAYS above), centralized in
+   * modules/operations/policy.ts rather than scattered as magic numbers.
+   */
+  OPS_VENDOR_APPLICATION_WARNING_HOURS: z.coerce.number().positive().default(24),
+  OPS_LISTING_REVIEW_WARNING_HOURS: z.coerce.number().positive().default(48),
+  OPS_MESSAGE_RESPONSE_WARNING_HOURS: z.coerce.number().positive().default(4),
+  OPS_SOURCING_STALE_HOURS: z.coerce.number().positive().default(24),
+  OPS_FULFILMENT_PREPARING_WARNING_HOURS: z.coerce.number().positive().default(48),
+  OPS_SOURCING_DEADLINE_WARNING_DAYS: z.coerce.number().positive().default(3),
 });
 
 function loadEnv() {
@@ -47,6 +60,12 @@ function loadEnv() {
     EMAIL_PROVIDER: process.env["EMAIL_PROVIDER"] || undefined,
     EMAIL_FROM: process.env["EMAIL_FROM"] || undefined,
     RESEND_API_KEY: process.env["RESEND_API_KEY"] || undefined,
+    OPS_VENDOR_APPLICATION_WARNING_HOURS: process.env["OPS_VENDOR_APPLICATION_WARNING_HOURS"] || undefined,
+    OPS_LISTING_REVIEW_WARNING_HOURS: process.env["OPS_LISTING_REVIEW_WARNING_HOURS"] || undefined,
+    OPS_MESSAGE_RESPONSE_WARNING_HOURS: process.env["OPS_MESSAGE_RESPONSE_WARNING_HOURS"] || undefined,
+    OPS_SOURCING_STALE_HOURS: process.env["OPS_SOURCING_STALE_HOURS"] || undefined,
+    OPS_FULFILMENT_PREPARING_WARNING_HOURS: process.env["OPS_FULFILMENT_PREPARING_WARNING_HOURS"] || undefined,
+    OPS_SOURCING_DEADLINE_WARNING_DAYS: process.env["OPS_SOURCING_DEADLINE_WARNING_DAYS"] || undefined,
   });
 
   if (!parsed.success) {

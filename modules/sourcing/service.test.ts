@@ -389,7 +389,7 @@ describe("sourcingService", () => {
     const jobs = await prisma.emailDeliveryJob.findMany({ where: { notificationId: notification!.id } });
     expect(jobs).toHaveLength(1);
 
-    const spyFail = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValue(new Error("outage"));
+    const spyFail = vi.spyOn(emailProviderModule.emailProvider, "send").mockRejectedValueOnce(new Error("outage"));
     const { quote: quote2 } = await sourceAndQuote();
     await processEmailQueue();
     expect(quote2.ok).toBe(true); // issuance itself unaffected

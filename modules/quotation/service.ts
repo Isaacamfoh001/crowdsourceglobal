@@ -300,6 +300,7 @@ export const quotationService = {
     return quotations.map((quotation) => ({
       id: quotation.id,
       reference: quotation.reference,
+      origin: quotation.origin,
       issuedAt: quotation.issuedAt,
       expiresAt: quotation.expiresAt,
       status: deriveEffectiveStatus(quotation.status, quotation.expiresAt),

@@ -1,9 +1,84 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
 import { requireAdminSession } from "../../../modules/administration/policy";
+import { adminDashboardService } from "../../../modules/admin-dashboard/service";
+import { canAccessOperationalModules } from "../../../modules/operations/policy";
+import { AttentionList } from "../../../components/admin/dashboard/AttentionList";
+import { SummaryCards } from "../../../components/admin/dashboard/SummaryCards";
+import { KpiSection } from "../../../components/admin/dashboard/KpiSection";
+import { RecentActivity } from "../../../components/admin/dashboard/RecentActivity";
+import type { DateRange } from "../../../modules/admin-dashboard/types";
 
+export const metadata = { title: "Dashboard — Admin" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminHomePage() {
-  await requireAdminSession("/admin");
-  redirect("/admin/vendor-applications");
+const QUICK_LINKS = [
+  { href: "/admin/operations", label: "Operations" },
+  { href: "/admin/vendor-applications", label: "Vendor applications" },
+  { href: "/admin/listings", label: "Listings" },
+  { href: "/admin/sourcing", label: "Sourcing" },
+  { href: "/admin/quotations", label: "Quotations" },
+  { href: "/admin/messages", label: "Messages" },
+];
+
+function isDateRange(value: string | undefined): value is DateRange {
+  return value === "today" || value === "7d" || value === "30d";
+}
+
+export default async function AdminHomePage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
+  const { admin } = await requireAdminSession("/admin");
+  const { range: rawRange } = await searchParams;
+  const range: DateRange = isDateRange(rawRange) ? rawRange : "today";
+  const operationalAllowed = canAccessOperationalModules(admin.role);
+
+  const data = await adminDashboardService.getDashboardData(admin.role);
+  const todayKpis = range === "today" ? data.todayKpis : await adminDashboardService.getTodayKpis(admin.role, range);
+
+  const attentionPreview = data.attentionItems.slice(0, 8);
+  const visibleQuickLinks = operationalAllowed
+    ? QUICK_LINKS
+    : QUICK_LINKS.filter((link) => !["/admin/operations", "/admin/messages"].includes(link.href));
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div>
+        <h1 className="font-display text-2xl font-medium text-stone-900">Operations overview</h1>
+        <p className="mt-1 text-sm text-stone-500">What needs CrownSource attention right now.</p>
+      </div>
+
+      <SummaryCards summary={data.summary} operationalAllowed={operationalAllowed} />
+
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-base font-medium text-stone-900">Attention required</h2>
+          {data.attentionItems.length > 8 ? (
+            <Link href="/admin/attention" className="text-sm font-medium text-brand-700 hover:underline">
+              View all ({data.attentionItems.length})
+            </Link>
+          ) : null}
+        </div>
+        <div className="mt-3">
+          <AttentionList items={attentionPreview} emptyMessage="Nothing requires urgent attention." />
+        </div>
+      </div>
+
+      <KpiSection today={todayKpis} current={data.currentKpis} range={range} />
+
+      {operationalAllowed ? <RecentActivity entries={data.recentActivity} /> : null}
+
+      <div>
+        <h2 className="font-display text-base font-medium text-stone-900">Quick links</h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {visibleQuickLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="rounded-full border border-stone-300 bg-white px-3.5 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }

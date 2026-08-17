@@ -166,6 +166,7 @@ export const quotationRepository = {
       select: {
         id: true,
         reference: true,
+        origin: true,
         status: true,
         total: true,
         currency: true,

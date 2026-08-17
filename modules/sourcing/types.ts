@@ -88,8 +88,10 @@ export type AdminSourcingRequestSummaryView = {
   status: SourcingRequestStatus;
   statusLabel: string;
   submittedAt: Date;
+  updatedAt: Date;
   requiredByDate: Date | null;
   customerName: string;
+  assignedStaffId: string | null;
   assignedStaffName: string | null;
   hasQuotation: boolean;
 };
