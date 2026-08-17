@@ -2,6 +2,18 @@
 
 Implementation reference for CrownSourceGlobal's end-to-end business workflows. See `/docs/domain/entities.md` for entity fields and `/docs/domain/state-machines.md` for lifecycle detail.
 
+## Purchasing Paths
+
+CrownSourceGlobal supports three distinct, deliberately separate purchase paths:
+
+| Path | Trigger | Pricing | Workflow(s) |
+|---|---|---|---|
+| **A — Standard purchase** | Customer selects an existing VendorListing and quantity | Live catalogue price at checkout revalidation | A, B |
+| **B — Instant Quotation** | Customer requests a quote for existing VendorListing(s) whose pricing is fully deterministic (bulk tiers) | Server-computed from live BulkPriceTier/VendorCostRule, snapshotted at issuance | C, Q |
+| **C — Custom Sourcing** | Customer has a requirement that cannot be priced deterministically from the catalogue at all | Staff-prepared commercial offer, following human sourcing/allocation work | R |
+
+All three converge on the same Order/Payment/Fulfilment machinery from the point a Quotation is accepted (Instant) or a custom Quotation is accepted (Custom Sourcing) — neither introduces a parallel checkout or payment path. Custom Sourcing must never be confused with Instant Quotation: Instant Quotation exists specifically because pricing is already fully known; Custom Sourcing exists specifically because it is not.
+
 ## Commercial Snapshot Timing
 
 ```
@@ -160,3 +172,62 @@ Customer selects a bulk quantity on an eligible listing ("Get Instant Quote")
 ```
 
 If availability has dropped below the quoted quantity by acceptance time, the whole acceptance transaction rolls back: the Quotation reverts to ISSUED (never left stuck ACCEPTED with no Order), its price is untouched, and the customer sees a clear message with a path to request an updated quote (which re-validates everything from scratch — it never reuses the old snapshot's prices). An expired Quotation remains permanently viewable as a historical artifact but can never be accepted; expiry is derived at read time from `expiresAt` rather than a background sweep, and acceptance independently re-checks it, so correctness never depends on a scheduler running.
+
+## R. Custom Sourcing & Managed Procurement *(added M6)*
+
+```
+Customer submits a requirement CrownSourceGlobal cannot price from the
+catalogue ("500 custom embroidered polo shirts") — title, description,
+quantity, optional specifications/deadline/budget/attachments
+  → CustomSourcingRequest created, already SUBMITTED (no persisted DRAFT —
+    same reasoning as M5's Quotation), customer + all staff notified
+  → Staff: Under Review → Sourcing
+  → Staff privately curates SourcingOptions — existing marketplace Vendor,
+    a Vendor with no matching public listing, or an off-platform external
+    supplier (never exposed to the customer, never a public bidding
+    mechanism — CrownSource operations decides who to approach)
+  → Staff allocates the request's quantity across chosen options
+    (SourcingAllocation, cost/lead-time/origin snapshotted at allocation
+    time) — sum of allocations must equal the request's quantity before a
+    quote may be issued; a partial allocation cannot silently produce a
+    full-quantity quote
+  → [optional] Staff requests clarification — Sourcing → Awaiting Customer,
+    a staff-initiated message on the request's Customer↔CrownSource
+    conversation (reusing M3 messaging entirely; the customer is never
+    given contact with any Vendor/supplier at any point) — customer
+    replies, staff resumes: Awaiting Customer → Sourcing
+  → Staff prepares the commercial offer: a customer-facing description +
+    unit price (staff-set, not a computed markup formula), covering the
+    full request quantity as ONE line — never "300 from Supplier A, 200
+    from Supplier B" shown to the customer
+  → quotationService.issueCustomSourcingQuote (M5's Quotation
+    architecture, origin = CUSTOM_SOURCING, sourcingRequestId set,
+    QuotationItem.listingId always null, QuotationItem.vendorId populated
+    ONLY when every allocation traces to one marketplace Vendor — purely
+    to drive automatic Fulfilment creation later, and masked back to null
+    on every customer-facing view regardless) → Request → QUOTED, customer
+    notified
+  → Customer may keep discussing via the same conversation before
+    deciding — nothing about discussion mutates the issued Quote
+  → If terms change: Staff reissues — old Quotation → SUPERSEDED, new
+    Quotation → ISSUED (supersedesQuotationId links them), both preserved;
+    Request stays QUOTED throughout
+  → Customer accepts the Quote exactly as in Workflow Q:
+    ordersService.createOrderFromQuotation — custom lines skip the
+    catalogue-availability check entirely (there is no live VendorListing
+    stock behind a staff-curated allocation; the commercial commitment was
+    already locked in at quote issuance) — Request → ACCEPTED, atomically
+    with Order creation, in the same transaction
+  → PENDING_PAYMENT Order → existing MockPaymentProvider → CONFIRMED
+  → Fulfilment fan-out (confirmOrderPayment, entirely unmodified):
+    a single-vendor-sourced line's OrderItem.vendorId is populated, so a
+    normal Fulfilment is created automatically, exactly like any other
+    Vendor order; a mixed or externally-sourced line's OrderItem.vendorId
+    is null, so NO Fulfilment is auto-created for it — CrownSource
+    operations manages that inbound-procurement leg manually via the
+    SourcingAllocation records already visible on the admin sourcing
+    workspace (the "smallest correct integration" — no fake Vendor
+    account is ever created to force external supply through Fulfilment)
+```
+
+CrownSource operations is the sole intermediary throughout: Customer ↔ CrownSourceGlobal ↔ Supplier/Vendor, never Customer ↔ Supplier. There is no self-serve "any Vendor can bid on this request" mechanism — this is not a public marketplace RFQ. Customs/duties/import-freight costs and AI-driven sourcing automation are both explicitly out of scope for M6, per the same reasoning as M4's customs deferral.

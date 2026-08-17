@@ -172,3 +172,49 @@ export async function sendQuoteIssuedEmail(params: {
       `  Valid until ${params.expiresAt}. View it at /account/quotes.`,
   );
 }
+
+/**
+ * M6 custom sourcing notifications — same dev-console adapter pattern.
+ * Deliberately narrow (CLAUDE.md "avoid notification spam"): submission
+ * confirmation, clarification-needed, quote-ready, and unable-to-source are
+ * the meaningful customer-facing events; new-request-to-staff is the one
+ * meaningful staff-facing event.
+ */
+
+export async function sendSourcingRequestSubmittedEmail(params: { to: string; requestNumber: string }): Promise<void> {
+  console.log(
+    `[email:sourcing-request-submitted] to=${params.to}\n` +
+      `  We've received your sourcing request ${params.requestNumber}. Our sourcing team will review it and be in touch.\n` +
+      `  View it at /account/sourcing.`,
+  );
+}
+
+export async function sendNewSourcingRequestToStaffEmail(params: { to: string; requestNumber: string; title: string }): Promise<void> {
+  console.log(
+    `[email:sourcing-request-new-staff] to=${params.to}\n` +
+      `  New custom sourcing request ${params.requestNumber}: "${params.title}". Review it in Admin → Sourcing.`,
+  );
+}
+
+export async function sendSourcingClarificationNeededEmail(params: { to: string; requestNumber: string }): Promise<void> {
+  console.log(
+    `[email:sourcing-clarification-needed] to=${params.to}\n` +
+      `  CrownSourceGlobal needs more information about your sourcing request ${params.requestNumber}.\n` +
+      `  Reply at /account/sourcing.`,
+  );
+}
+
+export async function sendSourcingQuoteReadyEmail(params: { to: string; requestNumber: string; reference: string }): Promise<void> {
+  console.log(
+    `[email:sourcing-quote-ready] to=${params.to}\n` +
+      `  Your quotation for sourcing request ${params.requestNumber} is ready: ${params.reference}.\n` +
+      `  View it at /account/sourcing.`,
+  );
+}
+
+export async function sendSourcingUnableToSourceEmail(params: { to: string; requestNumber: string; reason: string }): Promise<void> {
+  console.log(
+    `[email:sourcing-unable-to-source] to=${params.to}\n` +
+      `  We're unable to source your request ${params.requestNumber}: ${params.reason}`,
+  );
+}

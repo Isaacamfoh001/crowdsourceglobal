@@ -9,7 +9,7 @@ import { SignOutButton } from "../auth/SignOutButton";
 
 const NAV_LINKS = [
   { href: "/shop", label: "Shop" },
-  { href: "/#custom-sourcing", label: "Custom Sourcing" },
+  { href: "/sourcing", label: "Custom Sourcing" },
   { href: "/sell", label: "Sell with Us" },
   { href: "/#how-it-works", label: "How It Works" },
 ];

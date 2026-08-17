@@ -11,7 +11,7 @@ import { err, ok, type Result } from "../result";
 import { safeRedirect } from "../safe-redirect";
 
 const contextualMessageSchema = z.object({
-  contextType: z.enum(["LISTING", "VENDOR", "ORDER"]),
+  contextType: z.enum(["LISTING", "VENDOR", "ORDER", "SOURCING_REQUEST"]),
   contextRefId: z.string().trim().min(1),
   body: z.string().trim().min(1, "Write a message before sending."),
 });
@@ -28,7 +28,7 @@ const contextualMessageSchema = z.object({
 const PENDING_INTENT_COOKIE = "csg_pending_message";
 
 export async function getPendingMessageIntent(
-  contextType: "LISTING" | "VENDOR" | "ORDER",
+  contextType: "LISTING" | "VENDOR" | "ORDER" | "SOURCING_REQUEST",
   contextRefId: string,
 ): Promise<string | null> {
   const jar = await cookies();

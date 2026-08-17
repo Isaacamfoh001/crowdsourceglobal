@@ -112,10 +112,11 @@ model CustomerProfile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  carts         Cart[]
-  orders        Order[]
-  quotations    Quotation[]
-  conversations Conversation[]
+  carts            Cart[]
+  orders           Order[]
+  quotations       Quotation[]
+  sourcingRequests CustomSourcingRequest[]
+  conversations    Conversation[]
 
   @@map("customer_profile")
 }
@@ -177,7 +178,8 @@ model Category {
   parent           Category?  @relation("CategoryToSubcategory", fields: [parentCategoryId], references: [id])
   children         Category[] @relation("CategoryToSubcategory")
 
-  listings VendorListing[]
+  listings         VendorListing[]
+  sourcingRequests CustomSourcingRequest[]
 
   @@index([parentCategoryId])
   @@map("category")
@@ -224,10 +226,14 @@ model Vendor {
   pickupHours        String?
   pickupNotes        String?
 
-  listings       VendorListing[]
-  fulfilments    Fulfilment[]
-  orderItems     OrderItem[]
-  quotationItems QuotationItem[]
+  listings        VendorListing[]
+  fulfilments     Fulfilment[]
+  orderItems      OrderItem[]
+  quotationItems  QuotationItem[]
+  /// Internal-only (M6) — CrownSource operations considering this Vendor as
+  /// a custom sourcing supply option. Never a public/self-serve bidding
+  /// mechanism (see docs/workflows/workflows.md Workflow R).
+  sourcingOptions SourcingOption[]
 
   memberships VendorMembership[]
   application VendorApplication?
@@ -287,13 +293,14 @@ model VendorListing {
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
 
-  bulkPriceTiers BulkPriceTier[]
-  vendorCostRule VendorCostRule?
-  cartItems      CartItem[]
-  orderItems     OrderItem[]
-  quotationItems QuotationItem[]
-  reservations   InventoryReservation[]
-  conversations  Conversation[]
+  bulkPriceTiers  BulkPriceTier[]
+  vendorCostRule  VendorCostRule?
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  quotationItems  QuotationItem[]
+  reservations    InventoryReservation[]
+  conversations   Conversation[]
+  sourcingOptions SourcingOption[]
 
   @@index([vendorId])
   @@index([categoryId])
@@ -401,21 +408,23 @@ model CartItem {
 // lib/actions/quotation.ts) and a Quotation row is only ever written at the
 // moment of issuance, already ISSUED.
 //
-// `origin` only has an INSTANT member today; CUSTOM is added when Custom
-// Sourcing (a later milestone) needs it — not guessed ahead of that work.
-// `status` deliberately omits WITHDRAWN/SUPERSEDED: nothing in M5 produces
-// them (no manual reissue/withdrawal implemented here); reserved for a
-// later milestone rather than left as dead enum members now.
+// `origin` gained CUSTOM_SOURCING in M6 — a custom quote's single line is
+// staff-prepared from SourcingAllocations, never re-derived from catalogue
+// pricing. `status` gained SUPERSEDED in M6, for the reissue/revision
+// mechanism (old Quote -> SUPERSEDED, new Quote -> ISSUED, both preserved) —
+// WITHDRAWN remains unused, still reserved for a later milestone.
 // ---------------------------------------------------------------------------
 
 enum QuotationOrigin {
   INSTANT
+  CUSTOM_SOURCING
 }
 
 enum QuotationStatus {
   ISSUED
   ACCEPTED
   EXPIRED
+  SUPERSEDED
 }
 
 /// An issued, immutable commercial offer. Once ISSUED, its QuotationItems
@@ -425,7 +434,9 @@ enum QuotationStatus {
 /// ordersService.createOrderFromQuotation, atomically with Order creation);
 /// ISSUED -> EXPIRED is derived at read time from `expiresAt` rather than a
 /// background sweep — acceptance independently re-checks expiry, so
-/// correctness never depends on a scheduler running.
+/// correctness never depends on a scheduler running. ISSUED -> SUPERSEDED
+/// happens only when staff reissues a CUSTOM_SOURCING quote with revised
+/// terms (M6) — the old row is never edited in place.
 model Quotation {
   id        String          @id @default(cuid())
   /// Customer-facing identifier — never expose the raw id as the only
@@ -447,21 +458,39 @@ model Quotation {
   customerProfileId String
   customerProfile   CustomerProfile @relation(fields: [customerProfileId], references: [id])
 
+  /// Present only for CUSTOM_SOURCING-origin quotes — nullable so M5's
+  /// INSTANT path is entirely unaffected. Not unique: a revised/reissued
+  /// quote points at the same request as its superseded predecessor.
+  sourcingRequestId String?
+  sourcingRequest   CustomSourcingRequest? @relation(fields: [sourcingRequestId], references: [id])
+
+  /// Self-reference for the reissue trail (M6) — the OLD quote this one
+  /// replaces. `@unique` because a given superseded quote can be replaced
+  /// by at most one successor.
+  supersedesQuotationId String?    @unique
+  supersedes            Quotation? @relation("QuotationSupersedes", fields: [supersedesQuotationId], references: [id])
+  supersededBy          Quotation? @relation("QuotationSupersedes")
+
   items QuotationItem[]
   order Order?
 
   @@index([customerProfileId])
   @@index([status])
+  @@index([sourcingRequestId])
   @@map("quotation")
 }
 
 /// Never independently re-priced — snapshotted once at Quotation issuance
-/// from live VendorListing/BulkPriceTier/VendorCostRule, then read-only.
-/// `listingId`/`vendorId` are nullable (mirroring OrderItem) so a future
-/// Custom Sourcing-origin QuotationItem can represent an internally
-/// allocated line with no single vendor exposed to the customer, without a
-/// schema change — M5 itself always populates both (customer-selected
-/// listings only, per the M5 brief's "no auto-splitting across vendors").
+/// from live VendorListing/BulkPriceTier/VendorCostRule (INSTANT) or from
+/// staff-curated SourcingAllocations (CUSTOM_SOURCING), then read-only.
+/// `listingId` is always null for a CUSTOM_SOURCING line (no VendorListing
+/// backing, even when internally sourced via one — see
+/// docs/workflows/workflows.md Workflow R). `vendorId` is populated
+/// internally ONLY when 100% of a custom line's supply traces to one
+/// marketplace Vendor (this is what lets the existing, unmodified
+/// confirmOrderPayment auto-create a Fulfilment for it) — the customer-
+/// facing DTO masks vendor attribution entirely for CUSTOM_SOURCING quotes
+/// regardless of this internal value (modules/quotation/service.ts).
 model QuotationItem {
   id                 String  @id @default(cuid())
   description        String
@@ -991,6 +1020,8 @@ model AdminUser {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  assignedSourcingRequests CustomSourcingRequest[]
+
   @@map("admin_user")
 }
 
@@ -1003,6 +1034,7 @@ enum ConversationContextType {
   LISTING
   VENDOR
   ORDER
+  SOURCING_REQUEST
   GENERAL
 }
 
@@ -1040,6 +1072,9 @@ model Conversation {
   contextOrderId String?
   contextOrder   Order?  @relation(fields: [contextOrderId], references: [id])
 
+  contextSourcingRequestId String?
+  contextSourcingRequest   CustomSourcingRequest? @relation(fields: [contextSourcingRequestId], references: [id])
+
   messages Message[]
 
   @@index([customerProfileId])
@@ -1068,4 +1103,216 @@ model Message {
   /// separate sort step — the shape of every message-history query.
   @@index([conversationId, createdAt])
   @@map("message")
+}
+
+// ---------------------------------------------------------------------------
+// M6 — Custom Sourcing & Managed Procurement
+//
+// The third purchasing path (Workflow R): a requirement that cannot be
+// resolved deterministically from existing catalogue/pricing data (unlike
+// M5's instant quotations) goes through a human-operated CrownSource
+// sourcing workflow instead. There is deliberately no persisted DRAFT
+// request row — same reasoning as M5's Quotation: submission is atomic, no
+// commercial commitment exists before it.
+//
+// The customer relationship is always Customer <-> CrownSourceGlobal, never
+// Customer <-> Supplier — SourcingOption/SourcingAllocation are internal
+// CrownSource operational records, structurally invisible to any customer
+// DTO (see modules/sourcing/types.ts's separate Admin* vs customer-facing
+// view types, mirroring the same pattern already used for Fulfilment in M4
+// and Quotation in M5).
+// ---------------------------------------------------------------------------
+
+enum SourcingRequestStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  SOURCING
+  AWAITING_CUSTOMER
+  QUOTED
+  ACCEPTED
+  UNABLE_TO_SOURCE
+  CANCELLED
+}
+
+/// The customer's managed-procurement requirement. `quantity` is a single
+/// figure for a single requirement — M6 does not support multi-line custom
+/// requests (a customer with two distinct requirements submits two
+/// requests), which is why a resulting CUSTOM_SOURCING Quotation always has
+/// exactly one QuotationItem.
+model CustomSourcingRequest {
+  id            String                @id @default(cuid())
+  /// Customer-facing identifier — see lib/sourcing-number.ts.
+  requestNumber String                @unique
+  status        SourcingRequestStatus @default(SUBMITTED)
+
+  title        String
+  description  String
+  quantity     Int
+  quantityUnit String?
+
+  /// Flexible/freeform — size, color, model, material, brand, customization,
+  /// packaging, etc. Deliberately a JSON bag rather than hard-coded columns
+  /// per category (CLAUDE.md's "do not hard-code category-specific fields").
+  specifications Json?
+
+  requiredByDate  DateTime?
+  deliveryCountry String
+  deliveryRegion  String?
+  deliveryCity    String?
+
+  budgetAmount   Decimal? @db.Decimal(12, 2)
+  budgetCurrency String?
+
+  /// Customer-safe explanation only, shown when status = UNABLE_TO_SOURCE —
+  /// the fuller internal reason (if staff want one) lives in
+  /// SourcingRequestActivity, never here.
+  unableToSourceReason String?
+
+  submittedAt DateTime  @default(now())
+  quotedAt    DateTime?
+  /// Set when the request reaches any terminal state (ACCEPTED,
+  /// UNABLE_TO_SOURCE, CANCELLED).
+  closedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customerProfileId String
+  customerProfile   CustomerProfile @relation(fields: [customerProfileId], references: [id])
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  assignedStaffId String?
+  assignedStaff   AdminUser? @relation(fields: [assignedStaffId], references: [id])
+
+  attachments   SourcingRequestAttachment[]
+  options       SourcingOption[]
+  allocations   SourcingAllocation[]
+  activities    SourcingRequestActivity[]
+  quotations    Quotation[]
+  conversations Conversation[]
+
+  @@index([customerProfileId, createdAt])
+  @@index([status, createdAt])
+  @@index([assignedStaffId, status])
+  @@map("custom_sourcing_request")
+}
+
+/// Metadata only — actual bytes live behind the StorageProvider abstraction
+/// (lib/storage.ts), never in Postgres. `storageKey` is a randomized,
+/// non-guessable reference; `filename` is a sanitized display-only value,
+/// never used to construct a filesystem/storage path.
+model SourcingRequestAttachment {
+  id String @id @default(cuid())
+
+  storageKey String
+  filename   String
+  mimeType   String
+  sizeBytes  Int
+
+  uploadedByUserId String
+  createdAt        DateTime @default(now())
+
+  sourcingRequestId String
+  sourcingRequest   CustomSourcingRequest @relation(fields: [sourcingRequestId], references: [id], onDelete: Cascade)
+
+  @@index([sourcingRequestId])
+  @@map("sourcing_request_attachment")
+}
+
+enum SourcingOptionSourceType {
+  VENDOR_LISTING
+  VENDOR
+  EXTERNAL_SUPPLIER
+}
+
+/// An internal CrownSource-curated supply possibility for a request — never
+/// exposed to the customer in any form (see modules/sourcing's Admin-only
+/// types). Not every option references a VendorListing, or even a Vendor —
+/// see docs/decisions and Workflow R for the three source shapes this
+/// covers (existing listing, vendor without a public listing, off-platform
+/// external supplier).
+model SourcingOption {
+  id String @id @default(cuid())
+
+  sourceType SourcingOptionSourceType
+
+  vendorId String?
+  vendor   Vendor? @relation(fields: [vendorId], references: [id])
+
+  vendorListingId String?
+  vendorListing   VendorListing? @relation(fields: [vendorListingId], references: [id])
+
+  /// Private — internal CrownSource operational information only, never on
+  /// any customer DTO (CLAUDE.md's "no direct Customer<->Vendor/Supplier").
+  externalSupplierName    String?
+  externalSupplierContact String?
+
+  quantityAvailable Int?
+  proposedQuantity  Int
+  unitSupplyCost    Decimal @db.Decimal(12, 2)
+  currency          String  @default("GHS")
+  leadTimeDays      Int?
+  originCountry     String?
+  /// Staff-only sourcing notes — never on any customer DTO.
+  notes             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sourcingRequestId String
+  sourcingRequest   CustomSourcingRequest @relation(fields: [sourcingRequestId], references: [id], onDelete: Cascade)
+
+  allocations SourcingAllocation[]
+
+  @@index([sourcingRequestId])
+  @@map("sourcing_option")
+}
+
+/// A committed quantity+cost snapshot against one SourcingOption, at the
+/// moment it's allocated — mirrors OrderItem/FulfilmentItem's "never derive
+/// historical economics from mutable current data" snapshot philosophy.
+/// Changing a SourcingOption's cost later never rewrites an allocation that
+/// already contributed to an issued Quotation.
+model SourcingAllocation {
+  id String @id @default(cuid())
+
+  allocatedQuantity      Int
+  unitSupplyCostSnapshot Decimal @db.Decimal(12, 2)
+  currency               String  @default("GHS")
+  leadTimeDaysSnapshot   Int?
+  originCountrySnapshot  String?
+
+  createdAt DateTime @default(now())
+
+  sourcingRequestId String
+  sourcingRequest   CustomSourcingRequest @relation(fields: [sourcingRequestId], references: [id], onDelete: Cascade)
+
+  sourcingOptionId String
+  sourcingOption   SourcingOption @relation(fields: [sourcingOptionId], references: [id])
+
+  @@index([sourcingRequestId])
+  @@index([sourcingOptionId])
+  @@map("sourcing_allocation")
+}
+
+/// Lightweight, staff-only operational history — NOT event sourcing, no
+/// customer-facing rendering of individual entries (the customer-facing
+/// progress view is derived from status + a few key timestamps instead, see
+/// modules/sourcing/service.ts) so there is no risk of an internal-cost
+/// note ever leaking through an activity feed.
+model SourcingRequestActivity {
+  id String @id @default(cuid())
+
+  type        String
+  actorUserId String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  sourcingRequestId String
+  sourcingRequest   CustomSourcingRequest @relation(fields: [sourcingRequestId], references: [id], onDelete: Cascade)
+
+  @@index([sourcingRequestId, createdAt])
+  @@map("sourcing_request_activity")
 }

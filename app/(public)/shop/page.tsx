@@ -52,7 +52,9 @@ export default async function ShopPage({
             {listings.length === 0 ? (
               <EmptyState
                 title="No listings match your search"
-                description="Try a different keyword, or browse by category instead."
+                description="Try a different keyword, browse by category, or let us source it for you."
+                actionHref="/sourcing"
+                actionLabel="Request custom sourcing"
               />
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">

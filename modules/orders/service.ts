@@ -23,8 +23,10 @@ class CheckoutValidationError extends Error {}
 class QuoteAcceptanceRaceError extends Error {}
 
 type PreparedOrderItem = {
-  listingId: string;
-  vendorId: string;
+  /** Null for a CUSTOM_SOURCING-origin line — never VendorListing-backed (see modules/quotation's QuotationItem doc). */
+  listingId: string | null;
+  /** Null when a custom-sourcing line's supply is mixed/external — no live-catalogue vendor to attribute (M6). */
+  vendorId: string | null;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -126,8 +128,14 @@ async function runCheckoutTransaction(
       data: preparedItems.map((item) => ({ ...item, orderId: order.id })),
     });
 
+    // Cart-checkout items are always listing-backed in practice — this
+    // filter only exists to satisfy PreparedOrderItem's shared (M6-widened)
+    // type, not because a null listingId can actually occur on this path.
+    const reservableItems = preparedItems.filter(
+      (item): item is PreparedOrderItem & { listingId: string } => item.listingId !== null,
+    );
     await tx.inventoryReservation.createMany({
-      data: preparedItems.map((item) => ({
+      data: reservableItems.map((item) => ({
         listingId: item.listingId,
         orderId: order.id,
         quantity: item.quantity,
@@ -173,34 +181,44 @@ async function runQuoteAcceptanceTransaction(
     const preparedItems: PreparedOrderItem[] = [];
 
     for (const item of quotation.items) {
-      // M5 always populates both — a future custom-sourcing-origin
-      // QuotationItem with vendorId=null is out of scope here (see
-      // schema.prisma's M5 section comment).
-      if (!item.listingId || !item.vendorId) {
-        throw new CheckoutValidationError("This quotation can't be completed automatically. Please contact support.");
-      }
+      if (item.listingId) {
+        // Listing-backed line — every M5 INSTANT-origin item takes this
+        // path, unchanged from before M6. A CUSTOM_SOURCING item is never
+        // listing-backed (see modules/quotation's QuotationItem doc), so
+        // this branch is INSTANT-only in practice.
+        if (!item.vendorId) {
+          throw new CheckoutValidationError("This quotation can't be completed automatically. Please contact support.");
+        }
 
-      const listing = await tx.vendorListing.findUnique({
-        where: { id: item.listingId },
-        select: { id: true, approvalStatus: true, listingStatus: true },
-      });
-      if (!listing || listing.approvalStatus !== "APPROVED" || listing.listingStatus !== "ACTIVE") {
-        throw new CheckoutValidationError(
-          `${item.description} is no longer available. This quotation can no longer be completed as issued.`,
-        );
-      }
+        const listing = await tx.vendorListing.findUnique({
+          where: { id: item.listingId },
+          select: { id: true, approvalStatus: true, listingStatus: true },
+        });
+        if (!listing || listing.approvalStatus !== "APPROVED" || listing.listingStatus !== "ACTIVE") {
+          throw new CheckoutValidationError(
+            `${item.description} is no longer available. This quotation can no longer be completed as issued.`,
+          );
+        }
 
-      // Same atomic conditional decrement as cart checkout — availability
-      // is revalidated at acceptance, never guaranteed at quote issuance.
-      const decremented = await tx.vendorListing.updateMany({
-        where: { id: item.listingId, availableQuantity: { gte: item.quantity } },
-        data: { availableQuantity: { decrement: item.quantity } },
-      });
-      if (decremented.count !== 1) {
-        throw new CheckoutValidationError(
-          `Only a limited quantity of ${item.description} is left — not enough to complete this quotation. The quoted price remains unchanged; you can request an updated quote.`,
-        );
+        // Same atomic conditional decrement as cart checkout — availability
+        // is revalidated at acceptance, never guaranteed at quote issuance.
+        const decremented = await tx.vendorListing.updateMany({
+          where: { id: item.listingId, availableQuantity: { gte: item.quantity } },
+          data: { availableQuantity: { decrement: item.quantity } },
+        });
+        if (decremented.count !== 1) {
+          throw new CheckoutValidationError(
+            `Only a limited quantity of ${item.description} is left — not enough to complete this quotation. The quoted price remains unchanged; you can request an updated quote.`,
+          );
+        }
       }
+      // Custom-sourcing line (M6, item.listingId === null): no live
+      // catalogue stock to validate or decrement — the commercial
+      // commitment was already locked in by staff via SourcingAllocation
+      // at quote-issuance time. item.vendorId may be null (mixed/external
+      // supply — no automatic Fulfilment for this line, CrownSource
+      // operations manages it manually) or populated (single-vendor supply
+      // — drives the normal, unmodified M2/M4 Fulfilment fan-out below).
 
       preparedItems.push({
         listingId: item.listingId,
@@ -233,15 +251,39 @@ async function runQuoteAcceptanceTransaction(
       data: preparedItems.map((item) => ({ ...item, orderId: order.id })),
     });
 
-    await tx.inventoryReservation.createMany({
-      data: preparedItems.map((item) => ({
-        listingId: item.listingId,
-        orderId: order.id,
-        quantity: item.quantity,
-        status: "HELD" as const,
-        expiresAt: new Date(Date.now() + RESERVATION_TTL_MINUTES * 60_000),
-      })),
-    });
+    // Only listing-backed lines ever hold a live reservation — a custom
+    // line has nothing in VendorListing.availableQuantity to reserve.
+    const reservableItems = preparedItems.filter(
+      (item): item is PreparedOrderItem & { listingId: string } => item.listingId !== null,
+    );
+    if (reservableItems.length > 0) {
+      await tx.inventoryReservation.createMany({
+        data: reservableItems.map((item) => ({
+          listingId: item.listingId,
+          orderId: order.id,
+          quantity: item.quantity,
+          status: "HELD" as const,
+          expiresAt: new Date(Date.now() + RESERVATION_TTL_MINUTES * 60_000),
+        })),
+      });
+    }
+
+    // M6: keep the originating CustomSourcingRequest's status in lockstep
+    // with its Quotation, atomically with Order creation — never a
+    // separate, potentially-inconsistent follow-up write.
+    if (quotation.sourcingRequestId) {
+      await tx.customSourcingRequest.update({
+        where: { id: quotation.sourcingRequestId },
+        data: { status: "ACCEPTED", closedAt: new Date() },
+      });
+      await tx.sourcingRequestActivity.create({
+        data: {
+          sourcingRequestId: quotation.sourcingRequestId,
+          type: "quote_accepted",
+          metadata: { orderId: order.id } as Prisma.InputJsonValue,
+        },
+      });
+    }
 
     return order.id;
   });

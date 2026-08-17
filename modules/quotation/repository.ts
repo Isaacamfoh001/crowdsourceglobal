@@ -26,6 +26,7 @@ const quotationItemSelect = {
 const quotationDetailSelect = {
   id: true,
   reference: true,
+  origin: true,
   status: true,
   currency: true,
   subtotal: true,
@@ -123,6 +124,7 @@ export const quotationRepository = {
         subtotal: true,
         total: true,
         currency: true,
+        sourcingRequestId: true,
         items: {
           select: {
             listingId: true,
@@ -194,6 +196,73 @@ export const quotationRepository = {
         items: { select: adminQuotationItemSelect, orderBy: { id: "asc" as const } },
         customerProfile: { select: { displayName: true, user: { select: { email: true } } } },
       },
+    });
+  },
+
+  // --- M6 Custom Sourcing ------------------------------------------------
+
+  /** The one active (still-ISSUED) quote for a request, if any — the one a reissue supersedes. */
+  findActiveQuotationForSourcingRequest(sourcingRequestId: string) {
+    return prisma.quotation.findFirst({
+      where: { sourcingRequestId, status: "ISSUED" },
+      select: { id: true },
+    });
+  },
+
+  /**
+   * A CUSTOM_SOURCING quote always has exactly one QuotationItem (M6 does
+   * not support multi-line custom requests — see schema.prisma's
+   * CustomSourcingRequest comment). `vendorId` is populated only when
+   * modules/sourcing/service.ts determined the whole line traces to one
+   * marketplace Vendor; `listingId` is always null (never VendorListing-
+   * backed, even then). Superseding an existing active quote happens in
+   * the same transaction as issuing the new one, so the two are never
+   * observably out of sync.
+   */
+  issueCustomSourcingQuotation(params: {
+    reference: string;
+    customerProfileId: string;
+    sourcingRequestId: string;
+    supersedesQuotationId?: string;
+    currency: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    vendorPayableBasis: number;
+    vendorId: string | null;
+    expiresAt: Date;
+  }) {
+    const lineTotal = params.unitPrice * params.quantity;
+    return prisma.$transaction(async (tx) => {
+      if (params.supersedesQuotationId) {
+        await tx.quotation.update({
+          where: { id: params.supersedesQuotationId },
+          data: { status: "SUPERSEDED" },
+        });
+      }
+      return tx.quotation.create({
+        data: {
+          reference: params.reference,
+          origin: "CUSTOM_SOURCING",
+          customerProfileId: params.customerProfileId,
+          sourcingRequestId: params.sourcingRequestId,
+          supersedesQuotationId: params.supersedesQuotationId,
+          currency: params.currency,
+          subtotal: lineTotal,
+          total: lineTotal,
+          expiresAt: params.expiresAt,
+          items: {
+            create: {
+              description: params.description,
+              quantity: params.quantity,
+              unitPrice: params.unitPrice,
+              vendorPayableBasis: params.vendorPayableBasis,
+              lineTotal,
+              vendorId: params.vendorId,
+            },
+          },
+        },
+      });
     });
   },
 };

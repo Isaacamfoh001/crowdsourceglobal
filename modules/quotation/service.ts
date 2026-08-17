@@ -208,7 +208,11 @@ export const quotationService = {
         quantity: item.quantity,
         unitPrice: item.unitPrice.toNumber(),
         lineTotal: item.lineTotal.toNumber(),
-        vendor: item.vendor,
+        // A CUSTOM_SOURCING quote's internal vendorId (when populated) only
+        // ever drives automatic Fulfilment creation — the customer never
+        // sees supplier identity for a managed-sourcing line (M6 §23/§31),
+        // regardless of whether the DB row happens to carry one.
+        vendor: quotation.origin === "CUSTOM_SOURCING" ? null : item.vendor,
       })),
       acceptedOrderId: quotation.order?.id ?? null,
     };
@@ -235,6 +239,56 @@ export const quotationService = {
     return quotation.items
       .filter((item): item is { listingId: string; quantity: number } => item.listingId !== null)
       .map((item) => ({ listingId: item.listingId, quantity: item.quantity }));
+  },
+
+  /**
+   * M6 — staff-prepared quote for a CustomSourcingRequest. Called from
+   * modules/sourcing/service.ts, which owns all the sourcing-specific
+   * validation (allocation-sum check, single-vendor derivation) and
+   * side-effects (request status transition, activity log, email) —
+   * this function's only job is the generic, reusable "write an issued
+   * Quotation, superseding a prior active one if given" mechanism, the
+   * same one M5's INSTANT path already relies on.
+   */
+  async issueCustomSourcingQuote(params: {
+    customerProfileId: string;
+    sourcingRequestId: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    vendorPayableBasis: number;
+    vendorId: string | null;
+  }): Promise<Result<{ quotationId: string; reference: string }>> {
+    const existingActive = await quotationRepository.findActiveQuotationForSourcingRequest(params.sourcingRequestId);
+    const expiresAt = new Date(Date.now() + env.QUOTE_VALIDITY_DAYS * 24 * 60 * 60 * 1000);
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const reference = generateQuoteReference();
+      try {
+        const quotation = await quotationRepository.issueCustomSourcingQuotation({
+          reference,
+          customerProfileId: params.customerProfileId,
+          sourcingRequestId: params.sourcingRequestId,
+          supersedesQuotationId: existingActive?.id,
+          currency: "GHS",
+          description: params.description,
+          quantity: params.quantity,
+          unitPrice: params.unitPrice,
+          vendorPayableBasis: params.vendorPayableBasis,
+          vendorId: params.vendorId,
+          expiresAt,
+        });
+        return ok({ quotationId: quotation.id, reference: quotation.reference });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002" && attempt < 2) {
+          continue; // reference collision — retry with a freshly generated one
+        }
+        console.error("Custom sourcing quote issuance failed unexpectedly:", error);
+        return err("Something went wrong preparing this quotation. Please try again.");
+      }
+    }
+
+    return err("Something went wrong preparing this quotation. Please try again.");
   },
 
   async listForAdmin(status?: "ISSUED" | "ACCEPTED" | "EXPIRED"): Promise<AdminQuotationSummaryView[]> {

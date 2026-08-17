@@ -12,8 +12,8 @@ Authoritative summary of the approved V1 architecture. See `/docs/domain/entitie
 | Catalogue | Category taxonomy + `VendorListing` (the sellable unit — see ADR 0003) |
 | Pricing | Bulk tier rules, vendor supply cost, margin policy, promotions |
 | Cart | Mutable, pre-commercial buyer intent |
-| Quotation | Immutable priced commercial offer (instant or custom origin) — `modules/quotation` (INSTANT origin implemented M5; CUSTOM origin deferred to Custom Sourcing) |
-| Custom Sourcing | Operational process that produces a custom Quotation |
+| Quotation | Immutable priced commercial offer (instant or custom origin) — `modules/quotation` (INSTANT origin implemented M5; CUSTOM_SOURCING origin implemented M6) |
+| Custom Sourcing | Managed-procurement process (staff-curated supply options, allocation, commercial offer) that produces a CUSTOM_SOURCING Quotation — `modules/sourcing` (implemented M6) |
 | Checkout & Orders | Converts a Cart or accepted Quotation into a durable Order |
 | Fulfilment | Vendor-scoped responsibility for a subset of an Order, plus its Shipment (physical movement) and FulfilmentIssue (operational exception) — `modules/fulfilment` (implemented M4) |
 | Logistics | ReceivingLocation reference data for CrownSource-designated international inbound destinations — `modules/logistics` (implemented M4) |
@@ -58,7 +58,7 @@ Background/async work (webhook post-processing, email, PDF generation, inventory
 | Authorization | Custom `can(user, action, resource)` per module | No RBAC library at this stage |
 | Validation | Zod | Shared schemas client/server |
 | API strategy | Server actions/route handlers for the app; narrow `/api/v1` for payment webhooks and future external consumers | |
-| File/object storage | S3-compatible (R2 or S3) | Signed URLs for private documents |
+| File/object storage | Provider TBD (R2 or S3 planned) — `lib/storage.ts`'s `StorageProvider` interface, local-disk dev adapter only so far (M6, sourcing-request attachments) | No production credentials invented; swapping providers means implementing the same three-method interface, no domain-layer changes |
 | Image handling | `sharp` on upload, Next.js `<Image>` on render | |
 | Payments | Provider-agnostic interface, implemented against Paystack first (Ghana MoMo + card) | Confirm via live testing before committing — see the product requirement in PROJECT.md §54.5 |
 | Email | Resend or Postmark | Provider choice deferred |
@@ -95,7 +95,7 @@ Background/async work (webhook post-processing, email, PDF generation, inventory
   /pricing
   /cart
   /quotation
-  /custom-sourcing
+  /sourcing                  Custom Sourcing (implemented M6; named `sourcing`, not `custom-sourcing`)
   /orders
   /fulfilment
     /shipment                 submodule

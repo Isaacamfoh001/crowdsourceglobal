@@ -18,7 +18,7 @@ export function AskAboutButton({
   label,
   placeholder,
 }: {
-  contextType: "LISTING" | "VENDOR" | "ORDER";
+  contextType: "LISTING" | "VENDOR" | "ORDER" | "SOURCING_REQUEST";
   contextRefId: string;
   currentPath: string;
   isSignedIn: boolean;

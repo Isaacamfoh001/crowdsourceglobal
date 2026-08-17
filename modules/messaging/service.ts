@@ -18,6 +18,9 @@ function contextLabel(row: RawConversation): string {
   if (row.contextOrder) {
     return `About order ${row.contextOrder.orderNumber}`;
   }
+  if (row.contextSourcingRequest) {
+    return `About sourcing request ${row.contextSourcingRequest.requestNumber}`;
+  }
   return "General";
 }
 
@@ -86,7 +89,7 @@ export const messagingService = {
   async startOrContinueContextual(input: {
     customerProfileId: string;
     senderUserId: string;
-    contextType: "LISTING" | "VENDOR" | "ORDER";
+    contextType: "LISTING" | "VENDOR" | "ORDER" | "SOURCING_REQUEST";
     contextRefId: string;
     body: string;
   }): Promise<Result<{ conversationId: string }>> {
@@ -104,6 +107,12 @@ export const messagingService = {
         select: { id: true },
       });
       if (!order) return err("Order not found.");
+    } else if (input.contextType === "SOURCING_REQUEST") {
+      const request = await prisma.customSourcingRequest.findFirst({
+        where: { id: input.contextRefId, customerProfileId: input.customerProfileId },
+        select: { id: true },
+      });
+      if (!request) return err("Sourcing request not found.");
     } else {
       return err("Invalid conversation context.");
     }
@@ -125,6 +134,7 @@ export const messagingService = {
       contextListingId: input.contextType === "LISTING" ? input.contextRefId : undefined,
       contextVendorId: input.contextType === "VENDOR" ? input.contextRefId : undefined,
       contextOrderId: input.contextType === "ORDER" ? input.contextRefId : undefined,
+      contextSourcingRequestId: input.contextType === "SOURCING_REQUEST" ? input.contextRefId : undefined,
       senderUserId: input.senderUserId,
       body: input.body,
     });
@@ -204,5 +214,50 @@ export const messagingService = {
     const message = await messagingRepository.addMessage(conversationId, staffUserId, body, true);
     onMessagePersisted({ id: message.id, conversationId, senderIsStaff: true });
     return ok(null);
+  },
+
+  /**
+   * Staff-initiated variant of startOrContinueContextual (M6's "request
+   * clarification" workflow) — CrownSource may need to message a customer
+   * about a sourcing request before that customer has ever sent a message
+   * themselves, unlike every other contextual conversation in this app
+   * which is always customer-initiated. Reuses the same
+   * find-open-conversation-by-context dedup as the customer-side path, so
+   * a request never ends up with two open threads regardless of who spoke
+   * first.
+   */
+  async staffStartOrContinueContextual(input: {
+    customerProfileId: string;
+    staffUserId: string;
+    contextType: "SOURCING_REQUEST";
+    contextRefId: string;
+    body: string;
+  }): Promise<Result<{ conversationId: string }>> {
+    if (input.body.trim().length === 0) return err("Write a message before sending.");
+
+    const existing = await messagingRepository.findOpenCustomerConversationByContext(
+      input.customerProfileId,
+      input.contextType,
+      input.contextRefId,
+    );
+    if (existing) {
+      const message = await messagingRepository.addMessage(existing.id, input.staffUserId, input.body, true);
+      onMessagePersisted({ id: message.id, conversationId: existing.id, senderIsStaff: true });
+      return ok({ conversationId: existing.id });
+    }
+
+    const created = await messagingRepository.createCustomerConversation({
+      customerProfileId: input.customerProfileId,
+      contextType: input.contextType,
+      contextSourcingRequestId: input.contextRefId,
+      senderUserId: input.staffUserId,
+      body: input.body,
+      senderIsStaff: true,
+    });
+    const firstMessage = created.messages.at(-1);
+    if (firstMessage) {
+      onMessagePersisted({ id: firstMessage.id, conversationId: created.id, senderIsStaff: true });
+    }
+    return ok({ conversationId: created.id });
   },
 };

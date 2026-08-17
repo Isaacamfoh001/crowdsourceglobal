@@ -4,6 +4,7 @@ const contextSelect = {
   contextListing: { select: { id: true, title: true, vendor: { select: { companyName: true } } } },
   contextVendor: { select: { id: true, companyName: true } },
   contextOrder: { select: { id: true, orderNumber: true } },
+  contextSourcingRequest: { select: { id: true, requestNumber: true } },
   vendor: { select: { id: true, companyName: true } },
   customerProfile: { select: { id: true, displayName: true, user: { select: { name: true, email: true } } } },
 } as const;
@@ -56,11 +57,17 @@ export const messagingRepository = {
 
   findOpenCustomerConversationByContext(
     customerProfileId: string,
-    contextType: "LISTING" | "VENDOR" | "ORDER",
+    contextType: "LISTING" | "VENDOR" | "ORDER" | "SOURCING_REQUEST",
     contextRefId: string,
   ) {
     const contextField =
-      contextType === "LISTING" ? "contextListingId" : contextType === "VENDOR" ? "contextVendorId" : "contextOrderId";
+      contextType === "LISTING"
+        ? "contextListingId"
+        : contextType === "VENDOR"
+          ? "contextVendorId"
+          : contextType === "ORDER"
+            ? "contextOrderId"
+            : "contextSourcingRequestId";
     return prisma.conversation.findFirst({
       where: {
         participantType: "CUSTOMER",
@@ -74,12 +81,15 @@ export const messagingRepository = {
 
   async createCustomerConversation(input: {
     customerProfileId: string;
-    contextType: "LISTING" | "VENDOR" | "ORDER" | "GENERAL";
+    contextType: "LISTING" | "VENDOR" | "ORDER" | "SOURCING_REQUEST" | "GENERAL";
     contextListingId?: string;
     contextVendorId?: string;
     contextOrderId?: string;
+    contextSourcingRequestId?: string;
     senderUserId: string;
     body: string;
+    /** True when CrownSource staff initiates the thread (M6 clarification-request flow) rather than the customer. */
+    senderIsStaff?: boolean;
   }) {
     return prisma.conversation.create({
       data: {
@@ -89,7 +99,10 @@ export const messagingRepository = {
         contextListingId: input.contextListingId,
         contextVendorId: input.contextVendorId,
         contextOrderId: input.contextOrderId,
-        messages: { create: { senderUserId: input.senderUserId, body: input.body, senderIsStaff: false } },
+        contextSourcingRequestId: input.contextSourcingRequestId,
+        messages: {
+          create: { senderUserId: input.senderUserId, body: input.body, senderIsStaff: input.senderIsStaff ?? false },
+        },
       },
       include: conversationInclude,
     });

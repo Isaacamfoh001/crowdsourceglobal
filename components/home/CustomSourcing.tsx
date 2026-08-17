@@ -42,7 +42,7 @@ export function CustomSourcing() {
             </ul>
 
             <div className="mt-8">
-              <Link href="/sign-up">
+              <Link href="/sourcing">
                 <Button variant="primary" size="lg">
                   Request custom sourcing
                 </Button>
