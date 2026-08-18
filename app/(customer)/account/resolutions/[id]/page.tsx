@@ -95,17 +95,35 @@ export default async function ResolutionDetailPage({ params, searchParams }: { p
       {detail.refunds.length > 0 ? (
         <div className="rounded-2xl border border-stone-200 bg-white p-5">
           <h2 className="font-display text-base font-medium text-stone-900">Refund</h2>
-          {detail.refunds.map((r) => (
-            <div key={r.id} className="mt-2 flex items-center justify-between text-sm">
-              <span className="text-stone-600">Approved refund</span>
-              <span className="font-semibold text-stone-900">{formatPrice(r.amount, r.currency)}</span>
-            </div>
-          ))}
-          {detail.refunds.map((r) => (
-            <p key={`${r.id}-status`} className="mt-1 text-xs text-stone-500">
-              Status: {r.status === "COMPLETED" ? "Completed" : r.status === "PROCESSING" ? "Processing" : r.status === "FAILED" ? "Being retried" : "Approved"}
-            </p>
-          ))}
+          {detail.refunds.map((r) => {
+            const label =
+              r.status === "COMPLETED"
+                ? "Refund completed"
+                : r.status === "PROCESSING"
+                  ? "Refund approved"
+                  : r.status === "FAILED"
+                    ? "Refund approved"
+                    : "Refund approved";
+            const statusLabel =
+              r.status === "COMPLETED" ? "Completed" : r.status === "PROCESSING" ? "Processing" : r.status === "FAILED" ? "Being retried" : "Awaiting processing";
+            return (
+              <div key={r.id} className="mt-2 border-t border-stone-100 pt-3 first:mt-0 first:border-t-0 first:pt-0">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-stone-600">{label}</span>
+                  <span className="font-semibold text-stone-900">{formatPrice(r.amount, r.currency)}</span>
+                </div>
+                <p className="mt-1 text-xs text-stone-500">Status: {statusLabel}</p>
+                {r.status === "PROCESSING" ? (
+                  <p className="mt-1 text-xs text-stone-400">
+                    Your bank or mobile money provider may take a little time to reflect the funds once we send it.
+                  </p>
+                ) : null}
+                {r.status === "FAILED" ? (
+                  <p className="mt-1 text-xs text-stone-400">We&apos;re retrying this refund. No action is needed from you.</p>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       ) : null}
 

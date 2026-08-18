@@ -121,8 +121,34 @@ model CustomerProfile {
   sourcingRequests CustomSourcingRequest[]
   conversations    Conversation[]
   resolutionCases  ResolutionCase[]
+  addresses        CustomerAddress[]
 
   @@map("customer_profile")
+}
+
+/// Saved delivery addresses (M10 hardening). Purely a customer-convenience
+/// record for pre-filling checkout — mutable, and NEVER read back by an
+/// existing Order. `Order.deliveryInfo` (JSON) remains the sole immutable
+/// snapshot of what was actually used at checkout time; editing or deleting
+/// a CustomerAddress must never change any past Order's displayed address.
+model CustomerAddress {
+  id            String   @id @default(cuid())
+  label         String?
+  recipientName String
+  phone         String
+  addressLine1  String
+  addressLine2  String?
+  city          String
+  region        String
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  customerProfileId String
+  customerProfile   CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+
+  @@index([customerProfileId])
+  @@map("customer_address")
 }
 
 // ---------------------------------------------------------------------------

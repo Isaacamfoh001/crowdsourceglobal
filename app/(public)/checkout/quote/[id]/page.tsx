@@ -4,6 +4,7 @@ import { QuoteCheckoutForm } from "../../../../../components/checkout/QuoteCheck
 import { formatPrice } from "../../../../../lib/format";
 import { requireSession, getCurrentCustomerProfile } from "../../../../../modules/identity/policy";
 import { quotationService } from "../../../../../modules/quotation/service";
+import { addressesService } from "../../../../../modules/addresses/service";
 
 type Params = { id: string };
 
@@ -30,6 +31,8 @@ export default async function QuoteCheckoutPage({ params }: { params: Promise<Pa
     redirect(`/account/quotes/${id}`);
   }
 
+  const addresses = await addressesService.listForCustomer(customerProfile.id);
+
   return (
     <div className="bg-stone-50 py-10 sm:py-14">
       <Container>
@@ -43,7 +46,7 @@ export default async function QuoteCheckoutPage({ params }: { params: Promise<Pa
               We&apos;ll pass this to the vendors fulfilling your order.
             </p>
             <div className="mt-6">
-              <QuoteCheckoutForm quotationId={quote.id} />
+              <QuoteCheckoutForm quotationId={quote.id} addresses={addresses} />
             </div>
           </div>
 

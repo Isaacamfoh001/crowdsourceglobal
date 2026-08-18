@@ -12,6 +12,7 @@ vi.mock("../payments/providers/paystack/client", () => ({
 }));
 
 const { resolutionsService } = await import("./service");
+const { mockRefundExecutor } = await import("../refunds/mockExecutor");
 
 /** Integration tests against the real local Postgres dev database, with the Paystack HTTP boundary mocked. */
 describe("resolutionsService — Paystack refunds (M10A.2)", () => {
@@ -184,5 +185,30 @@ describe("resolutionsService — Paystack refunds (M10A.2)", () => {
     expect(createRefund).toHaveBeenCalledTimes(2); // FAILED is retryable — this is an intentional retry, not a duplicate
     const retried = await prisma.refund.findUniqueOrThrow({ where: { id: refundId } });
     expect(retried.status).toBe("PROCESSING");
+  });
+
+  it("full refund: the exact full approved amount is sent to Paystack, not derived from anything else", async () => {
+    const { refundId } = await createPaystackPaidOrderWithApprovedRefund(72.5, 72.5);
+    createRefund.mockResolvedValueOnce({ ok: true, data: { status: true, message: "", data: { id: 9007, transaction: "x", amount: 7250, currency: "GHS", status: "pending" } } });
+    await resolutionsService.processRefund("staff-1", refundId, "succeed");
+    expect(createRefund).toHaveBeenCalledWith(expect.objectContaining({ amount: 7250 }));
+  });
+
+  it("never falls back to MockRefundExecutor for a Paystack-paid order — a double-click cannot issue two Paystack refund calls either", async () => {
+    const { refundId } = await createPaystackPaidOrderWithApprovedRefund(55, 55);
+    const mockSpy = vi.spyOn(mockRefundExecutor, "refund");
+    createRefund.mockResolvedValueOnce({ ok: true, data: { status: true, message: "", data: { id: 9008, transaction: "x", amount: 5500, currency: "GHS", status: "pending" } } });
+
+    const [first, second] = await Promise.all([
+      resolutionsService.processRefund("staff-1", refundId, "succeed"),
+      resolutionsService.processRefund("staff-1", refundId, "succeed"),
+    ]);
+
+    expect(mockSpy).not.toHaveBeenCalled();
+    expect(createRefund).toHaveBeenCalledTimes(1); // the claim guard let only one of the two concurrent calls through
+    const outcomes = [first, second].filter((r) => r.ok);
+    expect(outcomes.length).toBeGreaterThanOrEqual(1);
+
+    mockSpy.mockRestore();
   });
 });

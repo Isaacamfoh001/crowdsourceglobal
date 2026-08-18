@@ -390,6 +390,7 @@ export const resolutionsService = {
         approvedAt: r.approvedAt,
         processedAt: r.processedAt,
         paymentProvider: r.payment?.provider ?? null,
+        providerReference: r.providerEventId,
       })),
       returns: row.returns,
       replacements: row.replacements.map((r) => ({

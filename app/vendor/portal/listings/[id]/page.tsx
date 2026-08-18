@@ -82,10 +82,16 @@ export default async function VendorListingEditorPage({ params }: { params: Prom
       </div>
 
       {canSubmit && !isLocked ? (
-        <SubmitListingButton
-          listingId={listing.id}
-          label={hasPendingChanges ? "Submit changes for review" : "Submit for review"}
-        />
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-stone-500">
+            Save your title, description, price, and inventory above before submitting — a complete
+            listing gets reviewed faster.
+          </p>
+          <SubmitListingButton
+            listingId={listing.id}
+            label={hasPendingChanges ? "Submit changes for review" : "Submit for review"}
+          />
+        </div>
       ) : null}
     </div>
   );

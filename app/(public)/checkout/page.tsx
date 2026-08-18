@@ -5,6 +5,7 @@ import { CheckoutForm } from "../../../components/checkout/CheckoutForm";
 import { formatPrice } from "../../../lib/format";
 import { requireSession, getCurrentCustomerProfile } from "../../../modules/identity/policy";
 import { cartService } from "../../../modules/cart/service";
+import { addressesService } from "../../../modules/addresses/service";
 
 export const metadata = { title: "Checkout" };
 export const dynamic = "force-dynamic";
@@ -12,9 +13,12 @@ export const dynamic = "force-dynamic";
 export default async function CheckoutPage() {
   const session = await requireSession("/checkout");
   const customerProfile = await getCurrentCustomerProfile(session.user.id);
-  const cart = customerProfile
-    ? await cartService.getCartView(customerProfile.id)
-    : { cartId: null, itemCount: 0, vendorGroups: [], subtotal: 0, currency: "GHS" };
+  const [cart, addresses] = await Promise.all([
+    customerProfile
+      ? cartService.getCartView(customerProfile.id)
+      : Promise.resolve({ cartId: null, itemCount: 0, vendorGroups: [], subtotal: 0, currency: "GHS" }),
+    customerProfile ? addressesService.listForCustomer(customerProfile.id) : Promise.resolve([]),
+  ]);
 
   if (cart.vendorGroups.length === 0) {
     redirect("/cart");
@@ -34,7 +38,7 @@ export default async function CheckoutPage() {
               We&apos;ll pass this to the vendors fulfilling your order.
             </p>
             <div className="mt-6">
-              <CheckoutForm />
+              <CheckoutForm addresses={addresses} />
             </div>
           </div>
 

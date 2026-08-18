@@ -135,6 +135,83 @@ describe("vendorListingsService", () => {
     expect(editAttempt.ok).toBe(false);
   });
 
+  // ---- Regression: description/price defaults must never reach PENDING (M10 hardening) ----
+
+  it("saveContent persists the exact description typed in the form, unchanged", async () => {
+    const listingId = await createTrackedDraft(vendorAId);
+    await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId }, []);
+    const detail = await vendorListingsService.getDetail(vendorAId, listingId);
+    expect(detail?.description).toBe(validContent.description);
+  });
+
+  it("saveContent persists the exact basePrice typed in the form, unchanged", async () => {
+    const listingId = await createTrackedDraft(vendorAId);
+    await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, basePrice: 12.34, categoryId }, []);
+    const detail = await vendorListingsService.getDetail(vendorAId, listingId);
+    expect(detail?.basePrice).toBe(12.34);
+  });
+
+  it("rejects an empty description — never silently accepted as blank", async () => {
+    const listingId = await createTrackedDraft(vendorAId);
+    const result = await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, description: "", categoryId }, []);
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects a zero price — never silently defaulted", async () => {
+    const listingId = await createTrackedDraft(vendorAId);
+    const result = await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, basePrice: 0, categoryId }, []);
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects a malformed (NaN) price rather than silently coercing it to zero", async () => {
+    const listingId = await createTrackedDraft(vendorAId);
+    const result = await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, basePrice: Number("not-a-price"), categoryId }, []);
+    expect(result.ok).toBe(false);
+  });
+
+  it("a still-default draft (never saved) cannot be submitted for review — moderation never begins on placeholder content", async () => {
+    const listingId = await createTrackedDraft(vendorAId);
+    // No saveContent call — the draft still holds its schema defaults
+    // (title "Untitled listing", description "", basePrice 0).
+    const result = await vendorListingsService.submitForReview(vendorAId, listingId);
+    expect(result.ok).toBe(false);
+
+    // approvalStatus is PENDING by schema default even for a never-submitted
+    // draft — submittedAt is the real signal of an actual submission (see
+    // isAwaitingReview() in modules/vendor-listings/service.ts).
+    const row = await prisma.vendorListing.findUnique({ where: { id: listingId } });
+    expect(row?.submittedAt).toBeNull();
+  });
+
+  it("a fully completed draft remains editable until explicitly submitted", async () => {
+    const listingId = await createTrackedDraft(vendorAId);
+    await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId }, []);
+
+    const secondEdit = await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, title: "Updated Title Here", categoryId }, []);
+    expect(secondEdit.ok).toBe(true);
+
+    const detail = await vendorListingsService.getDetail(vendorAId, listingId);
+    expect(detail?.submittedAt).toBeNull(); // still an editable draft — never submitted
+    expect(detail?.title).toBe("Updated Title Here");
+  });
+
+  it("editing a fully-populated draft again does not reset other already-populated fields to defaults", async () => {
+    const listingId = await createTrackedDraft(vendorAId);
+    await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, moq: 5, categoryId }, []);
+
+    // Re-save changing only the title — every other field must be passed
+    // through unchanged by the caller (the form always submits the full
+    // current state), and the service must persist all of them, not just
+    // the one that changed.
+    await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, title: "New Title", moq: 5, categoryId }, []);
+
+    const detail = await vendorListingsService.getDetail(vendorAId, listingId);
+    expect(detail?.title).toBe("New Title");
+    expect(detail?.description).toBe(validContent.description);
+    expect(detail?.basePrice).toBe(validContent.basePrice);
+    expect(detail?.moq).toBe(5);
+  });
+
   it("approval makes the listing publicly visible, matching existing catalogue query shape", async () => {
     const listingId = await createTrackedDraft(vendorAId);
     await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId }, []);

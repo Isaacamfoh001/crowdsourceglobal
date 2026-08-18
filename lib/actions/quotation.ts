@@ -9,7 +9,7 @@ import { quotationService } from "../../modules/quotation/service";
 import { ordersService } from "../../modules/orders/service";
 import { err, ok, type Result } from "../result";
 import { safeRedirect } from "../safe-redirect";
-import { parseDeliveryFormData } from "../delivery-schema";
+import { parseDeliveryFormData, maybeSaveAddressFromCheckout } from "../delivery-schema";
 import type { QuoteDraftLine } from "../../modules/quotation/types";
 import type { DeliveryInfo } from "../../modules/orders/types";
 
@@ -217,5 +217,6 @@ export async function createOrderFromQuoteAction(
     return result;
   }
 
+  await maybeSaveAddressFromCheckout(formData, customerProfile.id, deliveryInfo);
   redirect(`/checkout/${result.value.orderId}/payment`);
 }

@@ -5,7 +5,7 @@ import { requireSession } from "../../modules/identity/policy";
 import { identityService } from "../../modules/identity/service";
 import { ordersService } from "../../modules/orders/service";
 import { err, type Result } from "../result";
-import { parseDeliveryFormData } from "../delivery-schema";
+import { parseDeliveryFormData, maybeSaveAddressFromCheckout } from "../delivery-schema";
 import type { DeliveryInfo } from "../../modules/orders/types";
 
 /**
@@ -37,5 +37,6 @@ export async function createOrderAction(
     return result;
   }
 
+  await maybeSaveAddressFromCheckout(formData, customerProfile.id, deliveryInfo);
   redirect(`/checkout/${result.value.orderId}/payment`);
 }

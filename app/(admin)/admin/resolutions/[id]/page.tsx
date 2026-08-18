@@ -149,19 +149,24 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
             <div className="rounded-2xl border border-stone-200 bg-white p-5">
               <h2 className="font-display text-base font-medium text-stone-900">Refund</h2>
               <div className="mt-3 flex flex-col gap-4">
-                {detail.refunds.map((r) => (
-                  <div key={r.id} className="rounded-lg border border-stone-200 p-3.5">
-                    <p className="text-sm text-stone-700">
-                      {formatPrice(r.amount, r.currency)} · <span className="font-medium">{r.status}</span>
-                    </p>
-                    {r.failureReason ? <p className="mt-1 text-xs text-red-600">{r.failureReason}</p> : null}
-                    {r.status === "APPROVED" || r.status === "FAILED" || r.status === "PROCESSING" ? (
-                      <div className="mt-2">
-                        <ProcessRefundButtons caseId={detail.id} refundId={r.id} status={r.status} paymentProvider={r.paymentProvider} />
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
+                {detail.refunds.map((r) => {
+                  const statusTone =
+                    r.status === "COMPLETED" ? "text-emerald-700" : r.status === "FAILED" ? "text-red-700" : r.status === "PROCESSING" ? "text-amber-700" : "text-stone-600";
+                  return (
+                    <div key={r.id} className="rounded-lg border border-stone-200 p-3.5">
+                      <p className="text-sm text-stone-700">Approved amount: {formatPrice(r.amount, r.currency)}</p>
+                      {r.paymentProvider ? <p className="mt-1 text-xs text-stone-500">Provider: {r.paymentProvider}</p> : null}
+                      <p className={`mt-1 text-sm font-medium ${statusTone}`}>Refund status: {r.status}</p>
+                      {r.providerReference ? <p className="mt-1 text-xs text-stone-500">Provider refund reference: {r.providerReference}</p> : null}
+                      {r.failureReason ? <p className="mt-1 text-xs text-red-600">{r.failureReason}</p> : null}
+                      {r.status === "APPROVED" || r.status === "FAILED" || r.status === "PROCESSING" ? (
+                        <div className="mt-2">
+                          <ProcessRefundButtons caseId={detail.id} refundId={r.id} status={r.status} paymentProvider={r.paymentProvider} />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ) : null}

@@ -168,6 +168,8 @@ export type AdminCaseDetail = AdminCaseSummary & {
     processedAt: Date | null;
     /** Which provider processed the original Payment — null if no Payment is linked. Controls whether the admin UI offers a mock succeed/fail simulate action or a real "Process refund" + "Check status" flow. */
     paymentProvider: "MOCK" | "MOOLRE" | "PAYSTACK" | null;
+    /** The refund executor's own reference for this refund (e.g. Paystack's refund id) — admin diagnostics only. */
+    providerReference: string | null;
   }[];
   returns: {
     id: string;

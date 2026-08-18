@@ -27,3 +27,32 @@ export function parseDeliveryFormData(formData: FormData) {
     notes: formData.get("notes") || undefined,
   });
 }
+
+/**
+ * "Save this address for next time" (components/checkout/DeliveryAddressFields.tsx)
+ * is a best-effort convenience side-effect, never load-bearing for the
+ * checkout/Order-creation path itself — a failure here must never fail the
+ * checkout that already succeeded. Shared by both cart checkout
+ * (lib/actions/checkout.ts) and quote acceptance (lib/actions/quotation.ts).
+ */
+export async function maybeSaveAddressFromCheckout(
+  formData: FormData,
+  customerProfileId: string,
+  delivery: { recipientName: string; phone: string; addressLine1: string; addressLine2?: string; city: string; region: string },
+): Promise<void> {
+  if (formData.get("saveAddress") !== "1") return;
+  try {
+    const { addressesService } = await import("../modules/addresses/service");
+    await addressesService.create(customerProfileId, {
+      label: String(formData.get("label") ?? "") || undefined,
+      recipientName: delivery.recipientName,
+      phone: delivery.phone,
+      addressLine1: delivery.addressLine1,
+      addressLine2: delivery.addressLine2,
+      city: delivery.city,
+      region: delivery.region,
+    });
+  } catch (error) {
+    console.error("Failed to save address from checkout (non-blocking):", error);
+  }
+}

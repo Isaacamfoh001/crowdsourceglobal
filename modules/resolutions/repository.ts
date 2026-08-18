@@ -31,6 +31,7 @@ const refundSelect = {
   failureReason: true,
   approvedAt: true,
   processedAt: true,
+  providerEventId: true,
   payment: { select: { provider: true } },
 } as const;
 
