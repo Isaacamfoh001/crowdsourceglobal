@@ -3,15 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  initiateMoolrePaymentAction,
-  submitMoolreOtpAction,
-  checkMoolrePaymentStatusAction,
+  initiateMobileMoneyPaymentAction,
+  submitMobileMoneyOtpAction,
+  checkMobileMoneyPaymentStatusAction,
 } from "../../lib/actions/payment";
 import { Button } from "../ui/Button";
 import { FormMessage } from "../ui/FormMessage";
-import type { MoolreNetworkCode, PaymentStatusView } from "../../modules/payments/types";
+import type { MobileMoneyNetworkCode, PaymentStatusView } from "../../modules/payments/types";
 
-const NETWORKS: { value: MoolreNetworkCode; label: string }[] = [
+const NETWORKS: { value: MobileMoneyNetworkCode; label: string }[] = [
   { value: "MTN", label: "MTN Mobile Money" },
   { value: "TELECEL", label: "Telecel Cash" },
   { value: "AT", label: "AirtelTigo Money" },
@@ -22,10 +22,10 @@ const MAX_POLLS = 30; // ~2 minutes of bounded polling
 
 type Step = "form" | "otp" | "pending" | "stalled" | "failed";
 
-export function MoolrePaymentForm({ orderId }: { orderId: string }) {
+export function MobileMoneyPaymentForm({ orderId }: { orderId: string }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("form");
-  const [network, setNetwork] = useState<MoolreNetworkCode>("MTN");
+  const [network, setNetwork] = useState<MobileMoneyNetworkCode>("MTN");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [payment, setPayment] = useState<PaymentStatusView | null>(null);
@@ -39,7 +39,7 @@ export function MoolrePaymentForm({ orderId }: { orderId: string }) {
 
     const interval = setInterval(async () => {
       pollCount.current += 1;
-      const result = await checkMoolrePaymentStatusAction(orderId, payment.paymentId);
+      const result = await checkMobileMoneyPaymentStatusAction(orderId, payment.paymentId);
       if (!result.ok) return;
 
       setPayment(result.value);
@@ -68,7 +68,7 @@ export function MoolrePaymentForm({ orderId }: { orderId: string }) {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
-    const result = await initiateMoolrePaymentAction(orderId, network, phone);
+    const result = await initiateMobileMoneyPaymentAction(orderId, network, phone);
     setIsSubmitting(false);
     if (!result.ok) {
       setError(result.error);
@@ -90,7 +90,7 @@ export function MoolrePaymentForm({ orderId }: { orderId: string }) {
     if (!payment) return;
     setError(null);
     setIsSubmitting(true);
-    const result = await submitMoolreOtpAction(orderId, payment.paymentId, phone, otp);
+    const result = await submitMobileMoneyOtpAction(orderId, payment.paymentId, phone, otp);
     setIsSubmitting(false);
     if (!result.ok) {
       setError(result.error);
@@ -108,7 +108,7 @@ export function MoolrePaymentForm({ orderId }: { orderId: string }) {
   async function handleManualCheck() {
     if (!payment) return;
     setIsSubmitting(true);
-    const result = await checkMoolrePaymentStatusAction(orderId, payment.paymentId);
+    const result = await checkMobileMoneyPaymentStatusAction(orderId, payment.paymentId);
     setIsSubmitting(false);
     if (!result.ok) return;
     setPayment(result.value);

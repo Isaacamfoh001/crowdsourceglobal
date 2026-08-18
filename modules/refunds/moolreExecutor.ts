@@ -1,4 +1,4 @@
-import type { RefundExecutor } from "./executor";
+import type { RefundExecutionResult, RefundExecutor } from "./executor";
 
 /**
  * Moolre's official documentation (sitemap fully reviewed) does not list a
@@ -8,19 +8,15 @@ import type { RefundExecutor } from "./executor";
  * documented. This executor always fails closed with an explicit
  * "manual operation required" outcome rather than pretending a refund
  * succeeded — MockRefundExecutor remains the only executor that can
- * actually report success, for dev/tests. If Moolre later documents a real
- * refund endpoint, this file (and only this file) needs to change.
- *
- * Selected automatically in production whenever PAYMENT_PROVIDER=moolre
- * (see modules/refunds/executor.ts's getRefundExecutor) — never invoked
- * alongside, or as a fallback from, mockRefundExecutor.
+ * actually report success, for dev/tests. Moolre is experimental/deferred
+ * as of M10A.2 (docs/decisions/0007); this stays unchanged regardless.
  */
 export const moolreRefundExecutor: RefundExecutor = {
   name: "moolre",
 
-  async refund(): Promise<{ succeeded: false; providerEventId: null; manualOperationRequired: true; reasonSafe: string }> {
+  async refund(): Promise<RefundExecutionResult> {
     return {
-      succeeded: false,
+      outcome: "FAILED",
       providerEventId: null,
       manualOperationRequired: true,
       reasonSafe:

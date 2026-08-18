@@ -16,20 +16,37 @@ const STATUS_FILTERS = [
   { value: "CANCELLED", label: "Cancelled" },
 ] as const;
 
+const PROVIDER_FILTERS = [
+  { value: undefined, label: "All providers" },
+  { value: "PAYSTACK", label: "Paystack" },
+  { value: "MOOLRE", label: "Moolre" },
+  { value: "MOCK", label: "Mock" },
+] as const;
+
 export default async function AdminPaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; attention?: string }>;
+  searchParams: Promise<{ status?: string; provider?: string; attention?: string }>;
 }) {
   await requireAdminSession("/admin/payments", [...ADMIN_FINANCE_ROLES]);
-  const { status, attention } = await searchParams;
+  const { status, provider, attention } = await searchParams;
   const activeStatus = STATUS_FILTERS.find((f) => f.value === status)?.value;
+  const activeProvider = PROVIDER_FILTERS.find((f) => f.value === provider)?.value;
   const requiresAttention = attention === "1";
 
   const payments = await paymentsService.listForAdmin({
     status: activeStatus as "PENDING" | "SUCCEEDED" | "FAILED" | "CANCELLED" | undefined,
+    provider: activeProvider,
     requiresAttention: requiresAttention || undefined,
   });
+
+  const withParam = (key: "status" | "provider", value: string | undefined) => {
+    const params = new URLSearchParams();
+    if (key === "status" ? value : status) params.set("status", key === "status" ? value! : status!);
+    if (key === "provider" ? value : provider) params.set("provider", key === "provider" ? value! : provider!);
+    const qs = params.toString();
+    return qs ? `/admin/payments?${qs}` : "/admin/payments";
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,7 +56,7 @@ export default async function AdminPaymentsPage({
         {STATUS_FILTERS.map((filter) => (
           <Link
             key={filter.label}
-            href={filter.value ? `/admin/payments?status=${filter.value}` : "/admin/payments"}
+            href={withParam("status", filter.value)}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
               activeStatus === filter.value && !requiresAttention
                 ? "bg-brand-700 text-white"
@@ -57,6 +74,22 @@ export default async function AdminPaymentsPage({
         >
           Requires attention
         </Link>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {PROVIDER_FILTERS.map((filter) => (
+          <Link
+            key={filter.label}
+            href={withParam("provider", filter.value)}
+            className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
+              activeProvider === filter.value
+                ? "bg-stone-800 text-white"
+                : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+            }`}
+          >
+            {filter.label}
+          </Link>
+        ))}
       </div>
 
       {payments.length === 0 ? (

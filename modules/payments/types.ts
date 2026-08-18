@@ -1,13 +1,13 @@
 export type MockPaymentOutcome = "succeed" | "fail";
 
-export type MoolreNetworkCode = "MTN" | "TELECEL" | "AT";
+export type MobileMoneyNetworkCode = "MTN" | "TELECEL" | "AT";
 
 /** Safe fields only — never internal provider debug data. Used by the customer polling endpoint and Order detail. */
 export type PaymentStatusView = {
   paymentId: string;
   status: "INITIATED" | "PENDING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
   requiresOtp: boolean;
-  network: MoolreNetworkCode | null;
+  network: MobileMoneyNetworkCode | null;
   phoneMasked: string | null;
   amount: number;
   currency: string;

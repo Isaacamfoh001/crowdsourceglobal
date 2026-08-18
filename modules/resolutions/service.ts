@@ -6,7 +6,8 @@ import { vendorsRepository } from "../vendors/repository";
 import { administrationRepository } from "../administration/repository";
 import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
-import { getRefundExecutor, type RefundExecutor } from "../refunds/executor";
+import { getRefundExecutorForPaymentProvider, type RefundExecutor } from "../refunds/executor";
+import { paystackClient } from "../payments/providers/paystack/client";
 import { generateResolutionCaseNumber } from "../../lib/resolution-number";
 import { storageProvider, generateStorageKey } from "../../lib/storage";
 import { validateAttachment, sanitizeFilename } from "../../lib/attachment-validation";
@@ -88,6 +89,46 @@ async function notifyAdminsOfNewCase(caseId: string, caseNumber: string, issueTy
         subject: "New resolution case",
         templateKey: "admin-new-resolution-case",
         templateData: { caseNumber, issueType, orderNumber, caseId },
+      },
+    });
+  }
+}
+
+async function notifyRefundCompleted(refundId: string, resolutionCaseId: string, amount: number, currency: string): Promise<void> {
+  const context = await resolutionsRepository.findCaseContextForNotification(resolutionCaseId);
+  if (!context) return;
+  await notificationsService.notify({
+    recipientUserId: context.customerProfile.userId,
+    type: "REFUND_COMPLETED",
+    title: "Your refund is complete",
+    body: `Your refund for case ${context.caseNumber} has been completed.`,
+    targetUrl: notificationLinks.customerResolution(resolutionCaseId),
+    eventKey: `refund-completed:${refundId}`,
+    email: {
+      to: context.customerProfile.user.email,
+      subject: "Your refund is complete",
+      templateKey: "refund-completed",
+      templateData: { caseNumber: context.caseNumber, amount, currency, caseId: resolutionCaseId },
+    },
+  });
+}
+
+async function notifyRefundFailed(refundId: string, resolutionCaseId: string): Promise<void> {
+  const admins = await administrationRepository.listAllForNotification();
+  const caseRow = await resolutionsRepository.findStatusForUpdate(resolutionCaseId);
+  for (const admin of admins) {
+    await notificationsService.notify({
+      recipientUserId: admin.userId,
+      type: "ADMIN_REFUND_FAILED",
+      title: "Refund failed",
+      body: `A refund for case ${caseRow?.caseNumber ?? resolutionCaseId} failed to process and needs attention.`,
+      targetUrl: notificationLinks.adminResolution(resolutionCaseId),
+      eventKey: `admin-refund-failed:${refundId}:${admin.userId}`,
+      email: {
+        to: admin.user.email,
+        subject: "Refund failed",
+        templateKey: "admin-refund-failed",
+        templateData: { caseNumber: caseRow?.caseNumber ?? "", caseId: resolutionCaseId },
       },
     });
   }
@@ -348,6 +389,7 @@ export const resolutionsService = {
         failureReason: r.failureReason,
         approvedAt: r.approvedAt,
         processedAt: r.processedAt,
+        paymentProvider: r.payment?.provider ?? null,
       })),
       returns: row.returns,
       replacements: row.replacements.map((r) => ({
@@ -533,13 +575,20 @@ export const resolutionsService = {
       cancelFulfilment = { fulfilmentId: input.cancelFulfilmentId, orderId: fulfilment.orderId, orderItemIds: fulfilment.items.map((i) => i.orderItemId) };
     }
 
+    // A real refund executor (Paystack) needs the original Payment's own
+    // reference to issue against — linked here, at approval time, rather
+    // than left null as it always was before M10A.2 (nothing previously
+    // read this link, so nothing ever populated it).
+    const successfulPayment =
+      itemsAmount > 0 ? await prisma.payment.findFirst({ where: { orderId: caseDetail.orderId, status: "SUCCEEDED" }, orderBy: { confirmedAt: "desc" }, select: { id: true } }) : null;
+
     const result = await resolutionsRepository.approveResolutionTransactional({
       caseId,
       fromStatuses: ["UNDER_REVIEW"],
       responsibility: input.responsibility,
       customerSafeDecisionReason: input.customerSafeDecisionReason.trim(),
       itemDecisions,
-      refund: itemsAmount > 0 ? { itemsAmount, deliveryFeeAmount: 0, orderId: caseDetail.orderId, caseItemIdsToLink } : null,
+      refund: itemsAmount > 0 ? { itemsAmount, deliveryFeeAmount: 0, orderId: caseDetail.orderId, paymentId: successfulPayment?.id ?? null, caseItemIdsToLink } : null,
       returnNeeded,
       replacements,
       payoutHoldFulfilmentItemIds,
@@ -663,19 +712,20 @@ export const resolutionsService = {
   // --- Refund execution --------------------------------------------------
 
   /**
-   * Provider-aware by default (`getRefundExecutor()` — MockRefundExecutor
-   * when PAYMENT_PROVIDER=mock, MoolreRefundExecutor when =moolre, which
-   * always fails closed since Moolre documents no refund API). Production
-   * must never silently fall back to a mock "success" for a real payment
-   * provider.
+   * Provider-aware by default: uses whichever provider actually processed
+   * the ORIGINAL Payment linked to this refund
+   * (`getRefundExecutorForPaymentProvider(refund.payment?.provider)`) —
+   * MockRefundExecutor for MOCK, MoolreRefundExecutor for MOOLRE (always
+   * fails closed — no documented refund API), PaystackRefundExecutor for
+   * PAYSTACK (real, asynchronous). Production must never silently fall
+   * back to a mock "success" for a real payment provider.
    *
    * `executorOverride` exists ONLY for tests that need to exercise a
    * specific executor's behavior deterministically, independent of
    * whatever PAYMENT_PROVIDER happens to be set in the local environment
    * running the test — reading ambient env state here directly once broke
-   * the M9 refund test suite the moment a developer's `.env` had
-   * PAYMENT_PROVIDER=moolre set for real sandbox collection testing. Never
-   * pass this from a Server Action or any other production call site.
+   * the M9 refund test suite. Never pass this from a Server Action or any
+   * other production call site.
    */
   async processRefund(staffId: string, refundId: string, outcome: MockRefundOutcome, executorOverride?: RefundExecutor): Promise<Result<null>> {
     const claimed = await resolutionsRepository.claimRefundForProcessing(refundId);
@@ -684,54 +734,70 @@ export const resolutionsService = {
     const refund = await resolutionsRepository.findRefundForExecution(refundId);
     if (!refund) return err("Refund not found.");
 
-    const executor = executorOverride ?? getRefundExecutor();
-    const result = await executor.refund(outcome);
-    if (result.succeeded) {
+    const executor = executorOverride ?? getRefundExecutorForPaymentProvider(refund.payment?.provider ?? null);
+    const result = await executor.refund({
+      outcome,
+      amount: refund.amount.toNumber(),
+      currency: refund.currency,
+      paymentReference: refund.payment?.reference ?? null,
+    });
+
+    if (result.outcome === "COMPLETED") {
       await resolutionsRepository.markRefundCompleted(refundId, result.providerEventId);
       await resolutionsRepository.createActivity(refund.resolutionCaseId, "refund_completed", staffId, { refundId });
-
-      const context = await resolutionsRepository.findCaseContextForNotification(refund.resolutionCaseId);
-      if (context) {
-        await notificationsService.notify({
-          recipientUserId: context.customerProfile.userId,
-          type: "REFUND_COMPLETED",
-          title: "Your refund is complete",
-          body: `Your refund for case ${context.caseNumber} has been completed.`,
-          targetUrl: notificationLinks.customerResolution(refund.resolutionCaseId),
-          eventKey: `refund-completed:${refundId}`,
-          email: {
-            to: context.customerProfile.user.email,
-            subject: "Your refund is complete",
-            templateKey: "refund-completed",
-            templateData: { caseNumber: context.caseNumber, amount: refund.amount.toNumber(), currency: refund.currency, caseId: refund.resolutionCaseId },
-          },
-        });
+      await notifyRefundCompleted(refundId, refund.resolutionCaseId, refund.amount.toNumber(), refund.currency);
+    } else if (result.outcome === "PENDING") {
+      // Real async provider accepted the request — stays PROCESSING
+      // (already its state from the claim above); never marked COMPLETED
+      // merely because the create-refund call was accepted.
+      if (result.providerEventId) {
+        await resolutionsRepository.recordRefundProviderReference(refundId, result.providerEventId);
       }
+      await resolutionsRepository.createActivity(refund.resolutionCaseId, "refund_processing", staffId, { refundId, providerEventId: result.providerEventId });
     } else {
       const failureReason = result.reasonSafe ?? "Simulated refund failure";
       await resolutionsRepository.markRefundFailed(refundId, failureReason);
       await resolutionsRepository.createActivity(refund.resolutionCaseId, "refund_failed", staffId, { refundId, failureReason });
-
-      const admins = await administrationRepository.listAllForNotification();
-      const caseRow = await resolutionsRepository.findStatusForUpdate(refund.resolutionCaseId);
-      for (const admin of admins) {
-        await notificationsService.notify({
-          recipientUserId: admin.userId,
-          type: "ADMIN_REFUND_FAILED",
-          title: "Refund failed",
-          body: `A refund for case ${caseRow?.caseNumber ?? refund.resolutionCaseId} failed to process and needs attention.`,
-          targetUrl: notificationLinks.adminResolution(refund.resolutionCaseId),
-          eventKey: `admin-refund-failed:${refundId}:${admin.userId}`,
-          email: {
-            to: admin.user.email,
-            subject: "Refund failed",
-            templateKey: "admin-refund-failed",
-            templateData: { caseNumber: caseRow?.caseNumber ?? "", caseId: refund.resolutionCaseId },
-          },
-        });
-      }
+      await notifyRefundFailed(refundId, refund.resolutionCaseId);
     }
     return ok(null);
+  },
+
+  /**
+   * Independently re-fetches the refund's real status from Paystack —
+   * never trusts a webhook body's embedded status alone, exactly the same
+   * discipline as payment reconciliation. Used both by an explicit admin
+   * action and by the Paystack refund webhook trigger (see
+   * `reconcileRefundByProviderEventId` below). A refund only ever leaves
+   * PROCESSING here, never elsewhere.
+   */
+  async reconcilePaystackRefund(refundId: string): Promise<Result<null>> {
+    const refund = await resolutionsRepository.findRefundForReconciliation(refundId);
+    if (!refund) return err("Refund not found.");
+    if (!refund.providerEventId) return err("This refund has no provider reference to check yet.");
+    if (refund.status !== "PROCESSING") return ok(null); // already resolved — idempotent no-op
+
+    const result = await paystackClient.fetchRefund(refund.providerEventId);
+    if (!result.ok) return err("Could not check refund status with Paystack right now.");
+
+    if (result.data.data.status === "processed") {
+      await resolutionsRepository.markRefundCompleted(refundId, refund.providerEventId);
+      await resolutionsRepository.createActivity(refund.resolutionCaseId, "refund_completed", "system", { refundId });
+      await notifyRefundCompleted(refundId, refund.resolutionCaseId, refund.amount.toNumber(), refund.currency);
+    } else if (result.data.data.status === "failed") {
+      await resolutionsRepository.markRefundFailed(refundId, "Paystack reported this refund as failed.");
+      await resolutionsRepository.createActivity(refund.resolutionCaseId, "refund_failed", "system", { refundId });
+      await notifyRefundFailed(refundId, refund.resolutionCaseId);
+    }
+    // "pending" — still processing, nothing to do yet.
+    return ok(null);
+  },
+
+  /** Webhook-triggered variant of reconcilePaystackRefund — looks up the local Refund by Paystack's own refund id, then reuses the exact same independent-verification logic. */
+  async reconcilePaystackRefundByProviderEventId(providerEventId: string): Promise<void> {
+    const refund = await resolutionsRepository.findRefundByProviderEventId(providerEventId);
+    if (!refund) return;
+    await resolutionsService.reconcilePaystackRefund(refund.id);
   },
 
   // --- Return lifecycle ------------------------------------------------

@@ -155,9 +155,9 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
                       {formatPrice(r.amount, r.currency)} · <span className="font-medium">{r.status}</span>
                     </p>
                     {r.failureReason ? <p className="mt-1 text-xs text-red-600">{r.failureReason}</p> : null}
-                    {r.status === "APPROVED" || r.status === "FAILED" ? (
+                    {r.status === "APPROVED" || r.status === "FAILED" || r.status === "PROCESSING" ? (
                       <div className="mt-2">
-                        <ProcessRefundButtons caseId={detail.id} refundId={r.id} />
+                        <ProcessRefundButtons caseId={detail.id} refundId={r.id} status={r.status} paymentProvider={r.paymentProvider} />
                       </div>
                     ) : null}
                   </div>

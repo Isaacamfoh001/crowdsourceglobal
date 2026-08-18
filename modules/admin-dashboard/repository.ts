@@ -172,7 +172,7 @@ export const adminDashboardRepository = {
       where: {
         OR: [
           { reference: { contains: q, mode: "insensitive" } },
-          { providerEventId: { contains: q, mode: "insensitive" } },
+          { providerReference: { contains: q, mode: "insensitive" } },
           { order: { orderNumber: { contains: q, mode: "insensitive" } } },
         ],
       },

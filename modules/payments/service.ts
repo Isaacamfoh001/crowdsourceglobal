@@ -8,16 +8,40 @@ import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
 import { mockPaymentProvider } from "./mockProvider";
 import { moolrePaymentProvider } from "./providers/moolre/adapter";
-import type { VerifyPaymentOutcome } from "./provider";
+import { paystackPaymentProvider } from "./providers/paystack/adapter";
+import { getActivePaymentProvider } from "./router";
+import { resolutionsService } from "../resolutions/service";
+import type { InitiatePaymentOutcome, PaymentProvider, VerifyPaymentOutcome } from "./provider";
 import { generatePaymentReference } from "../../lib/payment-number";
 import { normalizeGhanaPhone, maskGhanaPhone } from "../../lib/phone";
 import { ok, err, type Result } from "../../lib/result";
-import type { MockPaymentOutcome, MoolreNetworkCode, PaymentStatusView } from "./types";
+import type { MockPaymentOutcome, MobileMoneyNetworkCode, PaymentStatusView } from "./types";
 
 /** Safe, secret-free structured logging for the payment lifecycle (CLAUDE.md §22). */
 function logPaymentEvent(event: string, data: Record<string, unknown>): void {
   console.log(JSON.stringify({ scope: "payment", event, ...data, ts: new Date().toISOString() }));
 }
+
+/**
+ * Admin reconciliation must use the provider THAT PAYMENT actually used —
+ * never the currently-active default. A customer may have paid weeks ago
+ * via a provider CrownSourceGlobal has since stopped routing new payments
+ * to (Moolre, deferred as of M10A.2); that Payment's history must remain
+ * reconcilable regardless of what env.PAYMENT_PROVIDER says today.
+ */
+function providerForName(name: "MOOLRE" | "PAYSTACK"): PaymentProvider {
+  return name === "MOOLRE" ? moolrePaymentProvider : paystackPaymentProvider;
+}
+
+/**
+ * Raw "awaiting OTP" provider status codes — the one place provider
+ * vocabulary is unavoidably visible in the shared service layer, since
+ * there's no dedicated schema column for "awaiting OTP" (a display/UX
+ * gating concern, not a financial one). Moolre's TP14 and Paystack's
+ * send_otp both map to the shared OTP_REQUIRED outcome already; this list
+ * only needs a new entry if a future provider introduces a third code.
+ */
+const OTP_REQUIRED_PROVIDER_CODES = ["TP14", "send_otp"];
 
 /**
  * Post-commit notification boundary: fires only after confirmOrderPayment's
@@ -111,8 +135,8 @@ function toStatusView(payment: {
   return {
     paymentId: payment.id,
     status: payment.status as PaymentStatusView["status"],
-    requiresOtp: payment.providerStatus === "TP14",
-    network: (payment.network as MoolreNetworkCode | null) ?? null,
+    requiresOtp: OTP_REQUIRED_PROVIDER_CODES.includes(payment.providerStatus ?? ""),
+    network: (payment.network as MobileMoneyNetworkCode | null) ?? null,
     phoneMasked: payment.phoneMasked,
     amount: payment.amount.toNumber(),
     currency: payment.currency,
@@ -203,7 +227,7 @@ async function applyVerifyOutcome(paymentId: string, verified: VerifyPaymentOutc
       data: {
         status: "SUCCEEDED",
         confirmedAt: new Date(),
-        providerEventId: verified.providerReference,
+        providerReference: verified.providerReference,
         providerStatus: verified.providerStatus,
         lastVerifiedAt: new Date(),
       },
@@ -212,18 +236,18 @@ async function applyVerifyOutcome(paymentId: string, verified: VerifyPaymentOutc
     if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) throw error;
 
     // Unlike the initiate-path collision (a known non-identifying
-    // placeholder, safe to drop), a collision HERE means Moolre's own
-    // status-verification endpoint returned a `transactionid` already
+    // placeholder, safe to drop), a collision HERE means the provider's own
+    // status-verification endpoint returned a transaction id already
     // attached to a different Payment — a genuine integrity anomaly per
     // the brief's own instruction: never let two Payments independently
     // confirm two Orders off the same provider transaction. Fail closed:
     // do NOT confirm this Order, do NOT overwrite the other Payment's
     // claim, flag for manual review instead.
     const conflicting = await prisma.payment.findUnique({
-      where: { providerEventId: verified.providerReference },
+      where: { providerReference: verified.providerReference },
       select: { id: true, reference: true, orderId: true },
     });
-    logPaymentEvent("provider_event_id_collision_on_verify", {
+    logPaymentEvent("provider_reference_collision_on_verify", {
       paymentId,
       proposedProviderReference: verified.providerReference,
       conflictingPaymentId: conflicting?.id ?? null,
@@ -346,7 +370,7 @@ export const paymentsService = {
             amount: order.total,
             currency: order.currency,
             status: providerResult.succeeded ? "SUCCEEDED" : "FAILED",
-            providerEventId: providerResult.providerEventId,
+            providerReference: providerResult.providerEventId,
             confirmedAt: new Date(),
           },
         });
@@ -375,7 +399,7 @@ export const paymentsService = {
     return ok({ succeeded: providerResult.succeeded });
   },
 
-  // --- Moolre (M10A) ------------------------------------------------------
+  // --- Mobile Money — Paystack primary, Moolre experimental/deferred (M10A / M10A.2) ---
 
   /**
    * Customer submits only orderId + network + phone. Amount/currency are
@@ -383,12 +407,14 @@ export const paymentsService = {
    * browser. A DB-level partial unique index (payment_one_active_per_order)
    * is the actual guard against a double-click/double-tab race; this
    * function's own pre-check just gives a friendlier resume-in-place result
-   * for the common case.
+   * for the common case. Which real provider actually gets called is
+   * decided once, centrally, by `getActivePaymentProvider()` — nothing
+   * below this line branches on provider name.
    */
-  async initiateMoolrePayment(params: {
+  async initiateMobileMoneyPayment(params: {
     customerProfileId: string;
     orderId: string;
-    network: MoolreNetworkCode;
+    network: MobileMoneyNetworkCode;
     phone: string;
   }): Promise<Result<PaymentStatusView>> {
     const { customerProfileId, orderId, network, phone } = params;
@@ -409,6 +435,7 @@ export const paymentsService = {
       return ok(toStatusView(activeAttempt));
     }
 
+    const provider = getActivePaymentProvider();
     const attemptNumber = (await prisma.payment.count({ where: { orderId } })) + 1;
     const reference = generatePaymentReference();
 
@@ -418,7 +445,7 @@ export const paymentsService = {
         data: {
           orderId,
           reference,
-          provider: "MOOLRE",
+          provider: provider.name,
           method: "MOBILE_MONEY",
           network,
           amount: order.total,
@@ -434,30 +461,32 @@ export const paymentsService = {
         const winner = await prisma.payment.findFirst({ where: { orderId, status: { in: ["INITIATED", "PENDING"] } } });
         if (winner) return ok(toStatusView(winner));
       }
-      console.error("Moolre payment initiation failed unexpectedly:", error);
+      console.error("Payment initiation failed unexpectedly:", error);
       return err("Something went wrong starting payment. Please try again.");
     }
 
-    logPaymentEvent("initiation_requested", { paymentId: payment.id, reference, orderId, network });
+    logPaymentEvent("initiation_requested", { paymentId: payment.id, reference, orderId, network, provider: provider.name });
 
-    const outcome = await moolrePaymentProvider.initiate({
+    const outcome = await provider.initiate({
       reference,
       amount: order.total.toNumber(),
       currency: "GHS",
       network,
       phone: normalizedPhone,
+      customerEmail: order.customerProfile.user.email,
     });
 
     return applyInitiateOutcome(payment.id, outcome);
   },
 
   /**
-   * Resubmits the SAME externalref with the OTP code, per Moolre's
-   * documented TP14 flow — never a new Payment/reference. The phone is
-   * re-collected from the client at this step rather than persisted
-   * server-side between steps (CLAUDE.md's "store only what's justified").
+   * Resubmits the OTP against the SAME reference/attempt — never a new
+   * Payment. The phone is re-collected from the client at this step rather
+   * than persisted server-side between steps (CLAUDE.md's "store only what's
+   * justified"). Uses whichever provider originally created this Payment
+   * (`payment.provider`), not necessarily today's active default.
    */
-  async submitMoolreOtp(params: {
+  async submitMobileMoneyOtp(params: {
     customerProfileId: string;
     paymentId: string;
     phone: string;
@@ -471,59 +500,69 @@ export const paymentsService = {
 
     const payment = await prisma.payment.findFirst({
       where: { id: paymentId, order: { customerProfileId } },
+      include: { order: { select: { customerProfile: { select: { user: { select: { email: true } } } } } } },
     });
     if (!payment) return err("Payment not found.");
     if (payment.status !== "INITIATED" && payment.status !== "PENDING") {
       return err("This payment can no longer be updated.");
     }
-    if (payment.providerStatus !== "TP14") {
+    if (payment.provider === "MOCK") return err("This payment does not use OTP.");
+    const currentCode = payment.providerStatus ?? "";
+    if (!OTP_REQUIRED_PROVIDER_CODES.includes(currentCode)) {
       return err("No OTP is currently required for this payment.");
     }
     if (payment.network === null) return err("Payment is missing network details.");
 
+    const submittingMarker = `${currentCode}_SUBMITTING`;
     const claimed = await prisma.payment.updateMany({
-      where: { id: paymentId, providerStatus: "TP14" },
-      data: { providerStatus: "TP14_SUBMITTING" },
+      where: { id: paymentId, providerStatus: currentCode },
+      data: { providerStatus: submittingMarker },
     });
     if (claimed.count !== 1) return err("This OTP is already being verified. Please wait.");
 
     try {
-      const outcome = await moolrePaymentProvider.initiate({
+      const provider = providerForName(payment.provider);
+      const outcome = await provider.initiate({
         reference: payment.reference,
         amount: payment.amount.toNumber(),
         currency: "GHS",
         network: payment.network,
         phone: normalizedPhone,
+        customerEmail: payment.order.customerProfile.user.email,
         otpcode: otpcode.trim(),
       });
 
       return await applyInitiateOutcome(paymentId, outcome);
     } catch (error) {
-      // Never leave a Payment stuck at the transient "TP14_SUBMITTING"
-      // claim guard forever — that's exactly what happened before this fix
+      // Never leave a Payment stuck at the transient "*_SUBMITTING" claim
+      // guard forever — that's exactly what happened in earlier testing
       // when the ACCEPTED-branch write threw an unhandled error. No money
       // has moved at this point, so it's safe (and customer-friendliest)
-      // to revert to TP14 and let them resubmit the same OTP, rather than
-      // failing the attempt outright.
+      // to revert and let them resubmit the same OTP, rather than failing
+      // the attempt outright.
       console.error("OTP submission failed unexpectedly:", error);
-      await prisma.payment.updateMany({ where: { id: paymentId, providerStatus: "TP14_SUBMITTING" }, data: { providerStatus: "TP14" } });
+      await prisma.payment.updateMany({ where: { id: paymentId, providerStatus: submittingMarker }, data: { providerStatus: currentCode } });
       return err("Something went wrong confirming your code. Please try again.");
     }
   },
 
   /**
    * Used by the bounded customer-facing polling endpoint. The browser never
-   * queries Moolre directly — this always goes through CrownSourceGlobal's
-   * own server, and only calls out to the provider when the last
-   * verification is stale, never on every single poll tick.
+   * queries the provider directly — this always goes through
+   * CrownSourceGlobal's own server, and only calls out to the provider when
+   * the last verification is stale, never on every single poll tick. Uses
+   * whichever provider originally created this Payment.
    */
   async getPaymentStatusForCustomer(paymentId: string, customerProfileId: string): Promise<Result<PaymentStatusView>> {
     const payment = await prisma.payment.findFirst({ where: { id: paymentId, order: { customerProfileId } } });
     if (!payment) return err("Payment not found.");
+    if (payment.provider === "MOCK") return ok(toStatusView(payment));
 
     const isStale = !payment.lastVerifiedAt || Date.now() - payment.lastVerifiedAt.getTime() > 4_000;
-    if ((payment.status === "INITIATED" || payment.status === "PENDING") && isStale && payment.providerStatus !== "TP14") {
-      const verified = await moolrePaymentProvider.verify({ reference: payment.reference, providerReference: payment.providerEventId });
+    const awaitingOtp = OTP_REQUIRED_PROVIDER_CODES.includes(payment.providerStatus ?? "");
+    if ((payment.status === "INITIATED" || payment.status === "PENDING") && isStale && !awaitingOtp) {
+      const provider = providerForName(payment.provider);
+      const verified = await provider.verify({ reference: payment.reference, providerReference: payment.providerReference });
       await applyVerifyOutcome(paymentId, verified);
       const refreshed = await prisma.payment.findUnique({ where: { id: paymentId } });
       if (refreshed) return ok(toStatusView(refreshed));
@@ -533,46 +572,97 @@ export const paymentsService = {
   },
 
   /**
-   * Thin webhook business logic. The callback body is a TRIGGER only —
+   * Thin Moolre webhook business logic — kept for experimental/development
+   * use (docs/decisions/0007). The callback body is a TRIGGER only —
    * Moolre documents no signature/HMAC mechanism (best-effort source-IP
    * filtering is applied, logged, but never treated as sufficient proof).
    * Authoritative confirmation always comes from an independent
-   * server-to-server status verification call, per Moolre's own documented
-   * guidance to re-check state for significant transactions. Always
-   * processed idempotently; the route always acks 200 regardless of outcome.
+   * server-to-server status verification call. Always processed
+   * idempotently; the route always acks 200 regardless of outcome.
    */
   async handleMoolreWebhook(body: unknown, sourceIp: string | null): Promise<void> {
     const parsed = moolrePaymentProvider.parseWebhook({ body, sourceIp });
-    logPaymentEvent("callback_received", { recognized: parsed.recognized, sourceIpTrusted: parsed.recognized ? parsed.sourceIpTrusted : false, sourceIp });
+    logPaymentEvent("callback_received", { provider: "MOOLRE", recognized: parsed.recognized, sourceIpTrusted: parsed.recognized ? parsed.sourceIpTrusted : false, sourceIp });
     if (!parsed.recognized) {
-      logPaymentEvent("callback_ignored", { reason: "unrecognized payload" });
+      logPaymentEvent("callback_ignored", { provider: "MOOLRE", reason: "unrecognized payload" });
       return;
     }
 
     const payment = parsed.reference
       ? await prisma.payment.findUnique({ where: { reference: parsed.reference } })
       : parsed.providerReference
-        ? await prisma.payment.findFirst({ where: { providerEventId: parsed.providerReference } })
+        ? await prisma.payment.findFirst({ where: { providerReference: parsed.providerReference } })
         : null;
 
     if (!payment) {
-      logPaymentEvent("callback_ignored", { reason: "unknown reference", reference: parsed.reference });
+      logPaymentEvent("callback_ignored", { provider: "MOOLRE", reason: "unknown reference", reference: parsed.reference });
       return;
     }
 
-    const verified = await moolrePaymentProvider.verify({ reference: payment.reference, providerReference: payment.providerEventId });
-    logPaymentEvent("status_verification", { paymentId: payment.id, status: verified.status });
+    const verified = await moolrePaymentProvider.verify({ reference: payment.reference, providerReference: payment.providerReference });
+    logPaymentEvent("status_verification", { provider: "MOOLRE", paymentId: payment.id, status: verified.status });
     await applyVerifyOutcome(payment.id, verified);
   },
 
-  /** Admin reconciliation: query provider, validate, safely reconcile. Never an unrestricted "mark paid." */
+  /**
+   * Thin Paystack webhook business logic. Signature verification
+   * (HMAC-SHA512, Paystack's documented mechanism) happens in the route
+   * handler BEFORE this is ever called — this function receives an
+   * already-authenticated, already-JSON-parsed body. Even so, the webhook
+   * is still only ever a TRIGGER: this always independently re-verifies via
+   * Paystack's own Verify Transaction endpoint before ever confirming an
+   * Order, exactly like the Moolre path, and exactly as this milestone's
+   * brief requires ("webhook alone should not bypass financial validation").
+   */
+  async handlePaystackWebhook(body: unknown, sourceIp: string | null): Promise<void> {
+    const parsed = paystackPaymentProvider.parseWebhook({ body, sourceIp });
+    logPaymentEvent("callback_received", { provider: "PAYSTACK", recognized: parsed.recognized, sourceIpTrusted: parsed.recognized ? parsed.sourceIpTrusted : false, sourceIp });
+    if (!parsed.recognized) {
+      logPaymentEvent("callback_ignored", { provider: "PAYSTACK", reason: "unrecognized payload" });
+      return;
+    }
+
+    const payment = parsed.reference
+      ? await prisma.payment.findUnique({ where: { reference: parsed.reference } })
+      : parsed.providerReference
+        ? await prisma.payment.findFirst({ where: { providerReference: parsed.providerReference } })
+        : null;
+
+    if (!payment) {
+      logPaymentEvent("callback_ignored", { provider: "PAYSTACK", reason: "unknown reference", reference: parsed.reference });
+      return;
+    }
+
+    const verified = await paystackPaymentProvider.verify({ reference: payment.reference, providerReference: payment.providerReference });
+    logPaymentEvent("status_verification", { provider: "PAYSTACK", paymentId: payment.id, status: verified.status });
+    await applyVerifyOutcome(payment.id, verified);
+  },
+
+  /**
+   * Paystack sends refund.* events to the same webhook URL as charge.*
+   * events — this is a thin pass-through into the M9 refund domain
+   * (modules/resolutions), which owns the actual reconciliation logic
+   * (independently re-fetching via GET /refund/:reference, never trusting
+   * the webhook body's embedded status alone).
+   */
+  async handlePaystackRefundWebhook(body: unknown): Promise<void> {
+    if (typeof body !== "object" || body === null || !("data" in body)) return;
+    const data = (body as { data: unknown }).data;
+    if (typeof data !== "object" || data === null || !("id" in data)) return;
+    const providerEventId = String((data as { id: unknown }).id);
+    logPaymentEvent("refund_callback_received", { providerEventId });
+    await resolutionsService.reconcilePaystackRefundByProviderEventId(providerEventId);
+  },
+
+  /** Admin reconciliation: query the provider that actually processed this Payment, validate, safely reconcile. Never an unrestricted "mark paid." */
   async reconcilePaymentAsAdmin(paymentId: string): Promise<Result<PaymentStatusView>> {
     const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
     if (!payment) return err("Payment not found.");
-    if (payment.provider !== "MOOLRE") return err("Only Moolre payments can be reconciled with the provider.");
+    if (payment.provider === "MOCK") return err("Mock payments cannot be reconciled with a provider.");
 
-    const verified = await moolrePaymentProvider.verify({ reference: payment.reference, providerReference: payment.providerEventId });
-    logPaymentEvent("reconciliation", { paymentId, status: verified.status });
+    const provider = providerForName(payment.provider);
+    const verified = await provider.verify({ reference: payment.reference, providerReference: payment.providerReference });
+    logPaymentEvent("reconciliation", { provider: payment.provider, paymentId, status: verified.status });
     await applyVerifyOutcome(paymentId, verified);
 
     const refreshed = await prisma.payment.findUnique({ where: { id: paymentId } });
@@ -582,7 +672,7 @@ export const paymentsService = {
   // --- Admin (M10A) --------------------------------------------------------
 
   /** Safe summary fields only — never provider debug payloads or full phone numbers. */
-  async listForAdmin(filters: { provider?: "MOCK" | "MOOLRE"; status?: PaymentStatusDb; requiresAttention?: boolean }) {
+  async listForAdmin(filters: { provider?: "MOCK" | "MOOLRE" | "PAYSTACK"; status?: PaymentStatusDb; requiresAttention?: boolean }) {
     const payments = await prisma.payment.findMany({
       where: {
         provider: filters.provider,
@@ -624,7 +714,7 @@ export const paymentsService = {
         amount: true,
         currency: true,
         phoneMasked: true,
-        providerEventId: true,
+        providerReference: true,
         providerStatus: true,
         lastVerifiedAt: true,
         failureReasonSafe: true,
@@ -660,37 +750,39 @@ export const paymentsService = {
   },
 };
 
-/** Shared by initiate and OTP-resubmit — both call moolrePaymentProvider.initiate() and handle its outcome identically. */
 /**
- * `providerEventId` is Moolre's own transaction identifier — genuinely
- * unique per real transaction (confirmed: TR099's initiate `data` field,
- * and the status-verification endpoint's `transactionid` field). It must
- * never be assigned a value we can't prove is uniquely-identifying (see
- * status-map.ts's TP17 handling). This is still a defense-in-depth guard:
- * if `outcome.providerReference` is ever non-null but collides with
- * another Payment's already-claimed value (e.g. a genuinely-undocumented
- * Moolre quirk, not just the known TP17 case), the conflict must never
- * surface as an unhandled 500 — it's diagnostic-only, never something the
- * Order-confirmation flow depends on (that always keys off this Payment's
- * OWN unique `reference`/externalref instead), so it's safe to drop the
- * identifier and continue rather than fail the whole request.
+ * Shared by initiate and OTP-resubmit for whichever provider is active —
+ * both call `provider.initiate()` and handle its outcome identically.
+ *
+ * `providerReference` is the provider's own TRANSACTION identifier —
+ * genuinely unique per real transaction (confirmed: Moolre's TR099 `data`
+ * field and status `transactionid`; Paystack's Verify Transaction `data.id`
+ * — see docs/decisions/0006, 0007). It must never be assigned a value we
+ * can't prove is uniquely-identifying (see each provider's status-map.ts).
+ * This is still a defense-in-depth guard: if `outcome.providerReference`
+ * is ever non-null but collides with another Payment's already-claimed
+ * value, the conflict must never surface as an unhandled 500 — it's
+ * diagnostic-only, never something the Order-confirmation flow depends on
+ * (that always keys off this Payment's OWN unique `reference` instead), so
+ * it's safe to drop the identifier and continue rather than fail the
+ * whole request.
  */
 async function applyAcceptedInitiateOutcome(paymentId: string, outcome: { providerReference: string | null; providerStatus: string }): Promise<void> {
   try {
     await prisma.payment.update({
       where: { id: paymentId },
-      data: { status: "PENDING", providerEventId: outcome.providerReference ?? undefined, providerStatus: outcome.providerStatus },
+      data: { status: "PENDING", providerReference: outcome.providerReference ?? undefined, providerStatus: outcome.providerStatus },
     });
   } catch (error) {
-    const isProviderEventIdCollision =
+    const isProviderReferenceCollision =
       error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002" && outcome.providerReference !== null;
-    if (!isProviderEventIdCollision) throw error;
+    if (!isProviderReferenceCollision) throw error;
 
     const conflicting = await prisma.payment.findUnique({
-      where: { providerEventId: outcome.providerReference! },
+      where: { providerReference: outcome.providerReference! },
       select: { id: true, reference: true, orderId: true },
     });
-    logPaymentEvent("provider_event_id_collision", {
+    logPaymentEvent("provider_reference_collision", {
       paymentId,
       proposedProviderReference: outcome.providerReference,
       conflictingPaymentId: conflicting?.id ?? null,
@@ -714,7 +806,7 @@ async function applyAcceptedInitiateOutcome(paymentId: string, outcome: { provid
   }
 }
 
-async function applyInitiateOutcome(paymentId: string, outcome: Awaited<ReturnType<typeof moolrePaymentProvider.initiate>>): Promise<Result<PaymentStatusView>> {
+async function applyInitiateOutcome(paymentId: string, outcome: InitiatePaymentOutcome): Promise<Result<PaymentStatusView>> {
   if (outcome.outcome === "ACCEPTED") {
     await applyAcceptedInitiateOutcome(paymentId, outcome);
   } else if (outcome.outcome === "OTP_REQUIRED") {

@@ -5,10 +5,10 @@ import { requireSession } from "../../modules/identity/policy";
 import { identityService } from "../../modules/identity/service";
 import { paymentsService } from "../../modules/payments/service";
 import { requireAdminSession } from "../../modules/administration/policy";
+import { err, type Result } from "../result";
+import type { MockPaymentOutcome, MobileMoneyNetworkCode, PaymentStatusView } from "../../modules/payments/types";
 
 const ADMIN_FINANCE_ROLES = ["SUPER_ADMIN", "FINANCE_ADMIN"] as const;
-import { err, type Result } from "../result";
-import type { MockPaymentOutcome, MoolreNetworkCode, PaymentStatusView } from "../../modules/payments/types";
 
 export async function attemptMockPaymentAction(
   _prevState: Result<null> | null,
@@ -53,15 +53,16 @@ async function currentCustomerProfileId(orderId: string): Promise<Result<string>
   return { ok: true, value: customerProfile.id };
 }
 
-export async function initiateMoolrePaymentAction(
+/** Provider-neutral entry point — routes to whichever real provider is active (env.PAYMENT_PROVIDER), Paystack by default. */
+export async function initiateMobileMoneyPaymentAction(
   orderId: string,
-  network: MoolreNetworkCode,
+  network: MobileMoneyNetworkCode,
   phone: string,
 ): Promise<Result<PaymentStatusView>> {
   const customerProfileId = await currentCustomerProfileId(orderId);
   if (!customerProfileId.ok) return customerProfileId;
 
-  return paymentsService.initiateMoolrePayment({
+  return paymentsService.initiateMobileMoneyPayment({
     customerProfileId: customerProfileId.value,
     orderId,
     network,
@@ -69,7 +70,7 @@ export async function initiateMoolrePaymentAction(
   });
 }
 
-export async function submitMoolreOtpAction(
+export async function submitMobileMoneyOtpAction(
   orderId: string,
   paymentId: string,
   phone: string,
@@ -78,7 +79,7 @@ export async function submitMoolreOtpAction(
   const customerProfileId = await currentCustomerProfileId(orderId);
   if (!customerProfileId.ok) return customerProfileId;
 
-  return paymentsService.submitMoolreOtp({
+  return paymentsService.submitMobileMoneyOtp({
     customerProfileId: customerProfileId.value,
     paymentId,
     phone,
@@ -86,8 +87,8 @@ export async function submitMoolreOtpAction(
   });
 }
 
-/** Used by the bounded pending-screen poll. Browser calls this, never Moolre directly. */
-export async function checkMoolrePaymentStatusAction(orderId: string, paymentId: string): Promise<Result<PaymentStatusView>> {
+/** Used by the bounded pending-screen poll. Browser calls this, never the payment provider directly. */
+export async function checkMobileMoneyPaymentStatusAction(orderId: string, paymentId: string): Promise<Result<PaymentStatusView>> {
   const customerProfileId = await currentCustomerProfileId(orderId);
   if (!customerProfileId.ok) return customerProfileId;
 

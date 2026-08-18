@@ -51,7 +51,7 @@ export default async function AdminPaymentDetailPage({ params }: { params: Promi
         <Field label="Network" value={payment.network ?? "—"} />
         <Field label="Phone" value={payment.phoneMasked ?? "—"} />
         <Field label="Status" value={payment.status} />
-        <Field label="Provider reference" value={payment.providerEventId ?? "—"} />
+        <Field label="Provider reference" value={payment.providerReference ?? "—"} />
         <Field label="Provider status code" value={payment.providerStatus ?? "—"} />
         <Field label="Last verified" value={payment.lastVerifiedAt ? payment.lastVerifiedAt.toLocaleString() : "Never"} />
         <Field label="Attempt #" value={payment.attemptNumber} />

@@ -54,13 +54,14 @@ const envSchema = z.object({
   OPS_RESOLUTION_REVIEW_WARNING_HOURS: z.coerce.number().positive().default(24),
   OPS_RETURN_INSPECTION_WARNING_HOURS: z.coerce.number().positive().default(48),
   /**
-   * M10A payment provider selection. "mock" (default) — deterministic,
-   * synchronous, dev/test only. "moolre" — real Ghana Mobile Money via
-   * Moolre's Collection API. lib/payment-provider.ts fails closed if
-   * "mock" is selected while NODE_ENV=production: production must never be
-   * able to fabricate a payment success.
+   * Payment provider selection. "mock" (default) — deterministic,
+   * synchronous, dev/test only; production must never be able to fabricate
+   * a payment success. "paystack" (M10A.2) — the primary real provider,
+   * Ghana Mobile Money via Paystack's Charge API. "moolre" (M10A) —
+   * experimental/deferred as of M10A.2, kept selectable for
+   * development/experimental testing only, never routed to in production.
    */
-  PAYMENT_PROVIDER: z.enum(["mock", "moolre"]).default("mock"),
+  PAYMENT_PROVIDER: z.enum(["mock", "moolre", "paystack"]).default("mock"),
   /**
    * Selects Moolre's base URL. Deliberately explicit and independent of
    * NODE_ENV — a production deploy must never accidentally hit sandbox (or
@@ -74,6 +75,16 @@ const envSchema = z.object({
   /** Moolre account-management private key (X-API-KEY) — only needed for one-time account setup, not runtime payment calls. */
   MOOLRE_API_KEY: z.string().optional(),
   MOOLRE_ACCOUNT_NUMBER: z.string().optional(),
+  /**
+   * M10A.2 — Paystack. Deliberately explicit and independent of NODE_ENV,
+   * same reasoning as MOOLRE_ENV above — a production deploy must never
+   * accidentally run against test-mode credentials, or vice versa.
+   */
+  PAYSTACK_ENV: z.enum(["test", "live"]).default("test"),
+  /** Required only when PAYMENT_PROVIDER=paystack. Server-only — never exposed via NEXT_PUBLIC_*. */
+  PAYSTACK_SECRET_KEY: z.string().optional(),
+  /** Only needed if the chosen integration surface requires it client-side; the MoMo Charge API flow implemented here does not. */
+  PAYSTACK_PUBLIC_KEY: z.string().optional(),
 });
 
 function loadEnv() {
@@ -103,6 +114,9 @@ function loadEnv() {
     MOOLRE_API_PUBKEY: process.env["MOOLRE_API_PUBKEY"] || undefined,
     MOOLRE_API_KEY: process.env["MOOLRE_API_KEY"] || undefined,
     MOOLRE_ACCOUNT_NUMBER: process.env["MOOLRE_ACCOUNT_NUMBER"] || undefined,
+    PAYSTACK_ENV: process.env["PAYSTACK_ENV"] || undefined,
+    PAYSTACK_SECRET_KEY: process.env["PAYSTACK_SECRET_KEY"] || undefined,
+    PAYSTACK_PUBLIC_KEY: process.env["PAYSTACK_PUBLIC_KEY"] || undefined,
   });
 
   if (!parsed.success) {
@@ -131,7 +145,7 @@ if (
   env.PAYMENT_PROVIDER === "mock"
 ) {
   throw new Error(
-    "PAYMENT_PROVIDER=mock is not permitted when NODE_ENV=production. Set PAYMENT_PROVIDER=moolre with valid Moolre credentials.",
+    "PAYMENT_PROVIDER=mock is not permitted when NODE_ENV=production. Set PAYMENT_PROVIDER=paystack with valid Paystack credentials.",
   );
 }
 
@@ -139,6 +153,32 @@ if (env.PAYMENT_PROVIDER === "moolre" && (!env.MOOLRE_API_USER || !env.MOOLRE_AP
   throw new Error(
     "PAYMENT_PROVIDER=moolre requires MOOLRE_API_USER, MOOLRE_API_PUBKEY, and MOOLRE_ACCOUNT_NUMBER to be set.",
   );
+}
+
+if (env.PAYMENT_PROVIDER === "paystack" && !env.PAYSTACK_SECRET_KEY) {
+  throw new Error("PAYMENT_PROVIDER=paystack requires PAYSTACK_SECRET_KEY to be set.");
+}
+
+/**
+ * Defense in depth: Paystack's own key-prefix convention (sk_test_.../
+ * sk_live_...) must match the explicitly-configured PAYSTACK_ENV — never
+ * inferred from NODE_ENV alone. A live key in test mode (or vice versa) is
+ * exactly the kind of accidental misconfiguration that should fail loudly
+ * at startup rather than silently charge/verify against the wrong mode.
+ */
+if (
+  process.env["NEXT_PHASE"] !== "phase-production-build" &&
+  env.PAYMENT_PROVIDER === "paystack" &&
+  env.PAYSTACK_SECRET_KEY
+) {
+  const isLiveKey = env.PAYSTACK_SECRET_KEY.startsWith("sk_live_");
+  const isTestKey = env.PAYSTACK_SECRET_KEY.startsWith("sk_test_");
+  if (env.PAYSTACK_ENV === "live" && !isLiveKey) {
+    throw new Error("PAYSTACK_ENV=live requires a live Paystack secret key (sk_live_...). A test key was supplied.");
+  }
+  if (env.PAYSTACK_ENV === "test" && !isTestKey && isLiveKey) {
+    throw new Error("PAYSTACK_ENV=test must not use a live Paystack secret key (sk_live_...).");
+  }
 }
 
 export const googleOAuthConfigured = Boolean(

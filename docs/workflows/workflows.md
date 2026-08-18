@@ -384,49 +384,60 @@ Fulfilment exists yet
 
 Replacement source is always the same Vendor as the original line in V1 (`originalOrderItem.vendorId`) — alternate-vendor or CrownSource-custom-source replacement is an explicitly deferred follow-up (M9 spec §25), not built now.
 
-## X. Ghana Mobile Money Payment — Moolre *(added M10A)*
+## X. Ghana Mobile Money Payment *(added M10A — Moolre; Paystack made primary M10A.2)*
 
 ```
-Customer submits network (MTN/Telecel/AirtelTigo) + phone — amount/
+Customer submits network (MTN/AirtelTigo/Telecel) + phone — amount/
 currency are ALWAYS server-derived from the immutable, already-confirmed
 Order total, never trusted from the browser
-  → paymentsService.initiateMoolrePayment:
-      - normalizes phone to Moolre's documented local 0-prefixed format
+  → paymentsService.initiateMobileMoneyPayment:
+      - normalizes phone to the active provider's documented format
         (raw phone is never persisted — only a masked form)
       - generates CrownSourceGlobal's own reference (PAY-YYYYMMDD-XXXXX),
-        which doubles as Moolre's externalref/idempotency key — created
-        once, never regenerated for the same attempt
-      - Payment row created (status INITIATED); a DB-only partial unique
-        index allows at most one INITIATED/PENDING Payment per Order,
-        closing the double-click/double-tab race at the database level
-      - calls moolrePaymentProvider.initiate() (channel code mapped
-        MTN=13/Telecel=6/AirtelTigo=7 — exact documented codes, mapping
-        confined to modules/payments/providers/moolre/)
-  → Moolre response, mapped to one of four outcomes (never raw provider
-    codes past the adapter):
+        which doubles as the provider's own reference/idempotency key —
+        created once, never regenerated for the same attempt
+      - Payment row created (status INITIATED, provider = whichever real
+        provider is active — Paystack by default); a DB-only partial
+        unique index allows at most one INITIATED/PENDING Payment per
+        Order, closing the double-click/double-tab race at the database
+        level
+      - calls getActivePaymentProvider().initiate() — Paystack's Charge
+        API (POST /charge, provider codes mtn/atl/vod — mapping confined
+        to modules/payments/providers/paystack/) or Moolre's Collection
+        API (channel codes 13/6/7 — modules/payments/providers/moolre/),
+        depending on PAYMENT_PROVIDER
+  → Provider response, mapped to one of four outcomes (never raw
+    provider codes past the adapter):
       - ACCEPTED  → Payment PENDING, customer sees a "check your phone"
         screen with bounded, CrownSource-server-mediated polling (the
-        browser never calls Moolre directly)
-      - OTP_REQUIRED (documented TP14 flow) → customer enters the SMS
-        code → the SAME externalref is resubmitted with otpcode (never a
-        new Payment/reference) → same ACCEPTED/REJECTED handling
+        browser never calls the provider directly). Paystack's
+        `pay_offline` status maps here.
+      - OTP_REQUIRED → customer enters the SMS code → resubmitted against
+        the SAME reference (Paystack: POST /charge/submit_otp {otp,
+        reference}; Moolre: same request resubmitted with otpcode added)
+        → same ACCEPTED/REJECTED handling. Never a new Payment/reference.
       - REJECTED  → Payment FAILED, customer may retry (a new attempt,
         new reference)
       - UNKNOWN (timeout/network failure) → Payment stays
         PENDING/INITIATED, uncertain — NEVER auto-retried (could double-
         debit); resolved later via polling/reconciliation
   → Resolution always funnels through ONE function
-    (applyVerifyOutcome), regardless of trigger:
-      - webhook (POST /api/payments/moolre/webhook) — a TRIGGER only.
-        Moolre documents no signature/HMAC mechanism; best-effort
-        source-IP filtering is applied but never treated as sufficient
-        proof (flagged as an open production-risk question — see ADR
-        0006). The handler ALWAYS independently calls Moolre's own
-        status API before trusting anything.
+    (applyVerifyOutcome), regardless of trigger or provider:
+      - webhook (POST /api/payments/paystack/webhook or
+        /api/payments/moolre/webhook) — a TRIGGER only, even for
+        Paystack's real HMAC-SHA512-verified webhook (verified once, at
+        the route, before any JSON parsing — see ADR 0007). Moolre
+        documents no signature mechanism at all; best-effort source-IP
+        filtering is applied but never treated as sufficient proof
+        (flagged as an open production-risk question — see ADR 0006).
+        Either way, the handler ALWAYS independently calls the
+        provider's own status/verify API before trusting anything.
       - customer polling (getPaymentStatusForCustomer) — re-verifies
         with the provider only when the last check is stale
       - admin reconciliation (reconcilePaymentAsAdmin) — same
-        verification call, explicit, never an unrestricted "mark paid"
+        verification call, explicit, never an unrestricted "mark paid";
+        uses whichever provider actually processed THAT Payment, not
+        necessarily today's active default
       - amount/currency are checked against the immutable Payment
         record before any confirmation; a mismatch is quarantined via
         `exceptionReason` and a CRITICAL admin notification — never
@@ -435,7 +446,7 @@ Order total, never trusted from the browser
         (`status IN (INITIATED, PENDING)`) — N concurrent duplicate
         callers can only ever produce one winner, which then calls the
         SAME `ordersService.confirmOrderPayment` every other payment
-        path uses (no Moolre-specific order-confirmation logic exists)
+        path uses (no provider-specific order-confirmation logic exists)
       - if the verified success arrives after the Order was already
         swept to CANCELLED (Workflow F), the Order is NEVER silently
         reopened — the Payment is marked SUCCEEDED with an
@@ -443,4 +454,4 @@ Order total, never trusted from the browser
         manual resolution instead
 ```
 
-Refunds: Moolre's current official documentation lists no refund/reversal endpoint anywhere in its Payments API. `MoolreRefundExecutor` (`modules/refunds/moolreExecutor.ts`) exists as a standalone, independently-tested scaffold documenting the fail-closed "manual operation required" outcome a real integration point would need — it is deliberately **not** wired into `resolutionsService.processRefund` today. `processRefund` continues to call `mockRefundExecutor` unconditionally, exactly as M9 left it: it is staff's explicit dev/test refund simulation, and its behavior must never change based on which real collection provider (`env.PAYMENT_PROVIDER`) happens to be configured locally — an earlier version of this milestone coupled the two and broke the M9 refund test suite the moment `PAYMENT_PROVIDER=moolre` was set for real sandbox collection testing. No M9 domain logic changed.
+Refunds: Paystack documents a real, asynchronous Refund API (`POST /refund`, `GET /refund/:reference`) — `PaystackRefundExecutor` (`modules/refunds/paystackExecutor.ts`) uses it. A refund is never marked COMPLETED merely because the create-refund request was accepted; it stays PROCESSING until `resolutionsService.reconcilePaystackRefund` (admin-triggered, or `refund.processed`/`refund.failed` webhook-triggered) independently re-fetches the real status via `GET /refund/:reference` — the webhook body's embedded status is never trusted alone, same discipline as the payment side. Moolre's current official documentation still lists no refund/reversal endpoint anywhere in its Payments API — `MoolreRefundExecutor` remains fail-closed ("manual operation required"), unchanged. `resolutionsService.processRefund` selects the executor from the **linked Payment's own provider** (`getRefundExecutorForPaymentProvider`), never from today's globally-active default — a customer may have paid weeks ago via a provider CrownSourceGlobal has since stopped routing new payments to. No M9 refund *decision* logic changed. One real gap found and fixed while wiring this: `Refund.paymentId` existed since M9 but was never populated anywhere — `approveResolution()` now links the Order's successful Payment at approval time.

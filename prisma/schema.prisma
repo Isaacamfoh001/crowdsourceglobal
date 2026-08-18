@@ -857,7 +857,12 @@ enum PaymentStatus {
 
 enum PaymentProviderName {
   MOCK
+  /// Experimental/deferred as of M10A.2 — Paystack is now the primary real
+  /// provider. Kept selectable for development/experimental testing only;
+  /// never routed to for production payments. See docs/decisions/0007.
   MOOLRE
+  /// Primary real payment provider as of M10A.2.
+  PAYSTACK
 }
 
 enum PaymentMethod {
@@ -865,17 +870,19 @@ enum PaymentMethod {
   MOBILE_MONEY
 }
 
-/// Ghana Mobile Money networks Moolre's Collection API supports (M10A).
+/// Ghana Mobile Money networks — shared across providers (Moolre, Paystack).
+/// Provider-specific channel/provider codes are mapped inside each
+/// provider's own adapter, never here.
 enum PaymentNetwork {
   MTN
   TELECEL
   AT
 }
 
-/// M10A generalizes this model for a real, asynchronous provider (Moolre)
-/// while keeping MockPaymentProvider's synchronous rows fully valid.
-/// `provider`/`method` became enums now that a second, real provider
-/// exists — no longer guessing ahead of an API that didn't exist yet.
+/// M10A generalized this model for a real, asynchronous provider (Moolre,
+/// M10A) while keeping MockPaymentProvider's synchronous rows fully valid.
+/// M10A.2 pivoted the primary real provider to Paystack, adding
+/// `providerReference` — Moolre remains selectable (experimental/deferred).
 model Payment {
   id                String              @id @default(cuid())
   /// CrownSourceGlobal's own reference (PAY-YYYYMMDD-XXXXX), never the
@@ -889,8 +896,18 @@ model Payment {
   status            PaymentStatus       @default(INITIATED)
   amount            Decimal             @db.Decimal(12, 2)
   currency          String              @default("GHS")
-  /// Provider's own transaction identifier (e.g. Moolre's `data` UUID from
-  /// initiate, or its `transactionid`) — never our primary identity.
+  /// The provider's own TRANSACTION identifier (Paystack's `data.id`;
+  /// Moolre's genuine TR099/status `transactionid` — never a non-identifying
+  /// placeholder like Moolre's TP14/TP17 `"all"`, see docs/decisions/0006).
+  /// Never our primary identity — Order confirmation always keys off this
+  /// row's own `reference` instead. Added M10A.2, replacing the overloaded
+  /// use of `providerEventId` below (docs/decisions/0007).
+  providerReference String?             @unique
+  /// Reserved for a genuine provider webhook/EVENT identity, distinct from
+  /// the transaction itself — NOT currently populated by any adapter.
+  /// Originally misused to store Moolre's transaction identity; that usage
+  /// was migrated to `providerReference` above (docs/decisions/0007). Kept,
+  /// unused, for a future provider that has a real, separate event id.
   providerEventId   String?             @unique
   /// Last raw provider status code observed (e.g. "TR099"/"SS01") — for
   /// admin diagnostics only, never interpreted by domain code.
@@ -918,15 +935,15 @@ model Payment {
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   refunds Refund[]
+  // NOTE (DB-only, not expressible here): a partial unique index enforces at
+  // most one active (INITIATED/PENDING) Payment per Order —
+  // CREATE UNIQUE INDEX payment_one_active_per_order ON payment(orderId)
+  // WHERE status IN ('INITIATED','PENDING'). See the M10A migration.
 
   @@index([orderId])
   @@index([status])
   @@index([exceptionReason])
   @@map("payment")
-  // NOTE (DB-only, not expressible here): a partial unique index enforces at
-  // most one active (INITIATED/PENDING) Payment per Order —
-  // CREATE UNIQUE INDEX payment_one_active_per_order ON payment(orderId)
-  // WHERE status IN ('INITIATED','PENDING'). See the M10A migration.
 }
 
 enum ReservationStatus {
@@ -1242,6 +1259,9 @@ model Refund {
   currency          String  @default("GHS")
 
   status          RefundStatus @default(PENDING_APPROVAL)
+  /// The refund executor's own reference for this refund (e.g. Paystack's
+  /// refund `id`/reference) — never populated by MoolreRefundExecutor
+  /// (always fails closed) or a failed MockRefundExecutor attempt.
   providerEventId String?      @unique
   approvedAt      DateTime?
   processedAt     DateTime?

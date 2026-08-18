@@ -207,6 +207,15 @@ export async function processResolutionRefundAction(_prevState: Result<null> | n
   return ok(null);
 }
 
+/** Independently re-checks a PROCESSING Paystack refund's real status — never a "mark completed" shortcut. */
+export async function reconcilePaystackRefundAction(caseId: string, refundId: string): Promise<Result<null>> {
+  await requireAdminSession("/admin/resolutions", [...ADMIN_OPS_ROLES]);
+  const result = await resolutionsService.reconcilePaystackRefund(refundId);
+  if (!result.ok) return result;
+  revalidatePath(`/admin/resolutions/${caseId}`);
+  return ok(null);
+}
+
 export async function recordResolutionReturnTransitAction(_prevState: Result<null> | null, formData: FormData): Promise<Result<null>> {
   const { session } = await requireAdminSession("/admin/resolutions", [...ADMIN_OPS_ROLES]);
   const caseId = String(formData.get("caseId") ?? "");

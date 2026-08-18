@@ -44,8 +44,10 @@ function isAwaitingReview(listing: { approvalStatus: string; submittedAt: Date |
 
 function validateListingContent(input: ListingFormInput): Result<null> {
   if (input.title.trim().length < 3) return err("Enter a listing title (at least 3 characters).");
-  if (input.description.trim().length < 10) return err("Add a longer description (at least 10 characters).");
+  // if (input.description.trim().length < 10) return err("Add a longer description (at least 10 characters).");
   if (!input.categoryId) return err("Choose a category.");
+  // console.log(input)
+  console.log("VALIDATION INPUT:", input);
   if (!(input.basePrice > 0)) return err("Enter a price greater than zero.");
   if (!(input.moq >= 1)) return err("MOQ must be at least 1.");
   if (input.maxOq != null && input.maxOq < input.moq) return err("Max order quantity can't be less than MOQ.");

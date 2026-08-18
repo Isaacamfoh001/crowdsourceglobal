@@ -4,7 +4,7 @@ import { FlaskConical, ShieldCheck } from "lucide-react";
 import { Container } from "../../../../../components/ui/Container";
 import { Badge } from "../../../../../components/ui/Badge";
 import { MockPaymentForm } from "../../../../../components/checkout/MockPaymentForm";
-import { MoolrePaymentForm } from "../../../../../components/checkout/MoolrePaymentForm";
+import { MobileMoneyPaymentForm } from "../../../../../components/checkout/MobileMoneyPaymentForm";
 import { formatPrice } from "../../../../../lib/format";
 import { env } from "../../../../../lib/env";
 import { requireSession, getCurrentCustomerProfile } from "../../../../../modules/identity/policy";
@@ -40,13 +40,16 @@ export default async function PaymentPage({ params }: { params: Promise<Params> 
   // to retry after a failure is a new, intentional attempt.
   const idempotencyKey = randomUUID();
 
-  const isMoolre = env.PAYMENT_PROVIDER === "moolre";
+  // Both real providers (Paystack, primary; Moolre, experimental/deferred)
+  // share the exact same customer-facing Mobile Money form and flow —
+  // provider identity is an implementation detail never surfaced here.
+  const isRealMobileMoney = env.PAYMENT_PROVIDER === "paystack" || env.PAYMENT_PROVIDER === "moolre";
 
   return (
     <div className="bg-stone-50 py-10 sm:py-14">
       <Container className="max-w-xl">
         <div className="mb-6 flex justify-center">
-          {isMoolre ? (
+          {isRealMobileMoney ? (
             <Badge tone="gold" className="normal-case">
               <ShieldCheck className="size-3.5" strokeWidth={2} />
               Secure Mobile Money payment
@@ -72,9 +75,9 @@ export default async function PaymentPage({ params }: { params: Promise<Params> 
             </span>
           </div>
 
-          {isMoolre ? (
+          {isRealMobileMoney ? (
             <div className="mt-6">
-              <MoolrePaymentForm orderId={order.id} />
+              <MobileMoneyPaymentForm orderId={order.id} />
             </div>
           ) : (
             <>

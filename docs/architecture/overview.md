@@ -66,7 +66,7 @@ Background/async work (webhook post-processing, email, PDF generation, inventory
 | API strategy | Server actions/route handlers for the app; narrow `/api/v1` for payment webhooks and future external consumers | |
 | File/object storage | Provider TBD (R2 or S3 planned) — `lib/storage.ts`'s `StorageProvider` interface, local-disk dev adapter only so far (M6, sourcing-request attachments) | No production credentials invented; swapping providers means implementing the same three-method interface, no domain-layer changes |
 | Image handling | `sharp` on upload, Next.js `<Image>` on render | |
-| Payments | Provider-neutral `PaymentProvider` interface (`modules/payments/provider.ts`); Moolre (Ghana Mobile Money — MTN/Telecel/AirtelTigo) implemented first, M10A. Cards/Paystack deferred — see ADR 0006 | `MockPaymentProvider` remains for dev/tests, not forced through the same interface (different, synchronous shape by design); production fails closed if `PAYMENT_PROVIDER=mock` |
+| Payments | Provider-neutral `PaymentProvider` interface (`modules/payments/provider.ts`). Paystack (Ghana Mobile Money — MTN/AirtelTigo/Telecel) is the primary real provider as of M10A.2 — real webhook signature (HMAC-SHA512) and a real refund API. Moolre (M10A) remains selectable for development/experimental use only — see ADR 0006, 0007. Cards deferred | `MockPaymentProvider` remains for dev/tests, not forced through the same interface (different, synchronous shape by design); production fails closed if `PAYMENT_PROVIDER=mock` |
 | Email | `EmailProvider` interface (`lib/email-provider.ts`); `ConsoleEmailProvider` (zero-config dev default) or `ResendEmailProvider` (plain `fetch` against Resend's API, no SDK dependency) selected via `EMAIL_PROVIDER` | Resend chosen M7 — transactional focus, simple HTTP API, no infra to run. Fails fast at startup if `EMAIL_PROVIDER=resend` without `RESEND_API_KEY`/`EMAIL_FROM` |
 | In-app notifications | `Notification` table (`modules/notifications`), persisted synchronously in the same call as the domain event, independent of email | Implemented M7. No real-time channel in V1 — see "Future Realtime Path" below |
 | Background jobs | `EmailDeliveryJob` table + polling drain (`lib/email-worker.ts`, `scripts/process-email-jobs.ts`, M7); abandoned-payment sweep (`scripts/sweep-abandoned-payments.ts`, M10A) | Two narrow, purpose-built jobs rather than a generic `BackgroundJob` table — each is a direct query against its own source-of-truth rows (expired `EmailDeliveryJob`, expired `InventoryReservation` with no successful `Payment`), not a generic queue |
@@ -92,7 +92,8 @@ Background/async work (webhook post-processing, email, PDF generation, inventory
   /(admin)                   admin portal: moderation, orders, payments, payouts,
                              custom sourcing, vendor verification, platform settings
   /api                       route handlers needing a stable HTTP contract
-    /payments/moolre/webhook  Moolre payment provider webhook (M10A; actual path — differs from the originally-planned /webhooks/payments)
+    /payments/paystack/webhook  Paystack payment provider webhook (M10A.2, primary)
+    /payments/moolre/webhook    Moolre payment provider webhook (M10A, experimental/deferred)
 /modules                    framework-agnostic domain logic (no Next.js imports here)
   /identity
   /customers
@@ -105,14 +106,17 @@ Background/async work (webhook post-processing, email, PDF generation, inventory
   /orders
   /fulfilment
     /shipment                 submodule
-  /payments                    provider-neutral service + mockProvider.ts; /providers/moolre
-                                 (M10A — client/adapter/types/status-map)
+  /payments                    provider-neutral service + router.ts + mockProvider.ts;
+                                 /providers/paystack (M10A.2, primary) and /providers/moolre
+                                 (M10A, experimental/deferred) — each client/adapter/types/status-map
   /payouts
   /resolutions                M9 — ResolutionCase/Return/Replacement domain: types, policy
                                (cancellation eligibility, refund-amount/quantity caps), repository,
                                service (the case state machine + every side-effect it triggers)
-  /refunds                    M9 — mockExecutor.ts only (the refund EXECUTION boundary — the
-                               DECISION lives entirely in modules/resolutions)
+  /refunds                    executor.ts (provider-neutral RefundExecutor interface/routing) +
+                               mockExecutor.ts (M9) + moolreExecutor.ts (M10A, always fails closed)
+                               + paystackExecutor.ts (M10A.2, real async refund API) — the refund
+                               EXECUTION boundary; the DECISION lives entirely in modules/resolutions
   /documents
   /messaging
   /notifications              types, policy (required-vs-optional email), links (deep-link builders),
@@ -235,7 +239,7 @@ Full detail in `/docs/workflows/workflows.md` and the decision records; the head
 - Customer/vendor isolation enforced at the repository layer via session-derived scoping, never UI hiding.
 - Client never supplies price; authoritative pricing is always server-derived (checkout revalidation) or copied from a server-issued Quotation.
 - Inventory reservation is atomic with `PENDING_PAYMENT` Order creation, preventing oversell under concurrent checkouts.
-- Payment webhooks are idempotent on the provider's event id/CrownSourceGlobal's own reference. Moolre (M10A) documents no webhook signature mechanism — its callback is treated as a trigger only; every confirmation path independently re-verifies status via Moolre's own status API before ever confirming an Order (ADR 0006 — flagged as an open production-risk question, not silently assumed safe).
+- Payment webhooks are idempotent on the provider's own transaction reference/CrownSourceGlobal's own reference. Paystack (primary, M10A.2) verifies webhook authenticity with a real HMAC-SHA512 signature over the raw body — but even a validly-signed webhook is only ever a TRIGGER: every confirmation path independently re-verifies status via Paystack's Verify Transaction endpoint before ever confirming an Order. Moolre (experimental/deferred, M10A) documents no webhook signature mechanism at all — its callback is treated as a trigger only, with the same mandatory independent re-verification (ADR 0006 — flagged as an open production-risk question, not silently assumed safe).
 - Fulfilment creation and payout claiming are idempotent via database uniqueness constraints, not application-level locking alone.
 - Every domain service emits an `AuditEvent` inline with its own state-changing transaction.
 - Notification read/list/mark-read queries are always scoped by session-derived `recipientUserId`; `targetUrl` deep links are built server-side from known route shapes (`modules/notifications/links.ts`), never from a client value or a request Host header — no open-redirect surface.

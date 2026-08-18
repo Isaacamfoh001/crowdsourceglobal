@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   assignResolutionStaffAction,
   moveResolutionToReviewAction,
@@ -13,6 +14,7 @@ import {
   closeResolutionCaseAction,
   addResolutionInternalNoteAction,
   processResolutionRefundAction,
+  reconcilePaystackRefundAction,
   recordResolutionReturnTransitAction,
   confirmResolutionReturnReceivedAction,
   inspectResolutionReturnAction,
@@ -301,9 +303,68 @@ export function AddInternalNoteForm({ id }: { id: string }) {
   );
 }
 
-export function ProcessRefundButtons({ caseId, refundId }: { caseId: string; refundId: string }) {
+export function ProcessRefundButtons({
+  caseId,
+  refundId,
+  status,
+  paymentProvider,
+}: {
+  caseId: string;
+  refundId: string;
+  status: "APPROVED" | "FAILED" | "PROCESSING";
+  paymentProvider: "MOCK" | "MOOLRE" | "PAYSTACK" | null;
+}) {
   const [succeedState, succeedAction, succeedPending] = useActionState(processResolutionRefundAction, null);
   const [failState, failAction, failPending] = useActionState(processResolutionRefundAction, null);
+  const [checkPending, setCheckPending] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const router = useRouter();
+
+  const isRealProvider = paymentProvider === "PAYSTACK" || paymentProvider === "MOOLRE";
+
+  async function handleCheckStatus() {
+    setCheckPending(true);
+    setCheckError(null);
+    const result = await reconcilePaystackRefundAction(caseId, refundId);
+    setCheckPending(false);
+    if (!result.ok) {
+      setCheckError(result.error);
+      return;
+    }
+    router.refresh();
+  }
+
+  if (status === "PROCESSING") {
+    // A real provider accepted the refund but hasn't confirmed it yet —
+    // never a "mark completed" shortcut, only an independent status check.
+    return (
+      <div className="flex flex-col gap-2">
+        <Button type="button" size="sm" variant="outline" onClick={handleCheckStatus} disabled={checkPending}>
+          {checkPending ? "Checking…" : "Check refund status"}
+        </Button>
+        {checkError ? <p className="text-xs text-red-600">{checkError}</p> : null}
+      </div>
+    );
+  }
+
+  if (isRealProvider) {
+    // Real providers decide the outcome themselves — no "succeed"/"fail"
+    // simulate choice, since that would be misleading for a live refund.
+    return (
+      <div className="flex flex-col gap-2">
+        <form action={succeedAction}>
+          <input type="hidden" name="caseId" value={caseId} />
+          <input type="hidden" name="refundId" value={refundId} />
+          <input type="hidden" name="outcome" value="succeed" />
+          <Button type="submit" size="sm" disabled={succeedPending}>
+            {succeedPending ? "Processing…" : "Process refund"}
+          </Button>
+        </form>
+        <ErrorMessage state={succeedState} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">

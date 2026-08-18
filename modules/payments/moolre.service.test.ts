@@ -7,14 +7,20 @@ const initiate = vi.fn();
 const verify = vi.fn();
 const parseWebhook = vi.fn();
 
-vi.mock("./providers/moolre/adapter", () => ({
-  moolrePaymentProvider: {
-    name: "MOOLRE",
-    initiate: (...args: unknown[]) => initiate(...args),
-    verify: (...args: unknown[]) => verify(...args),
-    parseWebhook: (...args: unknown[]) => parseWebhook(...args),
-  },
-}));
+const mockedMoolreProvider = {
+  name: "MOOLRE" as const,
+  initiate: (...args: unknown[]) => initiate(...args),
+  verify: (...args: unknown[]) => verify(...args),
+  parseWebhook: (...args: unknown[]) => parseWebhook(...args),
+};
+
+vi.mock("./providers/moolre/adapter", () => ({ moolrePaymentProvider: mockedMoolreProvider }));
+// Moolre is experimental/deferred as of M10A.2 (no longer the env-selected
+// default) — these tests explicitly force it active rather than depending
+// on whatever env.PAYMENT_PROVIDER happens to be set to locally. Reading
+// ambient env state here once broke an entirely different test suite (the
+// refund-executor routing tests) — never repeat that mistake.
+vi.mock("./router", () => ({ getActivePaymentProvider: () => mockedMoolreProvider }));
 
 const { paymentsService } = await import("./service");
 
@@ -103,7 +109,7 @@ describe("paymentsService — Moolre (M10A)", () => {
 
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: "moolre-ref-1", providerStatus: "TR099" });
 
-    const result = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
+    const result = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.status).toBe("PENDING");
@@ -112,7 +118,7 @@ describe("paymentsService — Moolre (M10A)", () => {
 
     const payment = await prisma.payment.findFirst({ where: { orderId } });
     expect(payment?.status).toBe("PENDING");
-    expect(payment?.providerEventId).toBe("moolre-ref-1");
+    expect(payment?.providerReference).toBe("moolre-ref-1");
     expect(payment?.reference).toMatch(/^PAY-/);
   });
 
@@ -122,7 +128,7 @@ describe("paymentsService — Moolre (M10A)", () => {
     const orderId = await createPendingOrder([vendorId]);
 
     initiate.mockResolvedValueOnce({ outcome: "OTP_REQUIRED", providerStatus: "TP14" });
-    const first = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
+    const first = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
     expect(first.ok).toBe(true);
     if (!first.ok) return;
     expect(first.value.requiresOtp).toBe(true);
@@ -130,7 +136,7 @@ describe("paymentsService — Moolre (M10A)", () => {
     const referenceUsed = initiate.mock.calls[0]?.[0]?.reference;
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: "moolre-ref-otp", providerStatus: "TR099" });
 
-    const second = await paymentsService.submitMoolreOtp({ customerProfileId: customerId, paymentId: first.value.paymentId, phone: "0244123456", otpcode: "1234" });
+    const second = await paymentsService.submitMobileMoneyOtp({ customerProfileId: customerId, paymentId: first.value.paymentId, phone: "0244123456", otpcode: "1234" });
     expect(second.ok).toBe(true);
     expect(initiate.mock.calls[1]?.[0]?.reference).toBe(referenceUsed); // same externalref, never regenerated
     if (second.ok) expect(second.value.status).toBe("PENDING");
@@ -142,11 +148,11 @@ describe("paymentsService — Moolre (M10A)", () => {
     const orderId = await createPendingOrder([vendorId], 90);
 
     initiate.mockResolvedValueOnce({ outcome: "OTP_REQUIRED", providerStatus: "TP14" });
-    const initiated = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
+    const initiated = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
     if (!initiated.ok) throw new Error("setup failed");
 
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: null, providerStatus: "TP17" });
-    const otpResult = await paymentsService.submitMoolreOtp({ customerProfileId: customerId, paymentId: initiated.value.paymentId, phone: "0244123456", otpcode: "1234" });
+    const otpResult = await paymentsService.submitMobileMoneyOtp({ customerProfileId: customerId, paymentId: initiated.value.paymentId, phone: "0244123456", otpcode: "1234" });
     expect(otpResult.ok).toBe(true);
     if (otpResult.ok) {
       expect(otpResult.value.status).toBe("PENDING");
@@ -173,11 +179,11 @@ describe("paymentsService — Moolre (M10A)", () => {
     const orderId = await createPendingOrder([vendorId], 30);
 
     initiate.mockResolvedValueOnce({ outcome: "OTP_REQUIRED", providerStatus: "TP14" });
-    const initiated = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
+    const initiated = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
     if (!initiated.ok) throw new Error("setup failed");
 
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: null, providerStatus: "TP17" });
-    await paymentsService.submitMoolreOtp({ customerProfileId: customerId, paymentId: initiated.value.paymentId, phone: "0244123456", otpcode: "1234" });
+    await paymentsService.submitMobileMoneyOtp({ customerProfileId: customerId, paymentId: initiated.value.paymentId, phone: "0244123456", otpcode: "1234" });
 
     verify.mockResolvedValue({ status: "PENDING", providerStatus: "SOME_PENDING_CODE" });
     await paymentsService.getPaymentStatusForCustomer(initiated.value.paymentId, customerId);
@@ -194,11 +200,11 @@ describe("paymentsService — Moolre (M10A)", () => {
     const orderId = await createPendingOrder([vendorId], 15);
 
     initiate.mockResolvedValueOnce({ outcome: "OTP_REQUIRED", providerStatus: "TP14" });
-    const initiated = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
+    const initiated = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
     if (!initiated.ok) throw new Error("setup failed");
 
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: null, providerStatus: "TP17" });
-    await paymentsService.submitMoolreOtp({ customerProfileId: customerId, paymentId: initiated.value.paymentId, phone: "0244123456", otpcode: "1234" });
+    await paymentsService.submitMobileMoneyOtp({ customerProfileId: customerId, paymentId: initiated.value.paymentId, phone: "0244123456", otpcode: "1234" });
 
     verify.mockResolvedValue({ status: "FAILED", reasonSafe: "Payment could not be completed.", providerStatus: "SOME_FAIL_CODE" });
     await paymentsService.getPaymentStatusForCustomer(initiated.value.paymentId, customerId);
@@ -211,9 +217,9 @@ describe("paymentsService — Moolre (M10A)", () => {
     expect(fulfilments.length).toBe(0);
   });
 
-  // ---- providerEventId collision regression (real sandbox bug) -----------
+  // ---- providerReference collision regression (real sandbox bug) -----------
 
-  it("two independent Orders can each reach TP17 without colliding — providerEventId stays null for both, never a shared placeholder value", async () => {
+  it("two independent Orders can each reach TP17 without colliding — providerReference stays null for both, never a shared placeholder value", async () => {
     await setupCustomer();
     const vendorA = await createVendor("collision-a");
     const vendorB = await createVendor("collision-b");
@@ -221,33 +227,33 @@ describe("paymentsService — Moolre (M10A)", () => {
     const orderB = await createPendingOrder([vendorB], 25);
 
     initiate.mockResolvedValueOnce({ outcome: "OTP_REQUIRED", providerStatus: "TP14" });
-    const initiatedA = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId: orderA, network: "MTN", phone: "0244123456" });
+    const initiatedA = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId: orderA, network: "MTN", phone: "0244123456" });
     if (!initiatedA.ok) throw new Error("setup failed");
 
     initiate.mockResolvedValueOnce({ outcome: "OTP_REQUIRED", providerStatus: "TP14" });
-    const initiatedB = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId: orderB, network: "MTN", phone: "0244123456" });
+    const initiatedB = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId: orderB, network: "MTN", phone: "0244123456" });
     if (!initiatedB.ok) throw new Error("setup failed");
 
     // Both attempts receive Moolre's real, observed TP17 outcome shape — a
     // null providerReference, per the fixed status-map — simulating what
     // would previously have been the shared "all" placeholder.
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: null, providerStatus: "TP17" });
-    const otpA = await paymentsService.submitMoolreOtp({ customerProfileId: customerId, paymentId: initiatedA.value.paymentId, phone: "0244123456", otpcode: "1111" });
+    const otpA = await paymentsService.submitMobileMoneyOtp({ customerProfileId: customerId, paymentId: initiatedA.value.paymentId, phone: "0244123456", otpcode: "1111" });
     expect(otpA.ok).toBe(true); // no unhandled exception
 
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: null, providerStatus: "TP17" });
-    const otpB = await paymentsService.submitMoolreOtp({ customerProfileId: customerId, paymentId: initiatedB.value.paymentId, phone: "0244123456", otpcode: "2222" });
+    const otpB = await paymentsService.submitMobileMoneyOtp({ customerProfileId: customerId, paymentId: initiatedB.value.paymentId, phone: "0244123456", otpcode: "2222" });
     expect(otpB.ok).toBe(true); // no unhandled exception, no collision with Payment A
 
     const paymentA = await prisma.payment.findUniqueOrThrow({ where: { id: initiatedA.value.paymentId } });
     const paymentB = await prisma.payment.findUniqueOrThrow({ where: { id: initiatedB.value.paymentId } });
-    expect(paymentA.providerEventId).toBeNull();
-    expect(paymentB.providerEventId).toBeNull();
+    expect(paymentA.providerReference).toBeNull();
+    expect(paymentB.providerReference).toBeNull();
     expect(paymentA.status).toBe("PENDING");
     expect(paymentB.status).toBe("PENDING");
   });
 
-  it("a genuine providerEventId collision on initiation fails closed: no unhandled exception, the colliding value is never stored, an exceptionReason is set, and the Payment still reaches a safe PENDING state", async () => {
+  it("a genuine providerReference collision on initiation fails closed: no unhandled exception, the colliding value is never stored, an exceptionReason is set, and the Payment still reaches a safe PENDING state", async () => {
     await setupCustomer();
     const vendorA = await createVendor("collision-c1");
     const vendorB = await createVendor("collision-c2");
@@ -256,7 +262,7 @@ describe("paymentsService — Moolre (M10A)", () => {
 
     // Payment A legitimately claims a real (hypothetical) transaction id via TR099.
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: "moolre-txn-shared-123", providerStatus: "TR099" });
-    const paidA = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId: orderA, network: "MTN", phone: "0244123456" });
+    const paidA = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId: orderA, network: "MTN", phone: "0244123456" });
     expect(paidA.ok).toBe(true);
     if (!paidA.ok) return;
 
@@ -264,18 +270,18 @@ describe("paymentsService — Moolre (M10A)", () => {
     // same provider reference (an undocumented Moolre edge case this
     // defensive path exists for, independent of the TP17 root cause).
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: "moolre-txn-shared-123", providerStatus: "TR099" });
-    const paidB = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId: orderB, network: "MTN", phone: "0244555555" });
+    const paidB = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId: orderB, network: "MTN", phone: "0244555555" });
 
     expect(paidB.ok).toBe(true); // never an unhandled Prisma exception reaching the caller
     if (!paidB.ok) return;
     expect(paidB.value.status).toBe("PENDING"); // still reaches a safe, usable state
 
     const paymentB = await prisma.payment.findUniqueOrThrow({ where: { id: paidB.value.paymentId } });
-    expect(paymentB.providerEventId).toBeNull(); // the colliding value was never stored
+    expect(paymentB.providerReference).toBeNull(); // the colliding value was never stored
     expect(paymentB.exceptionReason).toMatch(/collided/i);
 
     const paymentA = await prisma.payment.findFirstOrThrow({ where: { orderId: orderA } });
-    expect(paymentA.providerEventId).toBe("moolre-txn-shared-123"); // Payment A's own claim is untouched
+    expect(paymentA.providerReference).toBe("moolre-txn-shared-123"); // Payment A's own claim is untouched
 
     // Order A verifies and confirms normally, legitimately claiming the transaction id.
     verify.mockResolvedValue({ status: "SUCCEEDED", providerReference: "moolre-txn-shared-123", verifiedAmount: 30, verifiedCurrency: "GHS", providerStatus: "SS01" });
@@ -304,13 +310,13 @@ describe("paymentsService — Moolre (M10A)", () => {
     const orderId = await createPendingOrder([vendorId], 22);
 
     initiate.mockResolvedValueOnce({ outcome: "OTP_REQUIRED", providerStatus: "TP14" });
-    const initiated = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
+    const initiated = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
     if (!initiated.ok) throw new Error("setup failed");
 
     initiate.mockImplementationOnce(() => {
       throw new Error("simulated unexpected provider client failure");
     });
-    const result = await paymentsService.submitMoolreOtp({ customerProfileId: customerId, paymentId: initiated.value.paymentId, phone: "0244123456", otpcode: "9999" });
+    const result = await paymentsService.submitMobileMoneyOtp({ customerProfileId: customerId, paymentId: initiated.value.paymentId, phone: "0244123456", otpcode: "9999" });
     expect(result.ok).toBe(false); // safe, generic error — not an unhandled exception
 
     const payment = await prisma.payment.findUniqueOrThrow({ where: { id: initiated.value.paymentId } });
@@ -318,7 +324,7 @@ describe("paymentsService — Moolre (M10A)", () => {
 
     // Confirm the revert actually allows a real retry, not just a status label.
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: null, providerStatus: "TP17" });
-    const retry = await paymentsService.submitMoolreOtp({ customerProfileId: customerId, paymentId: initiated.value.paymentId, phone: "0244123456", otpcode: "9999" });
+    const retry = await paymentsService.submitMobileMoneyOtp({ customerProfileId: customerId, paymentId: initiated.value.paymentId, phone: "0244123456", otpcode: "9999" });
     expect(retry.ok).toBe(true);
   });
 
@@ -328,7 +334,7 @@ describe("paymentsService — Moolre (M10A)", () => {
     const orderId = await createPendingOrder([vendorId], 100);
 
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: "ref-c", providerStatus: "TR099" });
-    const initiated = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
+    const initiated = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
     if (!initiated.ok) throw new Error("setup failed");
 
     verify.mockResolvedValue({ status: "SUCCEEDED", providerReference: "ref-c", verifiedAmount: 100, verifiedCurrency: "GHS", providerStatus: "SS01" });
@@ -350,7 +356,7 @@ describe("paymentsService — Moolre (M10A)", () => {
     const orderId = await createPendingOrder([vendorA, vendorB], 60);
 
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: "ref-multi", providerStatus: "TR099" });
-    const initiated = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
+    const initiated = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
     if (!initiated.ok) throw new Error("setup failed");
 
     const order = await prisma.order.findUnique({ where: { id: orderId } });
@@ -372,7 +378,7 @@ describe("paymentsService — Moolre (M10A)", () => {
     const orderId = await createPendingOrder([vendorId], 75);
 
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: "ref-e", providerStatus: "TR099" });
-    const initiated = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
+    const initiated = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
     if (!initiated.ok) throw new Error("setup failed");
 
     parseWebhook.mockReturnValue({ recognized: true, reference: (await prisma.payment.findUnique({ where: { id: initiated.value.paymentId } }))!.reference, providerReference: "ref-e", claimedSucceeded: true, sourceIpTrusted: false });
@@ -394,7 +400,7 @@ describe("paymentsService — Moolre (M10A)", () => {
     const orderId = await createPendingOrder([vendorId], 1000);
 
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: "ref-f", providerStatus: "TR099" });
-    const initiated = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
+    const initiated = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
     if (!initiated.ok) throw new Error("setup failed");
 
     verify.mockResolvedValue({ status: "SUCCEEDED", providerReference: "ref-f", verifiedAmount: 10, verifiedCurrency: "GHS", providerStatus: "SS01" });
@@ -413,11 +419,11 @@ describe("paymentsService — Moolre (M10A)", () => {
     const orderId = await createPendingOrder([vendorId], 40);
 
     initiate.mockResolvedValueOnce({ outcome: "REJECTED", reasonSafe: "Simulated rejection", providerStatus: "TP13" });
-    const failedAttempt = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
+    const failedAttempt = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
     expect(failedAttempt.ok).toBe(false);
 
     initiate.mockResolvedValueOnce({ outcome: "ACCEPTED", providerReference: "ref-g2", providerStatus: "TR099" });
-    const retry = await paymentsService.initiateMoolrePayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
+    const retry = await paymentsService.initiateMobileMoneyPayment({ customerProfileId: customerId, orderId, network: "MTN", phone: "0244123456" });
     expect(retry.ok).toBe(true);
     if (!retry.ok) return;
 

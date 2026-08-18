@@ -31,6 +31,7 @@ const refundSelect = {
   failureReason: true,
   approvedAt: true,
   processedAt: true,
+  payment: { select: { provider: true } },
 } as const;
 
 const returnSelect = {
@@ -317,7 +318,7 @@ export const resolutionsRepository = {
     responsibility: string;
     customerSafeDecisionReason: string;
     itemDecisions: { caseItemId: string; approvedResolution: string; approvedRefundAmount: number | null; replacementQuantity: number | null }[];
-    refund: { itemsAmount: number; deliveryFeeAmount: number; orderId: string; caseItemIdsToLink: string[] } | null;
+    refund: { itemsAmount: number; deliveryFeeAmount: number; orderId: string; paymentId: string | null; caseItemIdsToLink: string[] } | null;
     returnNeeded: boolean;
     replacements: { originalOrderItemId: string; quantity: number }[];
     payoutHoldFulfilmentItemIds: string[];
@@ -353,6 +354,7 @@ export const resolutionsRepository = {
           data: {
             resolutionCaseId: params.caseId,
             orderId: params.refund.orderId,
+            paymentId: params.refund.paymentId,
             itemsAmount: params.refund.itemsAmount,
             deliveryFeeAmount: params.refund.deliveryFeeAmount,
             amount: params.refund.itemsAmount + params.refund.deliveryFeeAmount,
@@ -433,7 +435,16 @@ export const resolutionsRepository = {
   findRefundForExecution(refundId: string) {
     return prisma.refund.findUnique({
       where: { id: refundId },
-      select: { id: true, resolutionCaseId: true, orderId: true, amount: true, currency: true, status: true },
+      select: {
+        id: true,
+        resolutionCaseId: true,
+        orderId: true,
+        amount: true,
+        currency: true,
+        status: true,
+        paymentId: true,
+        payment: { select: { provider: true, reference: true } },
+      },
     });
   },
 
@@ -451,6 +462,25 @@ export const resolutionsRepository = {
 
   markRefundFailed(refundId: string, failureReason: string) {
     return prisma.refund.update({ where: { id: refundId }, data: { status: "FAILED", failureReason } });
+  },
+
+  /** Records the provider's own refund reference without changing status — used when a real refund is accepted but still PENDING (async processing). */
+  recordRefundProviderReference(refundId: string, providerEventId: string) {
+    return prisma.refund.update({ where: { id: refundId }, data: { providerEventId } });
+  },
+
+  findRefundForReconciliation(refundId: string) {
+    return prisma.refund.findUnique({
+      where: { id: refundId },
+      select: { id: true, resolutionCaseId: true, status: true, providerEventId: true, amount: true, currency: true },
+    });
+  },
+
+  findRefundByProviderEventId(providerEventId: string) {
+    return prisma.refund.findUnique({
+      where: { providerEventId },
+      select: { id: true, resolutionCaseId: true, status: true, providerEventId: true, amount: true, currency: true },
+    });
   },
 
   // --- Return lifecycle ------------------------------------------------
