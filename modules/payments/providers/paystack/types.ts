@@ -39,9 +39,29 @@ export type PaystackTransactionData = {
   currency: string;
   gateway_response?: string;
   channel?: string;
+  /**
+   * Card-origin transactions only (M10B). Safe-to-display fields —
+   * brand/last4 — never the PAN/CVV/PIN/OTP, which Paystack never sends us
+   * in the first place. `card_type` is Paystack's brand field name (e.g.
+   * "visa", "mastercard").
+   */
+  authorization?: {
+    last4?: string;
+    card_type?: string;
+    bank?: string;
+  };
 };
 
 export type PaystackVerifyResponse = PaystackEnvelope<PaystackTransactionData>;
+
+/** POST /transaction/initialize response (M10B — card/hosted Checkout). */
+export type PaystackInitializeData = {
+  authorization_url: string;
+  access_code: string;
+  reference: string;
+};
+
+export type PaystackInitializeResponse = PaystackEnvelope<PaystackInitializeData>;
 
 export type PaystackRefundStatus = "pending" | "processed" | "failed" | string;
 

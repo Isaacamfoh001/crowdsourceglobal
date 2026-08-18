@@ -10,7 +10,7 @@ import type {
   WebhookParseResult,
 } from "../../provider";
 import { paystackClient } from "./client";
-import { mapChargeResponse, mapVerifyResponse } from "./status-map";
+import { mapChargeResponse, mapInitializeResponse, mapVerifyResponse, type InitiateCardPaymentOutcome } from "./status-map";
 import { PAYSTACK_MOMO_PROVIDER_CODES, PAYSTACK_WEBHOOK_SOURCE_IPS, type PaystackTransactionData, type PaystackWebhookPayload } from "./types";
 
 /**
@@ -95,3 +95,40 @@ export const paystackPaymentProvider: PaymentProvider = {
     };
   },
 };
+
+export type InitiateCardPaymentParams = {
+  reference: string;
+  amount: number;
+  currency: "GHS";
+  customerEmail: string;
+  /** Server-generated from env.NEXT_PUBLIC_APP_URL — never a client-supplied or Host-header-derived value. */
+  callbackUrl: string;
+};
+
+/**
+ * Card payments (M10B) — deliberately NOT part of the shared
+ * `PaymentProvider` interface, which is MoMo-shaped (network/phone/otpcode
+ * have no card equivalent). This is the one place a Paystack-specific
+ * function is called directly by modules/payments/service.ts; everything
+ * downstream of initiation (webhook route, applyVerifyOutcome, Payment
+ * table, PaystackRefundExecutor) is fully shared, unchanged, with MoMo.
+ */
+export async function initiatePaystackCardPayment(params: InitiateCardPaymentParams): Promise<InitiateCardPaymentOutcome> {
+  const result = await paystackClient.initializeTransaction({
+    email: params.customerEmail,
+    amount: ghsToPesewas(params.amount),
+    currency: params.currency,
+    reference: params.reference,
+    callback_url: params.callbackUrl,
+    channels: ["card"],
+  });
+
+  if (!result.ok) {
+    if (result.kind === "TIMEOUT" || result.kind === "NETWORK") {
+      return { outcome: "UNKNOWN", reasonSafe: "Payment could not be started right now. Please try again shortly." };
+    }
+    return { outcome: "REJECTED", reasonSafe: "Payment could not be started. Please try again.", providerStatus: `HTTP_${result.status ?? "ERR"}` };
+  }
+
+  return mapInitializeResponse(result.data);
+}

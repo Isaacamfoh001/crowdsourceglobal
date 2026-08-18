@@ -894,6 +894,9 @@ enum PaymentProviderName {
 enum PaymentMethod {
   MOCK
   MOBILE_MONEY
+  /// Paystack-hosted Checkout/Popup only (M10B) — CrownSourceGlobal never
+  /// receives PAN/CVV/PIN/OTP. `network` is always null for this method.
+  CARD
 }
 
 /// Ghana Mobile Money networks — shared across providers (Moolre, Paystack).
@@ -946,6 +949,12 @@ model Payment {
   /// Masked display value only (e.g. "024***1234") — the raw phone is never
   /// persisted once the provider request has been sent.
   phoneMasked       String?
+  /// Card payments only (M10B) — Paystack's `card_type` (e.g. "visa"), set
+  /// only on SUCCEEDED verification, never the PAN/CVV/PIN/OTP.
+  cardBrand         String?
+  /// Card payments only (M10B) — last 4 digits only, set only on SUCCEEDED
+  /// verification.
+  cardLast4         String?
   /// Which attempt number this is for the parent Order — multiple Payment
   /// rows may exist per Order, history is never mutated in place.
   attemptNumber     Int                 @default(1)

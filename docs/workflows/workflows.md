@@ -455,3 +455,44 @@ Order total, never trusted from the browser
 ```
 
 Refunds: Paystack documents a real, asynchronous Refund API (`POST /refund`, `GET /refund/:reference`) — `PaystackRefundExecutor` (`modules/refunds/paystackExecutor.ts`) uses it. A refund is never marked COMPLETED merely because the create-refund request was accepted; it stays PROCESSING until `resolutionsService.reconcilePaystackRefund` (admin-triggered, or `refund.processed`/`refund.failed` webhook-triggered) independently re-fetches the real status via `GET /refund/:reference` — the webhook body's embedded status is never trusted alone, same discipline as the payment side. Moolre's current official documentation still lists no refund/reversal endpoint anywhere in its Payments API — `MoolreRefundExecutor` remains fail-closed ("manual operation required"), unchanged. `resolutionsService.processRefund` selects the executor from the **linked Payment's own provider** (`getRefundExecutorForPaymentProvider`), never from today's globally-active default — a customer may have paid weeks ago via a provider CrownSourceGlobal has since stopped routing new payments to. No M9 refund *decision* logic changed. One real gap found and fixed while wiring this: `Refund.paymentId` existed since M9 but was never populated anywhere — `approveResolution()` now links the Order's successful Payment at approval time.
+
+## Y. Card Payment (Visa/Mastercard) *(added M10B — Paystack-hosted Checkout)*
+
+```
+Customer picks "Card" at checkout — no card number, CVV, PIN, or OTP is
+ever collected by CrownSourceGlobal; amount/currency/email are ALWAYS
+server-derived, exactly like Mobile Money
+  → paymentsService.initiateCardPayment:
+      - Card is always Paystack, regardless of PAYMENT_PROVIDER (Moolre
+        never supported cards) — gated only on PAYSTACK_SECRET_KEY
+        actually being configured
+      - same Payment row / same payment_one_active_per_order guard as
+        Mobile Money (method=CARD, network=null) — a customer cannot
+        have an active Mobile Money attempt and an active Card attempt
+        on the same Order at once
+      - calls initiatePaystackCardPayment (POST /transaction/initialize,
+        channels=["card"]) — deliberately NOT the shared
+        PaymentProvider.initiate() interface, which is MoMo-shaped
+        (network/phone/otpcode have no card equivalent)
+  → REDIRECT: full-page browser redirect to Paystack's own hosted
+    Checkout page (authorization_url) — PAN/CVV/PIN/OTP entry happens
+    entirely on Paystack's page, never CrownSourceGlobal's
+  → customer returns to /checkout/[orderId]/payment/callback —
+    NEVER treated as proof of anything; the query-string reference is
+    used only as a lookup key, and the page always independently
+    re-verifies via the SAME provider.verify()/applyVerifyOutcome
+    funnel Mobile Money uses before ever confirming the Order
+  → everything downstream of initiation is fully shared with Mobile
+    Money, unchanged: the same webhook route (Paystack sends
+    charge.success for cards too), the same applyVerifyOutcome funnel,
+    the same amount/currency mismatch quarantine, the same guarded
+    SUCCEEDED updateMany, the same PaystackRefundExecutor (refunds key
+    off the Payment's own reference, never its method) — no
+    CardPayment table, no CardRefundExecutor
+  → on SUCCEEDED verification, Paystack's `authorization` object
+    supplies safe-to-display brand/last4 only (Payment.cardBrand/
+    cardLast4) — never the PAN/CVV/PIN/OTP, which Paystack never sends
+    CrownSourceGlobal in the first place
+```
+
+International cards: a live Paystack account capability (accepting non-Ghana-issued cards), not a separate architecture — the same `initiateCardPayment`/hosted-Checkout flow handles it, gated entirely on the merchant account's own live configuration, never a CrownSourceGlobal code branch.

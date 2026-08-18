@@ -69,7 +69,11 @@ describe("resolutionsService — Paystack refunds (M10A.2)", () => {
     await prisma.$disconnect();
   });
 
-  async function createPaystackPaidOrderWithApprovedRefund(unitPrice: number, refundAmount: number) {
+  async function createPaystackPaidOrderWithApprovedRefund(
+    unitPrice: number,
+    refundAmount: number,
+    paymentMethod: "MOBILE_MONEY" | "CARD" = "MOBILE_MONEY",
+  ) {
     const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const order = await prisma.order.create({
       data: {
@@ -86,7 +90,17 @@ describe("resolutionsService — Paystack refunds (M10A.2)", () => {
     createdIds.orders.push(order.id);
 
     const payment = await prisma.payment.create({
-      data: { orderId: order.id, reference: `PAY-PR-${suffix}`, provider: "PAYSTACK", method: "MOBILE_MONEY", network: "MTN", amount: unitPrice, currency: "GHS", status: "SUCCEEDED", confirmedAt: new Date() },
+      data: {
+        orderId: order.id,
+        reference: `PAY-PR-${suffix}`,
+        provider: "PAYSTACK",
+        method: paymentMethod,
+        network: paymentMethod === "MOBILE_MONEY" ? "MTN" : null,
+        amount: unitPrice,
+        currency: "GHS",
+        status: "SUCCEEDED",
+        confirmedAt: new Date(),
+      },
     });
 
     const orderItem = await prisma.orderItem.create({
@@ -192,6 +206,24 @@ describe("resolutionsService — Paystack refunds (M10A.2)", () => {
     createRefund.mockResolvedValueOnce({ ok: true, data: { status: true, message: "", data: { id: 9007, transaction: "x", amount: 7250, currency: "GHS", status: "pending" } } });
     await resolutionsService.processRefund("staff-1", refundId, "succeed");
     expect(createRefund).toHaveBeenCalledWith(expect.objectContaining({ amount: 7250 }));
+  });
+
+  it("M10B: PaystackRefundExecutor works identically for a Card-origin Payment (method=CARD, network=null) as for Mobile Money — no CardRefundExecutor exists or is needed", async () => {
+    const { paymentId, refundId } = await createPaystackPaidOrderWithApprovedRefund(65, 65, "CARD");
+    createRefund.mockResolvedValueOnce({ ok: true, data: { status: true, message: "", data: { id: 9100, transaction: paymentId, amount: 6500, currency: "GHS", status: "pending" } } });
+
+    const result = await resolutionsService.processRefund("staff-1", refundId, "succeed");
+    expect(result.ok).toBe(true);
+    expect(createRefund).toHaveBeenCalledWith(expect.objectContaining({ amount: 6500, currency: "GHS" }));
+
+    const refund = await prisma.refund.findUniqueOrThrow({ where: { id: refundId } });
+    expect(refund.status).toBe("PROCESSING");
+
+    fetchRefund.mockResolvedValueOnce({ ok: true, data: { status: true, message: "", data: { id: 9100, transaction: "x", amount: 6500, currency: "GHS", status: "processed" } } });
+    const reconciled = await resolutionsService.reconcilePaystackRefund(refundId);
+    expect(reconciled.ok).toBe(true);
+    const completed = await prisma.refund.findUniqueOrThrow({ where: { id: refundId } });
+    expect(completed.status).toBe("COMPLETED");
   });
 
   it("never falls back to MockRefundExecutor for a Paystack-paid order — a double-click cannot issue two Paystack refund calls either", async () => {

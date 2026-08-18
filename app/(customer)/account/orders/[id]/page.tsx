@@ -177,9 +177,11 @@ export default async function OrderDetailPage({
               <h2 className="font-display text-base font-medium text-stone-900">Payment</h2>
               <div className="mt-2 flex flex-col gap-1 text-sm text-stone-600">
                 <p>
-                  {order.latestPayment.provider === "MOOLRE"
+                  {order.latestPayment.method === "MOBILE_MONEY"
                     ? `Mobile Money${order.latestPayment.network ? ` (${order.latestPayment.network})` : ""}`
-                    : "Development payment"}
+                    : order.latestPayment.method === "CARD"
+                      ? `Card${order.latestPayment.cardDisplay ? ` (${order.latestPayment.cardDisplay.brand} •••• ${order.latestPayment.cardDisplay.last4})` : ""}`
+                      : "Development payment"}
                   {order.latestPayment.phoneMasked ? ` · ${order.latestPayment.phoneMasked}` : ""}
                 </p>
                 <p>{formatPrice(order.latestPayment.amount, order.latestPayment.currency)}</p>

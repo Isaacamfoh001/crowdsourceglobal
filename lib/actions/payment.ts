@@ -70,6 +70,19 @@ export async function initiateMobileMoneyPaymentAction(
   });
 }
 
+/** Card payments (M10B) — always Paystack-hosted Checkout, regardless of env.PAYMENT_PROVIDER. */
+export async function initiateCardPaymentAction(
+  orderId: string,
+): Promise<Result<{ payment: PaymentStatusView; authorizationUrl: string | null }>> {
+  const customerProfileId = await currentCustomerProfileId(orderId);
+  if (!customerProfileId.ok) return customerProfileId;
+
+  return paymentsService.initiateCardPayment({
+    customerProfileId: customerProfileId.value,
+    orderId,
+  });
+}
+
 export async function submitMobileMoneyOtpAction(
   orderId: string,
   paymentId: string,
@@ -93,6 +106,18 @@ export async function checkMobileMoneyPaymentStatusAction(orderId: string, payme
   if (!customerProfileId.ok) return customerProfileId;
 
   return paymentsService.getPaymentStatusForCustomer(paymentId, customerProfileId.value);
+}
+
+/** Card return-from-Paystack landing (M10B) — the query-string `reference` is a lookup key only, never trusted as proof; see paymentsService.getCardReturnStatusForCustomer. */
+export async function getCardReturnStatusAction(orderId: string, reference: string | null): Promise<Result<PaymentStatusView>> {
+  const customerProfileId = await currentCustomerProfileId(orderId);
+  if (!customerProfileId.ok) return customerProfileId;
+
+  return paymentsService.getCardReturnStatusForCustomer({
+    customerProfileId: customerProfileId.value,
+    orderId,
+    reference,
+  });
 }
 
 export async function reconcilePaymentAsAdminAction(paymentId: string): Promise<Result<PaymentStatusView>> {

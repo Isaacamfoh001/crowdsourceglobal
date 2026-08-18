@@ -50,6 +50,7 @@ export default async function AdminPaymentDetailPage({ params }: { params: Promi
         <Field label="Method" value={payment.method} />
         <Field label="Network" value={payment.network ?? "—"} />
         <Field label="Phone" value={payment.phoneMasked ?? "—"} />
+        <Field label="Card" value={payment.cardBrand && payment.cardLast4 ? `${payment.cardBrand} •••• ${payment.cardLast4}` : "—"} />
         <Field label="Status" value={payment.status} />
         <Field label="Provider reference" value={payment.providerReference ?? "—"} />
         <Field label="Provider status code" value={payment.providerStatus ?? "—"} />
@@ -60,7 +61,7 @@ export default async function AdminPaymentDetailPage({ params }: { params: Promi
         {payment.failureReasonSafe ? <Field label="Failure reason" value={payment.failureReasonSafe} /> : null}
       </div>
 
-      {payment.provider === "MOOLRE" && (payment.status === "PENDING" || payment.status === "INITIATED" || payment.exceptionReason) ? (
+      {payment.provider !== "MOCK" && (payment.status === "PENDING" || payment.status === "INITIATED" || payment.exceptionReason) ? (
         <ReconcilePaymentButton paymentId={payment.id} />
       ) : null}
     </div>

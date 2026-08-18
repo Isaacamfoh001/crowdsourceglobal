@@ -69,8 +69,11 @@ export type OrderDetailView = {
   latestPayment: {
     reference: string;
     provider: string;
+    method: string;
     network: string | null;
     phoneMasked: string | null;
+    /** Card payments only (M10B) — brand/last4 only, never the PAN/CVV/PIN/OTP. */
+    cardDisplay: { brand: string; last4: string } | null;
     amount: number;
     currency: string;
     initiatedAt: Date;

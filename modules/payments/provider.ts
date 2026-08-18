@@ -51,7 +51,15 @@ export type VerifyPaymentParams = {
 };
 
 export type VerifyPaymentOutcome =
-  | { status: "SUCCEEDED"; providerReference: string; verifiedAmount: number; verifiedCurrency: string; providerStatus: string }
+  | {
+      status: "SUCCEEDED";
+      providerReference: string;
+      verifiedAmount: number;
+      verifiedCurrency: string;
+      providerStatus: string;
+      /** Safe-to-display card summary (M10B) — brand/last4 only, never present for MoMo. Never the PAN/CVV/PIN/OTP. */
+      cardDisplay?: { brand: string; last4: string } | null;
+    }
   | { status: "FAILED"; reasonSafe: string; providerStatus: string }
   | { status: "PENDING"; providerStatus: string }
   | { status: "UNKNOWN"; reasonSafe: string };

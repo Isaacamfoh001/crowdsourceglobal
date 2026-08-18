@@ -527,8 +527,13 @@ export const ordersService = {
         ? {
             reference: order.payments[0].reference,
             provider: order.payments[0].provider,
+            method: order.payments[0].method,
             network: order.payments[0].network,
             phoneMasked: order.payments[0].phoneMasked,
+            cardDisplay:
+              order.payments[0].cardBrand && order.payments[0].cardLast4
+                ? { brand: order.payments[0].cardBrand, last4: order.payments[0].cardLast4 }
+                : null,
             amount: order.payments[0].amount.toNumber(),
             currency: order.payments[0].currency,
             initiatedAt: order.payments[0].initiatedAt,

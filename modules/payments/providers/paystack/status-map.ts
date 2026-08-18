@@ -1,6 +1,6 @@
 import type { InitiatePaymentOutcome, VerifyPaymentOutcome } from "../../provider";
 import { pesewasToGhs } from "../../../../lib/money";
-import type { PaystackChargeResponse, PaystackVerifyResponse } from "./types";
+import type { PaystackChargeResponse, PaystackInitializeResponse, PaystackVerifyResponse } from "./types";
 
 /**
  * Maps Paystack's documented Charge API response to our closed outcome
@@ -38,16 +38,38 @@ export function mapChargeResponse(res: PaystackChargeResponse): InitiatePaymentO
  */
 export function mapVerifyResponse(res: PaystackVerifyResponse): VerifyPaymentOutcome {
   if (res.data.status === "success") {
+    const auth = res.data.authorization;
+    const cardDisplay = auth?.last4 && auth?.card_type ? { brand: auth.card_type, last4: auth.last4 } : null;
     return {
       status: "SUCCEEDED",
       providerReference: String(res.data.id),
       verifiedAmount: pesewasToGhs(res.data.amount),
       verifiedCurrency: res.data.currency,
       providerStatus: res.data.status,
+      cardDisplay,
     };
   }
   if (res.data.status === "failed" || res.data.status === "abandoned") {
     return { status: "FAILED", reasonSafe: "Payment could not be completed.", providerStatus: res.data.status };
   }
   return { status: "PENDING", providerStatus: res.data.status || "UNKNOWN" };
+}
+
+/**
+ * Card payments only (M10B) — maps POST /transaction/initialize's response.
+ * This endpoint only ever reports whether hosted-Checkout was successfully
+ * created, never payment success; the customer still must complete entry
+ * on Paystack's page, and Verify Transaction remains the sole authority
+ * (mapVerifyResponse above), unchanged from MoMo.
+ */
+export type InitiateCardPaymentOutcome =
+  | { outcome: "REDIRECT"; authorizationUrl: string }
+  | { outcome: "REJECTED"; reasonSafe: string; providerStatus: string }
+  | { outcome: "UNKNOWN"; reasonSafe: string };
+
+export function mapInitializeResponse(res: PaystackInitializeResponse): InitiateCardPaymentOutcome {
+  if (!res.status || !res.data?.authorization_url) {
+    return { outcome: "REJECTED", reasonSafe: "Payment could not be started. Please try again.", providerStatus: res.message || "UNKNOWN" };
+  }
+  return { outcome: "REDIRECT", authorizationUrl: res.data.authorization_url };
 }

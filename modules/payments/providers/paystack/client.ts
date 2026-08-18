@@ -1,5 +1,5 @@
 import { env } from "../../../../lib/env";
-import type { PaystackChargeResponse, PaystackRefundResponse, PaystackVerifyResponse } from "./types";
+import type { PaystackChargeResponse, PaystackInitializeResponse, PaystackRefundResponse, PaystackVerifyResponse } from "./types";
 
 const BASE_URL = "https://api.paystack.co";
 const TIMEOUT_MS = 15_000;
@@ -66,6 +66,15 @@ export const paystackClient = {
   },
   checkPendingCharge(reference: string) {
     return paystackRequest<PaystackChargeResponse>(`/charge/${encodeURIComponent(reference)}`, "GET");
+  },
+  /**
+   * Card payments (M10B) — Paystack-hosted Checkout. We only ever send
+   * amount/currency/email/reference/callback_url/channels; the customer
+   * enters PAN/CVV/PIN/OTP exclusively on Paystack's own hosted page,
+   * which never touches CrownSourceGlobal's server.
+   */
+  initializeTransaction(body: { email: string; amount: number; currency: "GHS"; reference: string; callback_url: string; channels: string[] }) {
+    return paystackRequest<PaystackInitializeResponse>("/transaction/initialize", "POST", body);
   },
   verifyTransaction(reference: string) {
     return paystackRequest<PaystackVerifyResponse>(`/transaction/verify/${encodeURIComponent(reference)}`, "GET");

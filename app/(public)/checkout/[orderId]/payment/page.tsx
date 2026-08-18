@@ -4,7 +4,7 @@ import { FlaskConical, ShieldCheck } from "lucide-react";
 import { Container } from "../../../../../components/ui/Container";
 import { Badge } from "../../../../../components/ui/Badge";
 import { MockPaymentForm } from "../../../../../components/checkout/MockPaymentForm";
-import { MobileMoneyPaymentForm } from "../../../../../components/checkout/MobileMoneyPaymentForm";
+import { PaymentMethodTabs } from "../../../../../components/checkout/PaymentMethodTabs";
 import { formatPrice } from "../../../../../lib/format";
 import { env } from "../../../../../lib/env";
 import { requireSession, getCurrentCustomerProfile } from "../../../../../modules/identity/policy";
@@ -44,15 +44,20 @@ export default async function PaymentPage({ params }: { params: Promise<Params> 
   // share the exact same customer-facing Mobile Money form and flow —
   // provider identity is an implementation detail never surfaced here.
   const isRealMobileMoney = env.PAYMENT_PROVIDER === "paystack" || env.PAYMENT_PROVIDER === "moolre";
+  // Card is always Paystack-hosted Checkout (M10B), independent of
+  // env.PAYMENT_PROVIDER — gated only on Paystack credentials actually
+  // being configured, server-side only, never exposed to the client.
+  const isCardAvailable = Boolean(env.PAYSTACK_SECRET_KEY);
+  const isRealPayment = isRealMobileMoney || isCardAvailable;
 
   return (
     <div className="bg-stone-50 py-10 sm:py-14">
       <Container className="max-w-xl">
         <div className="mb-6 flex justify-center">
-          {isRealMobileMoney ? (
+          {isRealPayment ? (
             <Badge tone="gold" className="normal-case">
               <ShieldCheck className="size-3.5" strokeWidth={2} />
-              Secure Mobile Money payment
+              Secure payment
             </Badge>
           ) : (
             <Badge tone="gold" className="normal-case">
@@ -75,9 +80,9 @@ export default async function PaymentPage({ params }: { params: Promise<Params> 
             </span>
           </div>
 
-          {isRealMobileMoney ? (
+          {isRealPayment ? (
             <div className="mt-6">
-              <MobileMoneyPaymentForm orderId={order.id} />
+              <PaymentMethodTabs orderId={order.id} showMobileMoney={isRealMobileMoney} showCard={isCardAvailable} />
             </div>
           ) : (
             <>

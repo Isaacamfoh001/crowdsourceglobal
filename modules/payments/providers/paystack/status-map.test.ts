@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { mapChargeResponse, mapVerifyResponse } from "./status-map";
-import type { PaystackChargeResponse, PaystackVerifyResponse } from "./types";
+import { mapChargeResponse, mapInitializeResponse, mapVerifyResponse } from "./status-map";
+import type { PaystackChargeResponse, PaystackInitializeResponse, PaystackVerifyResponse } from "./types";
 
 describe("mapChargeResponse — real documented Paystack Charge API response shapes", () => {
   it("maps pay_offline (MTN/AirtelTigo authorization required) to ACCEPTED", () => {
@@ -65,5 +65,59 @@ describe("mapVerifyResponse — real documented Verify Transaction response shap
 
     const unknown: PaystackVerifyResponse = { status: true, message: "", data: { id: 1, status: "some-new-code", reference: "r", amount: 100, currency: "GHS" } };
     expect(mapVerifyResponse(unknown).status).toBe("PENDING");
+  });
+
+  it("card payments (M10B): a success carrying an authorization object surfaces safe brand/last4 display, never the PAN/CVV/PIN/OTP", () => {
+    const res: PaystackVerifyResponse = {
+      status: true,
+      message: "Verification successful",
+      data: {
+        id: 3009945086,
+        status: "success",
+        reference: "card-ref-1",
+        amount: 850000,
+        currency: "GHS",
+        authorization: { last4: "4081", card_type: "visa", bank: "Test Bank" },
+      },
+    };
+    const outcome = mapVerifyResponse(res);
+    expect(outcome.status).toBe("SUCCEEDED");
+    if (outcome.status === "SUCCEEDED") {
+      expect(outcome.cardDisplay).toEqual({ brand: "visa", last4: "4081" });
+    }
+  });
+
+  it("mobile money payments (no authorization object) never fabricate a cardDisplay", () => {
+    const res: PaystackVerifyResponse = {
+      status: true,
+      message: "Verification successful",
+      data: { id: 2009945086, status: "success", reference: "momo-ref-1", amount: 20000, currency: "GHS" },
+    };
+    const outcome = mapVerifyResponse(res);
+    expect(outcome.status).toBe("SUCCEEDED");
+    if (outcome.status === "SUCCEEDED") {
+      expect(outcome.cardDisplay).toBeNull();
+    }
+  });
+});
+
+describe("mapInitializeResponse — real documented Transaction Initialize response shapes (M10B, card/hosted Checkout)", () => {
+  it("maps a successful initialize call to REDIRECT with the hosted-Checkout URL", () => {
+    const res: PaystackInitializeResponse = {
+      status: true,
+      message: "Authorization URL created",
+      data: { authorization_url: "https://checkout.paystack.com/0peioxfyra", access_code: "0peioxfyra", reference: "card-ref-1" },
+    };
+    const outcome = mapInitializeResponse(res);
+    expect(outcome.outcome).toBe("REDIRECT");
+    if (outcome.outcome === "REDIRECT") {
+      expect(outcome.authorizationUrl).toBe("https://checkout.paystack.com/0peioxfyra");
+    }
+  });
+
+  it("maps a failed/rejected initialize call to REJECTED, never a fabricated redirect", () => {
+    const res = { status: false, message: "Invalid key", data: {} } as unknown as PaystackInitializeResponse;
+    const outcome = mapInitializeResponse(res);
+    expect(outcome.outcome).toBe("REJECTED");
   });
 });

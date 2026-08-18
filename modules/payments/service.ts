@@ -8,13 +8,14 @@ import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
 import { mockPaymentProvider } from "./mockProvider";
 import { moolrePaymentProvider } from "./providers/moolre/adapter";
-import { paystackPaymentProvider } from "./providers/paystack/adapter";
+import { paystackPaymentProvider, initiatePaystackCardPayment } from "./providers/paystack/adapter";
 import { getActivePaymentProvider } from "./router";
 import { resolutionsService } from "../resolutions/service";
 import type { InitiatePaymentOutcome, PaymentProvider, VerifyPaymentOutcome } from "./provider";
 import { generatePaymentReference } from "../../lib/payment-number";
 import { normalizeGhanaPhone, maskGhanaPhone } from "../../lib/phone";
 import { ok, err, type Result } from "../../lib/result";
+import { env } from "../../lib/env";
 import type { MockPaymentOutcome, MobileMoneyNetworkCode, PaymentStatusView } from "./types";
 
 /** Safe, secret-free structured logging for the payment lifecycle (CLAUDE.md §22). */
@@ -124,9 +125,12 @@ async function dispatchOrderConfirmedNotifications(
 function toStatusView(payment: {
   id: string;
   status: string;
+  method: string;
   providerStatus: string | null;
   network: string | null;
   phoneMasked: string | null;
+  cardBrand: string | null;
+  cardLast4: string | null;
   amount: Prisma.Decimal;
   currency: string;
   reference: string;
@@ -135,9 +139,11 @@ function toStatusView(payment: {
   return {
     paymentId: payment.id,
     status: payment.status as PaymentStatusView["status"],
+    method: payment.method as PaymentStatusView["method"],
     requiresOtp: OTP_REQUIRED_PROVIDER_CODES.includes(payment.providerStatus ?? ""),
     network: (payment.network as MobileMoneyNetworkCode | null) ?? null,
     phoneMasked: payment.phoneMasked,
+    cardDisplay: payment.cardBrand && payment.cardLast4 ? { brand: payment.cardBrand, last4: payment.cardLast4 } : null,
     amount: payment.amount.toNumber(),
     currency: payment.currency,
     reference: payment.reference,
@@ -230,6 +236,8 @@ async function applyVerifyOutcome(paymentId: string, verified: VerifyPaymentOutc
         providerReference: verified.providerReference,
         providerStatus: verified.providerStatus,
         lastVerifiedAt: new Date(),
+        cardBrand: verified.cardDisplay?.brand,
+        cardLast4: verified.cardDisplay?.last4,
       },
     });
   } catch (error) {
@@ -479,6 +487,99 @@ export const paymentsService = {
     return applyInitiateOutcome(payment.id, outcome);
   },
 
+  // --- Cards — Paystack-hosted Checkout only (M10B) ---
+
+  /**
+   * Card is always Paystack, regardless of `env.PAYMENT_PROVIDER` (Moolre
+   * never supported cards). The customer is redirected to Paystack's own
+   * hosted page; CrownSourceGlobal never receives PAN/CVV/PIN/OTP. Shares
+   * the exact same Payment table, `payment_one_active_per_order` guard, and
+   * post-redirect `applyVerifyOutcome` funnel as Mobile Money — this is the
+   * one function that calls a Paystack-specific initiation path instead of
+   * the shared `PaymentProvider.initiate()` interface, since that interface
+   * is MoMo-shaped (network/phone/otpcode have no card equivalent).
+   */
+  async initiateCardPayment(params: {
+    customerProfileId: string;
+    orderId: string;
+  }): Promise<Result<{ payment: PaymentStatusView; authorizationUrl: string | null }>> {
+    const { customerProfileId, orderId } = params;
+
+    const order = await ordersRepository.findOwnershipAndStatus(orderId, customerProfileId);
+    if (!order) return err("Order not found.");
+    if (order.status !== "PENDING_PAYMENT") {
+      return err("This order can no longer be paid.");
+    }
+
+    const activeAttempt = await prisma.payment.findFirst({
+      where: { orderId, status: { in: ["INITIATED", "PENDING"] } },
+    });
+    if (activeAttempt) {
+      // No fresh authorization_url to offer for a resumed attempt (Paystack
+      // only returns it once, at initiation) — the customer either
+      // completes the tab they already opened, or waits for the abandoned-
+      // payment sweep to expire this attempt before retrying.
+      return ok({ payment: toStatusView(activeAttempt), authorizationUrl: null });
+    }
+
+    if (!env.PAYSTACK_SECRET_KEY) {
+      logPaymentEvent("card_initiation_unavailable", { orderId, reason: "PAYSTACK_SECRET_KEY not configured" });
+      return err("Card payments are not currently available. Please use Mobile Money.");
+    }
+
+    const attemptNumber = (await prisma.payment.count({ where: { orderId } })) + 1;
+    const reference = generatePaymentReference();
+
+    let payment;
+    try {
+      payment = await prisma.payment.create({
+        data: {
+          orderId,
+          reference,
+          provider: "PAYSTACK",
+          method: "CARD",
+          amount: order.total,
+          currency: order.currency,
+          status: "INITIATED",
+          attemptNumber,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        const winner = await prisma.payment.findFirst({ where: { orderId, status: { in: ["INITIATED", "PENDING"] } } });
+        if (winner) return ok({ payment: toStatusView(winner), authorizationUrl: null });
+      }
+      console.error("Card payment initiation failed unexpectedly:", error);
+      return err("Something went wrong starting payment. Please try again.");
+    }
+
+    logPaymentEvent("initiation_requested", { paymentId: payment.id, reference, orderId, provider: "PAYSTACK", method: "CARD" });
+
+    const outcome = await initiatePaystackCardPayment({
+      reference,
+      amount: order.total.toNumber(),
+      currency: "GHS",
+      customerEmail: order.customerProfile.user.email,
+      callbackUrl: `${env.NEXT_PUBLIC_APP_URL}/checkout/${orderId}/payment/callback`,
+    });
+
+    if (outcome.outcome === "REDIRECT") {
+      await prisma.payment.update({ where: { id: payment.id }, data: { status: "PENDING" } });
+      const refreshed = await prisma.payment.findUnique({ where: { id: payment.id } });
+      return ok({ payment: toStatusView(refreshed ?? payment), authorizationUrl: outcome.authorizationUrl });
+    }
+    if (outcome.outcome === "REJECTED") {
+      await prisma.payment.updateMany({
+        where: { id: payment.id, status: { in: ["INITIATED", "PENDING"] } },
+        data: { status: "FAILED", failureReasonSafe: outcome.reasonSafe, providerStatus: outcome.providerStatus },
+      });
+      return err(outcome.reasonSafe);
+    }
+    // UNKNOWN (timeout/network) — stays INITIATED, uncertain, never auto-retried.
+    logPaymentEvent("initiation_uncertain", { paymentId: payment.id });
+    return err(outcome.reasonSafe);
+  },
+
   /**
    * Resubmits the OTP against the SAME reference/attempt — never a new
    * Payment. The phone is re-collected from the client at this step rather
@@ -569,6 +670,42 @@ export const paymentsService = {
     }
 
     return ok(toStatusView(payment));
+  },
+
+  /**
+   * Card return-from-Paystack landing (M10B). The browser's return to
+   * `callback_url` is NEVER treated as proof of anything — `reference` is
+   * used only as a lookup key, scoped to this authenticated customer's own
+   * order, and the result always comes from an immediate, independent
+   * `provider.verify()` call through the exact same `applyVerifyOutcome`
+   * funnel as the webhook and polling paths. If Paystack ever calls back
+   * without a reference (or with one that doesn't resolve), falls back to
+   * this order's most recent CARD attempt.
+   */
+  async getCardReturnStatusForCustomer(params: {
+    customerProfileId: string;
+    orderId: string;
+    reference: string | null;
+  }): Promise<Result<PaymentStatusView>> {
+    const { customerProfileId, orderId, reference } = params;
+    const payment = await prisma.payment.findFirst({
+      where: {
+        orderId,
+        order: { customerProfileId },
+        method: "CARD",
+        ...(reference ? { reference } : {}),
+      },
+      orderBy: { initiatedAt: "desc" },
+    });
+    if (!payment) return err("Payment not found.");
+
+    // Card is always Paystack (M10B) — no provider branching needed here.
+    const verified = await paystackPaymentProvider.verify({ reference: payment.reference, providerReference: payment.providerReference });
+    logPaymentEvent("status_verification", { provider: "PAYSTACK", paymentId: payment.id, status: verified.status, trigger: "card_return" });
+    await applyVerifyOutcome(payment.id, verified);
+
+    const refreshed = await prisma.payment.findUnique({ where: { id: payment.id } });
+    return refreshed ? ok(toStatusView(refreshed)) : err("Payment not found.");
   },
 
   /**
@@ -685,6 +822,8 @@ export const paymentsService = {
         provider: true,
         method: true,
         network: true,
+        cardBrand: true,
+        cardLast4: true,
         status: true,
         amount: true,
         currency: true,
@@ -710,6 +849,8 @@ export const paymentsService = {
         provider: true,
         method: true,
         network: true,
+        cardBrand: true,
+        cardLast4: true,
         status: true,
         amount: true,
         currency: true,

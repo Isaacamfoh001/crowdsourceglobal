@@ -4,14 +4,16 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../../../../lib/env", () => ({ env: { PAYSTACK_SECRET_KEY: "sk_test_fixture_secret" } }));
 
 const createCharge = vi.fn();
+const initializeTransaction = vi.fn();
 vi.mock("./client", () => ({
   paystackClient: {
     createCharge: (...args: unknown[]) => createCharge(...args),
     submitOtp: vi.fn(),
+    initializeTransaction: (...args: unknown[]) => initializeTransaction(...args),
   },
 }));
 
-const { verifyPaystackSignature, paystackPaymentProvider } = await import("./adapter");
+const { verifyPaystackSignature, paystackPaymentProvider, initiatePaystackCardPayment } = await import("./adapter");
 const { PAYSTACK_MOMO_PROVIDER_CODES } = await import("./types");
 
 function sign(rawBody: string): string {
@@ -92,5 +94,57 @@ describe("Ghana Mobile Money provider-code mapping — confirmed against Paystac
       customerEmail: "customer@example.com",
     });
     expect(createCharge).toHaveBeenCalledWith(expect.objectContaining({ mobile_money: expect.objectContaining({ provider: code }) }));
+  });
+});
+
+describe("initiatePaystackCardPayment — card acceptance (M10B), deliberately outside the shared PaymentProvider interface", () => {
+  it("sends GHS-converted amount, the exact reference/callback_url given, and channels=[\"card\"] only", async () => {
+    initializeTransaction.mockResolvedValueOnce({
+      ok: true,
+      data: { status: true, message: "Authorization URL created", data: { authorization_url: "https://checkout.paystack.com/abc", access_code: "abc", reference: "card-ref-1" } },
+    });
+
+    const outcome = await initiatePaystackCardPayment({
+      reference: "card-ref-1",
+      amount: 850,
+      currency: "GHS",
+      customerEmail: "customer@example.com",
+      callbackUrl: "https://app.example.com/checkout/order-1/payment/callback",
+    });
+
+    expect(initializeTransaction).toHaveBeenCalledWith({
+      email: "customer@example.com",
+      amount: 85000,
+      currency: "GHS",
+      reference: "card-ref-1",
+      callback_url: "https://app.example.com/checkout/order-1/payment/callback",
+      channels: ["card"],
+    });
+    expect(outcome.outcome).toBe("REDIRECT");
+    if (outcome.outcome === "REDIRECT") expect(outcome.authorizationUrl).toBe("https://checkout.paystack.com/abc");
+  });
+
+  it("maps an HTTP error from Paystack to REJECTED, never a fabricated redirect", async () => {
+    initializeTransaction.mockResolvedValueOnce({ ok: false, kind: "HTTP_ERROR", status: 401 });
+    const outcome = await initiatePaystackCardPayment({
+      reference: "card-ref-2",
+      amount: 10,
+      currency: "GHS",
+      customerEmail: "customer@example.com",
+      callbackUrl: "https://app.example.com/callback",
+    });
+    expect(outcome.outcome).toBe("REJECTED");
+  });
+
+  it("maps a timeout/network failure to UNKNOWN, never REJECTED or a fabricated redirect", async () => {
+    initializeTransaction.mockResolvedValueOnce({ ok: false, kind: "TIMEOUT" });
+    const outcome = await initiatePaystackCardPayment({
+      reference: "card-ref-3",
+      amount: 10,
+      currency: "GHS",
+      customerEmail: "customer@example.com",
+      callbackUrl: "https://app.example.com/callback",
+    });
+    expect(outcome.outcome).toBe("UNKNOWN");
   });
 });

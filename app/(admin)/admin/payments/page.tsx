@@ -108,7 +108,12 @@ export default async function AdminPaymentsPage({
                 <p className="text-sm font-medium text-stone-900">{p.reference}</p>
                 <p className="text-xs text-stone-500">
                   Order {p.order.orderNumber} · {p.order.customerProfile.displayName} · {p.provider}
-                  {p.network ? ` (${p.network})` : ""}
+                  {" · "}
+                  {p.method === "MOBILE_MONEY"
+                    ? `Mobile Money${p.network ? ` (${p.network})` : ""}`
+                    : p.method === "CARD"
+                      ? `Card${p.cardBrand && p.cardLast4 ? ` (${p.cardBrand} •••• ${p.cardLast4})` : ""}`
+                      : "Mock"}
                   {p.exceptionReason ? " · needs attention" : ""}
                 </p>
               </div>
