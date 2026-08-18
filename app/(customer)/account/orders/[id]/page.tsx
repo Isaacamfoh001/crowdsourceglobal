@@ -172,6 +172,22 @@ export default async function OrderDetailPage({
             </div>
           </div>
 
+          {order.latestPayment ? (
+            <div className="rounded-2xl border border-stone-200 bg-white p-5">
+              <h2 className="font-display text-base font-medium text-stone-900">Payment</h2>
+              <div className="mt-2 flex flex-col gap-1 text-sm text-stone-600">
+                <p>
+                  {order.latestPayment.provider === "MOOLRE"
+                    ? `Mobile Money${order.latestPayment.network ? ` (${order.latestPayment.network})` : ""}`
+                    : "Development payment"}
+                  {order.latestPayment.phoneMasked ? ` · ${order.latestPayment.phoneMasked}` : ""}
+                </p>
+                <p>{formatPrice(order.latestPayment.amount, order.latestPayment.currency)}</p>
+                <p className="text-xs text-stone-400">Ref: {order.latestPayment.reference}</p>
+              </div>
+            </div>
+          ) : null}
+
           <div className="rounded-2xl border border-stone-200 bg-white p-5">
             <h2 className="flex items-center gap-1.5 font-display text-base font-medium text-stone-900">
               <MapPin className="size-4 text-stone-400" strokeWidth={1.75} />

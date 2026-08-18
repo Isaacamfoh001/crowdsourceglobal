@@ -94,7 +94,7 @@ The third purchasing path (see workflows.md's "Purchasing Paths" summary and Wor
 
 ## Payments & Payouts
 
-**Payment** — id `PK`, orderId `FK→Order IDX`, providerEventId `UQ` (nullable until confirmed), provider, method (`momo|card|...`), amount, currency, status, initiatedAt, confirmedAt.
+**Payment** *(extended M10A)* — id `PK`, orderId `FK→Order IDX`, `reference` `UQ` (CrownSourceGlobal's own, also sent to the provider as its idempotency key — never regenerated for the same attempt), `provider` (`MOCK|MOOLRE`), `method` (`MOCK|MOBILE_MONEY`), `network` (`MTN|TELECEL|AT`, nullable — only meaningful for MOBILE_MONEY), `providerEventId` `UQ` (nullable — the provider's own transaction id), `providerStatus` (raw provider code, diagnostics only), `lastVerifiedAt`, `failureReasonSafe`, `phoneMasked` (raw phone is never persisted), `attemptNumber`, `exceptionReason` (non-null marks the row as needing staff attention — an M8-style derived marker, not a new state-machine value), amount, currency, status, initiatedAt, confirmedAt. A DB-only partial unique index (`payment_one_active_per_order`, not expressible in `schema.prisma`) enforces at most one active (INITIATED/PENDING) Payment per Order.
 
 **Refund** — superseded by the real M9 model (see "Post-Purchase Resolution" below) — this row described the original architecture-planning-phase preview, kept here only as a historical marker since the actual shape differs (case-scoped rather than payment-scoped, with a separate decision-vs-execution split).
 

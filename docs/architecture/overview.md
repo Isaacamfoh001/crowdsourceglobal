@@ -66,10 +66,10 @@ Background/async work (webhook post-processing, email, PDF generation, inventory
 | API strategy | Server actions/route handlers for the app; narrow `/api/v1` for payment webhooks and future external consumers | |
 | File/object storage | Provider TBD (R2 or S3 planned) — `lib/storage.ts`'s `StorageProvider` interface, local-disk dev adapter only so far (M6, sourcing-request attachments) | No production credentials invented; swapping providers means implementing the same three-method interface, no domain-layer changes |
 | Image handling | `sharp` on upload, Next.js `<Image>` on render | |
-| Payments | Provider-agnostic interface, implemented against Paystack first (Ghana MoMo + card) | Confirm via live testing before committing — see the product requirement in PROJECT.md §54.5 |
+| Payments | Provider-neutral `PaymentProvider` interface (`modules/payments/provider.ts`); Moolre (Ghana Mobile Money — MTN/Telecel/AirtelTigo) implemented first, M10A. Cards/Paystack deferred — see ADR 0006 | `MockPaymentProvider` remains for dev/tests, not forced through the same interface (different, synchronous shape by design); production fails closed if `PAYMENT_PROVIDER=mock` |
 | Email | `EmailProvider` interface (`lib/email-provider.ts`); `ConsoleEmailProvider` (zero-config dev default) or `ResendEmailProvider` (plain `fetch` against Resend's API, no SDK dependency) selected via `EMAIL_PROVIDER` | Resend chosen M7 — transactional focus, simple HTTP API, no infra to run. Fails fast at startup if `EMAIL_PROVIDER=resend` without `RESEND_API_KEY`/`EMAIL_FROM` |
 | In-app notifications | `Notification` table (`modules/notifications`), persisted synchronously in the same call as the domain event, independent of email | Implemented M7. No real-time channel in V1 — see "Future Realtime Path" below |
-| Background jobs | `EmailDeliveryJob` table + polling drain (`lib/email-worker.ts`, `scripts/process-email-jobs.ts`) | Implemented M7 for email delivery specifically — a dedicated table, not a generic `BackgroundJob`, since email is the only async job type that exists today (see "Notifications & Email Delivery" below for why) |
+| Background jobs | `EmailDeliveryJob` table + polling drain (`lib/email-worker.ts`, `scripts/process-email-jobs.ts`, M7); abandoned-payment sweep (`scripts/sweep-abandoned-payments.ts`, M10A) | Two narrow, purpose-built jobs rather than a generic `BackgroundJob` table — each is a direct query against its own source-of-truth rows (expired `EmailDeliveryJob`, expired `InventoryReservation` with no successful `Payment`), not a generic queue |
 | PDF/documents | `@react-pdf/renderer` | No headless browser infra |
 | Search | PostgreSQL full-text (`tsvector`) + trigram | No dedicated search infra until evidence demands it |
 | Caching | None by default | Add only against a measured hot path |
@@ -92,7 +92,7 @@ Background/async work (webhook post-processing, email, PDF generation, inventory
   /(admin)                   admin portal: moderation, orders, payments, payouts,
                              custom sourcing, vendor verification, platform settings
   /api                       route handlers needing a stable HTTP contract
-    /webhooks/payments        payment provider webhook endpoint(s)
+    /payments/moolre/webhook  Moolre payment provider webhook (M10A; actual path — differs from the originally-planned /webhooks/payments)
 /modules                    framework-agnostic domain logic (no Next.js imports here)
   /identity
   /customers
@@ -105,7 +105,8 @@ Background/async work (webhook post-processing, email, PDF generation, inventory
   /orders
   /fulfilment
     /shipment                 submodule
-  /payments
+  /payments                    provider-neutral service + mockProvider.ts; /providers/moolre
+                                 (M10A — client/adapter/types/status-map)
   /payouts
   /resolutions                M9 — ResolutionCase/Return/Replacement domain: types, policy
                                (cancellation eligibility, refund-amount/quantity caps), repository,
@@ -234,7 +235,7 @@ Full detail in `/docs/workflows/workflows.md` and the decision records; the head
 - Customer/vendor isolation enforced at the repository layer via session-derived scoping, never UI hiding.
 - Client never supplies price; authoritative pricing is always server-derived (checkout revalidation) or copied from a server-issued Quotation.
 - Inventory reservation is atomic with `PENDING_PAYMENT` Order creation, preventing oversell under concurrent checkouts.
-- Payment webhooks are signature-verified and idempotent on the provider's event id.
+- Payment webhooks are idempotent on the provider's event id/CrownSourceGlobal's own reference. Moolre (M10A) documents no webhook signature mechanism — its callback is treated as a trigger only; every confirmation path independently re-verifies status via Moolre's own status API before ever confirming an Order (ADR 0006 — flagged as an open production-risk question, not silently assumed safe).
 - Fulfilment creation and payout claiming are idempotent via database uniqueness constraints, not application-level locking alone.
 - Every domain service emits an `AuditEvent` inline with its own state-changing transaction.
 - Notification read/list/mark-read queries are always scoped by session-derived `recipientUserId`; `targetUrl` deep links are built server-side from known route shapes (`modules/notifications/links.ts`), never from a client value or a request Host header — no open-redirect surface.

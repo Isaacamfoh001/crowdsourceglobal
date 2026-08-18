@@ -1,4 +1,5 @@
 import type { MockRefundOutcome } from "./types";
+import type { RefundExecutor } from "./executor";
 
 /**
  * Development-only mock refund executor, deliberately shaped like
@@ -9,8 +10,8 @@ import type { MockRefundOutcome } from "./types";
  * and nothing outside modules/resolutions/service.ts is coupled to this
  * being fake.
  */
-export const mockRefundExecutor = {
-  name: "mock" as const,
+export const mockRefundExecutor: RefundExecutor = {
+  name: "mock",
 
   async refund(outcome: MockRefundOutcome): Promise<{ succeeded: boolean; providerEventId: string }> {
     return {

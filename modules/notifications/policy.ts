@@ -57,6 +57,11 @@ const POLICY: Record<NotificationType, Policy> = {
   RESOLUTION_VENDOR_CASE_UPDATE: { required: false, category: "ORDERS_DELIVERY" },
   ADMIN_NEW_RESOLUTION_CASE: { required: true },
   ADMIN_REFUND_FAILED: { required: true },
+  // M10A — payment failure is commerce-critical (customer needs to know to
+  // retry); payment exceptions are narrow, low-volume admin events, same
+  // reasoning as the other ADMIN_* rows above.
+  PAYMENT_FAILED: { required: true },
+  ADMIN_PAYMENT_REQUIRES_ATTENTION: { required: true },
 };
 
 const CATEGORY_FIELD: Record<NotificationCategory, keyof PreferencesView> = {

@@ -53,6 +53,27 @@ const envSchema = z.object({
   OPS_RESOLUTION_UNASSIGNED_WARNING_HOURS: z.coerce.number().positive().default(12),
   OPS_RESOLUTION_REVIEW_WARNING_HOURS: z.coerce.number().positive().default(24),
   OPS_RETURN_INSPECTION_WARNING_HOURS: z.coerce.number().positive().default(48),
+  /**
+   * M10A payment provider selection. "mock" (default) — deterministic,
+   * synchronous, dev/test only. "moolre" — real Ghana Mobile Money via
+   * Moolre's Collection API. lib/payment-provider.ts fails closed if
+   * "mock" is selected while NODE_ENV=production: production must never be
+   * able to fabricate a payment success.
+   */
+  PAYMENT_PROVIDER: z.enum(["mock", "moolre"]).default("mock"),
+  /**
+   * Selects Moolre's base URL. Deliberately explicit and independent of
+   * NODE_ENV — a production deploy must never accidentally hit sandbox (or
+   * vice versa) just because NODE_ENV happens to be set a certain way.
+   */
+  MOOLRE_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
+  /** Required only when PAYMENT_PROVIDER=moolre. */
+  MOOLRE_API_USER: z.string().optional(),
+  /** Moolre's "public" transactional key (X-API-PUBKEY) — distinct from the account-management private key below. */
+  MOOLRE_API_PUBKEY: z.string().optional(),
+  /** Moolre account-management private key (X-API-KEY) — only needed for one-time account setup, not runtime payment calls. */
+  MOOLRE_API_KEY: z.string().optional(),
+  MOOLRE_ACCOUNT_NUMBER: z.string().optional(),
 });
 
 function loadEnv() {
@@ -76,6 +97,12 @@ function loadEnv() {
     OPS_RESOLUTION_UNASSIGNED_WARNING_HOURS: process.env["OPS_RESOLUTION_UNASSIGNED_WARNING_HOURS"] || undefined,
     OPS_RESOLUTION_REVIEW_WARNING_HOURS: process.env["OPS_RESOLUTION_REVIEW_WARNING_HOURS"] || undefined,
     OPS_RETURN_INSPECTION_WARNING_HOURS: process.env["OPS_RETURN_INSPECTION_WARNING_HOURS"] || undefined,
+    PAYMENT_PROVIDER: process.env["PAYMENT_PROVIDER"] || undefined,
+    MOOLRE_ENV: process.env["MOOLRE_ENV"] || undefined,
+    MOOLRE_API_USER: process.env["MOOLRE_API_USER"] || undefined,
+    MOOLRE_API_PUBKEY: process.env["MOOLRE_API_PUBKEY"] || undefined,
+    MOOLRE_API_KEY: process.env["MOOLRE_API_KEY"] || undefined,
+    MOOLRE_ACCOUNT_NUMBER: process.env["MOOLRE_ACCOUNT_NUMBER"] || undefined,
   });
 
   if (!parsed.success) {
@@ -89,6 +116,30 @@ function loadEnv() {
 }
 
 export const env = loadEnv();
+
+/**
+ * Fail closed: a running production server must never be able to "confirm"
+ * a payment via the deterministic mock provider. Sandbox/dev/test freely
+ * use mock. Skipped during `next build`'s page-data collection
+ * (NEXT_PHASE=phase-production-build) — NODE_ENV is "production" then too,
+ * but no request is ever served, and the real deploy environment's actual
+ * PAYMENT_PROVIDER may not be known/available at build time.
+ */
+if (
+  process.env["NODE_ENV"] === "production" &&
+  process.env["NEXT_PHASE"] !== "phase-production-build" &&
+  env.PAYMENT_PROVIDER === "mock"
+) {
+  throw new Error(
+    "PAYMENT_PROVIDER=mock is not permitted when NODE_ENV=production. Set PAYMENT_PROVIDER=moolre with valid Moolre credentials.",
+  );
+}
+
+if (env.PAYMENT_PROVIDER === "moolre" && (!env.MOOLRE_API_USER || !env.MOOLRE_API_PUBKEY || !env.MOOLRE_ACCOUNT_NUMBER)) {
+  throw new Error(
+    "PAYMENT_PROVIDER=moolre requires MOOLRE_API_USER, MOOLRE_API_PUBKEY, and MOOLRE_ACCOUNT_NUMBER to be set.",
+  );
+}
 
 export const googleOAuthConfigured = Boolean(
   env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,

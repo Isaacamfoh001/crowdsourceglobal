@@ -11,6 +11,7 @@ import {
   severityForAge,
   severityForQuotationExpiry,
   canAccessOperationalModules,
+  canAccessFinance,
   THRESHOLDS,
 } from "../operations/policy";
 import type { AdminRole } from "../administration/policy";
@@ -352,9 +353,33 @@ async function refundFailedAttention(now: Date): Promise<AttentionItem[]> {
   }));
 }
 
+/**
+ * M10A — a Payment with a non-null exceptionReason (amount/currency
+ * mismatch, late success after order cancellation, etc.) always CRITICAL:
+ * unlike the age-based categories above, an exception is already a
+ * confirmed problem the moment it's set, not something that becomes
+ * urgent with age.
+ */
+async function paymentExceptionAttention(now: Date): Promise<AttentionItem[]> {
+  const payments = await adminDashboardRepository.findPaymentExceptions();
+  return payments.map((payment) => ({
+    type: "PAYMENT_EXCEPTION" as const,
+    module: "PAYMENTS" as const,
+    severity: "CRITICAL" as const,
+    reference: payment.reference,
+    description: `${payment.exceptionReason} (order ${payment.order.orderNumber})`,
+    status: "Requires attention",
+    ageLabel: formatAge(payment.initiatedAt, now),
+    ageHours: ageHours(payment.initiatedAt, now),
+    assignedTo: null,
+    targetUrl: `/admin/payments/${payment.id}`,
+  }));
+}
+
 /** Fetches and normalizes every attention category the given role is permitted to see, severity-sorted, most-severe first. */
 async function collectAttentionItems(role: AdminRole, now: Date): Promise<AttentionItem[]> {
   const operationalAllowed = canAccessOperationalModules(role);
+  const financeAllowed = canAccessFinance(role);
   const builders = [
     vendorApplicationAttention(now),
     listingAttention(now),
@@ -362,6 +387,7 @@ async function collectAttentionItems(role: AdminRole, now: Date): Promise<Attent
     ...(operationalAllowed
       ? [sourcingAttention(now), fulfilmentAttention(now), messageAttention(now), resolutionCaseAttention(now), returnInspectionAttention(now), refundFailedAttention(now)]
       : []),
+    ...(financeAllowed ? [paymentExceptionAttention(now)] : []),
   ];
   const results = await Promise.all(builders.map((p) => p.catch((error) => { console.error("[admin-dashboard] attention section failed:", error); return [] as AttentionItem[]; })));
   return results.flat().sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || b.ageHours - a.ageHours);
@@ -504,12 +530,14 @@ export const adminDashboardService = {
     if (q.length < 2) return [];
     const operationalAllowed = canAccessOperationalModules(role);
 
-    const [orders, quotations, sourcing, listings, customers, ...operational] = await Promise.all([
+    const financeAllowed = canAccessFinance(role);
+    const [orders, quotations, sourcing, listings, customers, payments, ...operational] = await Promise.all([
       adminDashboardRepository.searchOrders(q),
       adminDashboardRepository.searchQuotations(q),
       adminDashboardRepository.searchSourcingRequests(q),
       adminDashboardRepository.searchListings(q),
       adminDashboardRepository.searchCustomers(q),
+      financeAllowed ? adminDashboardRepository.searchPayments(q) : Promise.resolve([]),
       ...(operationalAllowed
         ? [adminDashboardRepository.searchVendors(q), adminDashboardRepository.searchShipments(q), adminDashboardRepository.searchResolutionCases(q)]
         : [Promise.resolve([]), Promise.resolve([]), Promise.resolve([])]),
@@ -579,6 +607,12 @@ export const adminDashboardService = {
         label: c.caseNumber,
         sublabel: `Order ${c.order.orderNumber} · ${c.status}`,
         targetUrl: `/admin/resolutions/${c.id}`,
+      })),
+      ...payments.map((p) => ({
+        type: "PAYMENT" as const,
+        label: p.reference,
+        sublabel: `Order ${p.order.orderNumber} · ${p.status}`,
+        targetUrl: `/admin/payments/${p.id}`,
       })),
     ];
     return results;

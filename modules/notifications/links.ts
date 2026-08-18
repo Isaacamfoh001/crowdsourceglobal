@@ -21,4 +21,5 @@ export const notificationLinks = {
   adminSourcing: (requestId: string) => `/admin/sourcing/${requestId}`,
   adminMessage: (conversationId: string) => `/admin/messages/${conversationId}`,
   adminResolution: (caseId: string) => `/admin/resolutions/${caseId}`,
+  adminPayment: (paymentId: string) => `/admin/payments/${paymentId}`,
 };

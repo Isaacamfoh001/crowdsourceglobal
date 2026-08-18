@@ -1,6 +1,8 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../lib/db";
 import { resolutionsService } from "./service";
+import { mockRefundExecutor } from "../refunds/mockExecutor";
+import { moolreRefundExecutor } from "../refunds/moolreExecutor";
 
 /** Integration tests against the real local Postgres dev database. */
 describe("resolutionsService", () => {
@@ -366,7 +368,7 @@ describe("resolutionsService", () => {
     });
     const refund = await prisma.refund.findFirstOrThrow({ where: { resolutionCaseId: caseId } });
 
-    const processed = await resolutionsService.processRefund("staff-1", refund.id, "succeed");
+    const processed = await resolutionsService.processRefund("staff-1", refund.id, "succeed", mockRefundExecutor);
     expect(processed.ok).toBe(true);
     const completed = await prisma.refund.findUniqueOrThrow({ where: { id: refund.id } });
     expect(completed.status).toBe("COMPLETED");
@@ -384,7 +386,7 @@ describe("resolutionsService", () => {
     });
     const refund = await prisma.refund.findFirstOrThrow({ where: { resolutionCaseId: caseId } });
 
-    await resolutionsService.processRefund("staff-1", refund.id, "fail");
+    await resolutionsService.processRefund("staff-1", refund.id, "fail", mockRefundExecutor);
     const failed = await prisma.refund.findUniqueOrThrow({ where: { id: refund.id } });
     expect(failed.status).toBe("FAILED");
     expect(failed.failureReason).not.toBeNull();
@@ -401,9 +403,64 @@ describe("resolutionsService", () => {
     });
     const refund = await prisma.refund.findFirstOrThrow({ where: { resolutionCaseId: caseId } });
 
-    await resolutionsService.processRefund("staff-1", refund.id, "succeed");
-    const secondAttempt = await resolutionsService.processRefund("staff-1", refund.id, "succeed");
+    await resolutionsService.processRefund("staff-1", refund.id, "succeed", mockRefundExecutor);
+    const secondAttempt = await resolutionsService.processRefund("staff-1", refund.id, "succeed", mockRefundExecutor);
     expect(secondAttempt.ok).toBe(false); // already COMPLETED — cannot be claimed again, no duplicate execution
+  });
+
+  // ---- Provider-aware refund executor routing (M10A) -----------------------
+
+  it("moolre-mode refund execution fails closed: never COMPLETED, never invokes MockRefundExecutor, preserves the approved Refund for manual handling", async () => {
+    const { order, orderItem } = await createOrder(1, "DELIVERED", 60);
+    const caseId = await submitAndReview(order.id, orderItem.id, 1);
+    const detail = await resolutionsService.getDetailForAdmin(caseId);
+    await resolutionsService.approveResolution("staff-1", caseId, {
+      items: [{ caseItemId: detail!.items[0]!.id, approvedResolution: "FULL_REFUND", approvedRefundAmount: 60 }],
+      responsibility: "VENDOR",
+      customerSafeDecisionReason: "Approved.",
+    });
+    const refundBefore = await prisma.refund.findFirstOrThrow({ where: { resolutionCaseId: caseId } });
+    expect(refundBefore.status).toBe("APPROVED");
+    expect(refundBefore.amount.toNumber()).toBe(60); // original M9 calculation untouched by executor routing
+
+    const mockRefundSpy = vi.spyOn(mockRefundExecutor, "refund");
+
+    const result = await resolutionsService.processRefund("staff-1", refundBefore.id, "succeed", moolreRefundExecutor);
+
+    expect(result.ok).toBe(true); // processRefund itself succeeds as an operation — the REFUND is what stays unresolved
+    expect(mockRefundSpy).not.toHaveBeenCalled(); // moolre mode never falls back to the mock executor
+
+    const refundAfter = await prisma.refund.findUniqueOrThrow({ where: { id: refundBefore.id } });
+    expect(refundAfter.status).not.toBe("COMPLETED"); // no money movement was ever simulated
+    expect(refundAfter.status).toBe("FAILED"); // preserved for manual operational handling, not silently lost
+    expect(refundAfter.failureReason).toMatch(/manual/i);
+    expect(refundAfter.amount.toNumber()).toBe(60); // amount/state otherwise unchanged
+
+    mockRefundSpy.mockRestore();
+  });
+
+  it("moolre-mode refund failure is retryable exactly like a mock failure — the claim guard doesn't distinguish executors", async () => {
+    const { order, orderItem } = await createOrder(1, "DELIVERED", 40);
+    const caseId = await submitAndReview(order.id, orderItem.id, 1);
+    const detail = await resolutionsService.getDetailForAdmin(caseId);
+    await resolutionsService.approveResolution("staff-1", caseId, {
+      items: [{ caseItemId: detail!.items[0]!.id, approvedResolution: "FULL_REFUND", approvedRefundAmount: 40 }],
+      responsibility: "VENDOR",
+      customerSafeDecisionReason: "Approved.",
+    });
+    const refund = await prisma.refund.findFirstOrThrow({ where: { resolutionCaseId: caseId } });
+
+    await resolutionsService.processRefund("staff-1", refund.id, "succeed", moolreRefundExecutor);
+    const failed = await prisma.refund.findUniqueOrThrow({ where: { id: refund.id } });
+    expect(failed.status).toBe("FAILED");
+
+    // Once a real refund API exists and an operator retries with the real
+    // executor, the same claim-guard mechanism must still allow it — proving
+    // moolre mode's fail-closed result doesn't corrupt the retry pathway.
+    const retry = await resolutionsService.processRefund("staff-1", refund.id, "succeed", mockRefundExecutor);
+    expect(retry.ok).toBe(true);
+    const completed = await prisma.refund.findUniqueOrThrow({ where: { id: refund.id } });
+    expect(completed.status).toBe("COMPLETED");
   });
 
   // ---- Cancellation + inventory --------------------------------------------

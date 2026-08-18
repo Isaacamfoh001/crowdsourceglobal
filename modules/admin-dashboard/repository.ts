@@ -166,6 +166,29 @@ export const adminDashboardRepository = {
     });
   },
 
+  /** M10A — matches on CrownSourceGlobal's own reference, the provider's reference, or the parent Order number. Safe summary fields only. */
+  searchPayments(q: string) {
+    return prisma.payment.findMany({
+      where: {
+        OR: [
+          { reference: { contains: q, mode: "insensitive" } },
+          { providerEventId: { contains: q, mode: "insensitive" } },
+          { order: { orderNumber: { contains: q, mode: "insensitive" } } },
+        ],
+      },
+      select: { id: true, reference: true, status: true, order: { select: { orderNumber: true } } },
+      take: SEARCH_TAKE,
+    });
+  },
+
+  findPaymentExceptions() {
+    return prisma.payment.findMany({
+      where: { exceptionReason: { not: null } },
+      select: { id: true, reference: true, exceptionReason: true, initiatedAt: true, order: { select: { orderNumber: true } } },
+      orderBy: { initiatedAt: "asc" },
+    });
+  },
+
   searchQuotations(q: string) {
     return prisma.quotation.findMany({
       where: { reference: { contains: q, mode: "insensitive" } },

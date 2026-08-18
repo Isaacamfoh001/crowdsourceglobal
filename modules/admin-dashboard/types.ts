@@ -15,9 +15,10 @@ export type AttentionType =
   | "RESOLUTION_STALE"
   | "VENDOR_RESPONSE_OVERDUE"
   | "RETURN_AWAITING_INSPECTION"
-  | "REFUND_FAILED";
+  | "REFUND_FAILED"
+  | "PAYMENT_EXCEPTION";
 
-export type AttentionModule = "OPERATIONS" | "SOURCING" | "MESSAGES" | "VENDOR_APPLICATIONS" | "LISTINGS" | "QUOTATIONS" | "RESOLUTIONS";
+export type AttentionModule = "OPERATIONS" | "SOURCING" | "MESSAGES" | "VENDOR_APPLICATIONS" | "LISTINGS" | "QUOTATIONS" | "RESOLUTIONS" | "PAYMENTS";
 
 /**
  * Always derived at read time from source-of-truth domain records, never
@@ -85,7 +86,7 @@ export type DashboardData = {
   recentActivity: RecentActivityEntry[];
 };
 
-export type SearchResultType = "ORDER" | "QUOTATION" | "SOURCING_REQUEST" | "VENDOR" | "CUSTOMER" | "LISTING" | "SHIPMENT" | "RESOLUTION_CASE";
+export type SearchResultType = "ORDER" | "QUOTATION" | "SOURCING_REQUEST" | "VENDOR" | "CUSTOMER" | "LISTING" | "SHIPMENT" | "RESOLUTION_CASE" | "PAYMENT";
 
 export type SearchResult = {
   type: SearchResultType;

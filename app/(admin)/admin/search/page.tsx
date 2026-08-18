@@ -15,6 +15,7 @@ const TYPE_LABELS: Record<SearchResultType, string> = {
   LISTING: "Listing",
   SHIPMENT: "Shipment",
   RESOLUTION_CASE: "Case",
+  PAYMENT: "Payment",
 };
 
 export default async function AdminSearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {

@@ -6,7 +6,7 @@ import { vendorsRepository } from "../vendors/repository";
 import { administrationRepository } from "../administration/repository";
 import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
-import { mockRefundExecutor } from "../refunds/mockExecutor";
+import { getRefundExecutor, type RefundExecutor } from "../refunds/executor";
 import { generateResolutionCaseNumber } from "../../lib/resolution-number";
 import { storageProvider, generateStorageKey } from "../../lib/storage";
 import { validateAttachment, sanitizeFilename } from "../../lib/attachment-validation";
@@ -662,14 +662,30 @@ export const resolutionsService = {
 
   // --- Refund execution --------------------------------------------------
 
-  async processRefund(staffId: string, refundId: string, outcome: MockRefundOutcome): Promise<Result<null>> {
+  /**
+   * Provider-aware by default (`getRefundExecutor()` — MockRefundExecutor
+   * when PAYMENT_PROVIDER=mock, MoolreRefundExecutor when =moolre, which
+   * always fails closed since Moolre documents no refund API). Production
+   * must never silently fall back to a mock "success" for a real payment
+   * provider.
+   *
+   * `executorOverride` exists ONLY for tests that need to exercise a
+   * specific executor's behavior deterministically, independent of
+   * whatever PAYMENT_PROVIDER happens to be set in the local environment
+   * running the test — reading ambient env state here directly once broke
+   * the M9 refund test suite the moment a developer's `.env` had
+   * PAYMENT_PROVIDER=moolre set for real sandbox collection testing. Never
+   * pass this from a Server Action or any other production call site.
+   */
+  async processRefund(staffId: string, refundId: string, outcome: MockRefundOutcome, executorOverride?: RefundExecutor): Promise<Result<null>> {
     const claimed = await resolutionsRepository.claimRefundForProcessing(refundId);
     if (!claimed) return err("This refund isn't ready to be processed.");
 
     const refund = await resolutionsRepository.findRefundForExecution(refundId);
     if (!refund) return err("Refund not found.");
 
-    const result = await mockRefundExecutor.refund(outcome);
+    const executor = executorOverride ?? getRefundExecutor();
+    const result = await executor.refund(outcome);
     if (result.succeeded) {
       await resolutionsRepository.markRefundCompleted(refundId, result.providerEventId);
       await resolutionsRepository.createActivity(refund.resolutionCaseId, "refund_completed", staffId, { refundId });
@@ -692,7 +708,7 @@ export const resolutionsService = {
         });
       }
     } else {
-      const failureReason = "Simulated refund failure";
+      const failureReason = result.reasonSafe ?? "Simulated refund failure";
       await resolutionsRepository.markRefundFailed(refundId, failureReason);
       await resolutionsRepository.createActivity(refund.resolutionCaseId, "refund_failed", staffId, { refundId, failureReason });
 

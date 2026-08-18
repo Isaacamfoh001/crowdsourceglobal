@@ -849,22 +849,70 @@ enum PaymentStatus {
   PENDING
   SUCCEEDED
   FAILED
+  /// Customer-abandoned or provider-declined-as-cancelled, distinct from a
+  /// technical/system FAILED — introduced M10A alongside the first real
+  /// (async) provider. Terminal, same as FAILED.
+  CANCELLED
 }
 
-/// `provider`/`method` are plain strings, not enums — M2 only ever writes
-/// "mock", and predefining real-provider enum values (Paystack method
-/// names, etc.) before that integration exists would be guessing ahead of
-/// the actual API. `status` is the real state machine and stays an enum.
+enum PaymentProviderName {
+  MOCK
+  MOOLRE
+}
+
+enum PaymentMethod {
+  MOCK
+  MOBILE_MONEY
+}
+
+/// Ghana Mobile Money networks Moolre's Collection API supports (M10A).
+enum PaymentNetwork {
+  MTN
+  TELECEL
+  AT
+}
+
+/// M10A generalizes this model for a real, asynchronous provider (Moolre)
+/// while keeping MockPaymentProvider's synchronous rows fully valid.
+/// `provider`/`method` became enums now that a second, real provider
+/// exists — no longer guessing ahead of an API that didn't exist yet.
 model Payment {
-  id              String        @id @default(cuid())
-  provider        String        @default("mock")
-  method          String        @default("mock")
-  status          PaymentStatus @default(INITIATED)
-  amount          Decimal       @db.Decimal(12, 2)
-  currency        String        @default("GHS")
-  providerEventId String?       @unique
-  initiatedAt     DateTime      @default(now())
-  confirmedAt     DateTime?
+  id                String              @id @default(cuid())
+  /// CrownSourceGlobal's own reference (PAY-YYYYMMDD-XXXXX), never the
+  /// provider's identity. Also sent to Moolre as `externalref` — the one
+  /// idempotency key that must never be regenerated on a same-attempt retry.
+  reference         String              @unique
+  provider          PaymentProviderName @default(MOCK)
+  method            PaymentMethod       @default(MOCK)
+  /// Only meaningful when method = MOBILE_MONEY.
+  network           PaymentNetwork?
+  status            PaymentStatus       @default(INITIATED)
+  amount            Decimal             @db.Decimal(12, 2)
+  currency          String              @default("GHS")
+  /// Provider's own transaction identifier (e.g. Moolre's `data` UUID from
+  /// initiate, or its `transactionid`) — never our primary identity.
+  providerEventId   String?             @unique
+  /// Last raw provider status code observed (e.g. "TR099"/"SS01") — for
+  /// admin diagnostics only, never interpreted by domain code.
+  providerStatus    String?
+  /// Set whenever we independently re-verify status via the provider's
+  /// status API (webhook trigger, poll, or admin reconciliation).
+  lastVerifiedAt    DateTime?
+  /// Customer-safe failure copy, never a raw provider error string.
+  failureReasonSafe String?
+  /// Masked display value only (e.g. "024***1234") — the raw phone is never
+  /// persisted once the provider request has been sent.
+  phoneMasked       String?
+  /// Which attempt number this is for the parent Order — multiple Payment
+  /// rows may exist per Order, history is never mutated in place.
+  attemptNumber     Int                 @default(1)
+  /// Non-null marks this Payment as needing staff attention (amount/currency
+  /// mismatch, late-success-after-reservation-expiry, repeated
+  /// reconciliation failure, etc.) — a derived-query marker, not a new
+  /// state-machine value, per M8's "derived attention item" philosophy.
+  exceptionReason   String?
+  initiatedAt       DateTime            @default(now())
+  confirmedAt       DateTime?
 
   orderId String
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -872,7 +920,13 @@ model Payment {
   refunds Refund[]
 
   @@index([orderId])
+  @@index([status])
+  @@index([exceptionReason])
   @@map("payment")
+  // NOTE (DB-only, not expressible here): a partial unique index enforces at
+  // most one active (INITIATED/PENDING) Payment per Order —
+  // CREATE UNIQUE INDEX payment_one_active_per_order ON payment(orderId)
+  // WHERE status IN ('INITIATED','PENDING'). See the M10A migration.
 }
 
 enum ReservationStatus {
@@ -1771,6 +1825,8 @@ enum NotificationType {
   RESOLUTION_VENDOR_CASE_UPDATE
   ADMIN_NEW_RESOLUTION_CASE
   ADMIN_REFUND_FAILED
+  PAYMENT_FAILED
+  ADMIN_PAYMENT_REQUIRES_ATTENTION
 }
 
 /// A structured, typed in-app notification. `title`/`body` are plain text

@@ -58,13 +58,13 @@ Listing + quantity → Pricing evaluates tier → Quotation (instant) issued →
 
 Request submitted → admin SOURCING creates `SourcingAllocation`(s) across vendors → custom Quotation issued with `vendorId = null` line items → customer accepts → Order/OrderItem (`vendor = null`) created → Fulfilments fan out per SourcingAllocation → Payment/CONFIRMED as usual.
 
-## E. Payment Confirmation
+## E. Payment Confirmation *(real provider implemented M10A — Moolre)*
 
-Payment INITIATED at checkout → provider redirect/SDK flow → provider webhook (signature-verified) → Payment SUCCEEDED (idempotent on `providerEventId`) → Order `paymentStatus = PAID`, `status → CONFIRMED` → Fulfilment-creation job enqueued. **A frontend redirect/success page is never treated as authoritative confirmation.**
+Payment INITIATED at checkout → provider request → Payment PENDING → provider webhook arrives (trigger only — Moolre documents no signature/HMAC mechanism, only source-IP allowlisting) → CrownSourceGlobal independently calls the provider's own status API using its own credentials → only that verified result can move Payment → SUCCEEDED (guarded, idempotent `updateMany`; N duplicate callbacks/polls produce exactly one winner) → `ordersService.confirmOrderPayment` (the SAME transition mock payments already used — no Moolre-specific confirmation path) → Order `paymentStatus = PAID`, `status → CONFIRMED` → Fulfilments created. **A frontend redirect/success page, and the webhook payload's claimed status alone, are never treated as authoritative confirmation** — see Workflow X.
 
-## F. Failed / Abandoned Payment
+## F. Failed / Abandoned Payment *(sweep implemented M10A)*
 
-Payment FAILED, or no webhook received within timeout → background sweep marks Order CANCELLED → InventoryReservation released → customer notified, may retry checkout (a new Order).
+Payment FAILED (provider-rejected or verified-failed) leaves the Order in `PENDING_PAYMENT`, retryable. Separately, an Order whose `InventoryReservation.expiresAt` has passed with no successful Payment is picked up by `paymentsService.sweepAbandonedPayments()` (`scripts/sweep-abandoned-payments.ts`, run on a schedule — same DB-backed-job model as M7's email worker, no message broker): Order → CANCELLED (guarded, only from `PENDING_PAYMENT`), reservation → `RELEASED`, `availableQuantity` restored. Customer may retry checkout as a new Order. This sweep was designed at the architecture-planning stage but never had a real trigger until M10A introduced a genuinely asynchronous payment provider — the old synchronous mock flow always resolved before a reservation could expire.
 
 ## G. Inventory Reservation / Release
 
@@ -383,3 +383,64 @@ Fulfilment exists yet
 ```
 
 Replacement source is always the same Vendor as the original line in V1 (`originalOrderItem.vendorId`) — alternate-vendor or CrownSource-custom-source replacement is an explicitly deferred follow-up (M9 spec §25), not built now.
+
+## X. Ghana Mobile Money Payment — Moolre *(added M10A)*
+
+```
+Customer submits network (MTN/Telecel/AirtelTigo) + phone — amount/
+currency are ALWAYS server-derived from the immutable, already-confirmed
+Order total, never trusted from the browser
+  → paymentsService.initiateMoolrePayment:
+      - normalizes phone to Moolre's documented local 0-prefixed format
+        (raw phone is never persisted — only a masked form)
+      - generates CrownSourceGlobal's own reference (PAY-YYYYMMDD-XXXXX),
+        which doubles as Moolre's externalref/idempotency key — created
+        once, never regenerated for the same attempt
+      - Payment row created (status INITIATED); a DB-only partial unique
+        index allows at most one INITIATED/PENDING Payment per Order,
+        closing the double-click/double-tab race at the database level
+      - calls moolrePaymentProvider.initiate() (channel code mapped
+        MTN=13/Telecel=6/AirtelTigo=7 — exact documented codes, mapping
+        confined to modules/payments/providers/moolre/)
+  → Moolre response, mapped to one of four outcomes (never raw provider
+    codes past the adapter):
+      - ACCEPTED  → Payment PENDING, customer sees a "check your phone"
+        screen with bounded, CrownSource-server-mediated polling (the
+        browser never calls Moolre directly)
+      - OTP_REQUIRED (documented TP14 flow) → customer enters the SMS
+        code → the SAME externalref is resubmitted with otpcode (never a
+        new Payment/reference) → same ACCEPTED/REJECTED handling
+      - REJECTED  → Payment FAILED, customer may retry (a new attempt,
+        new reference)
+      - UNKNOWN (timeout/network failure) → Payment stays
+        PENDING/INITIATED, uncertain — NEVER auto-retried (could double-
+        debit); resolved later via polling/reconciliation
+  → Resolution always funnels through ONE function
+    (applyVerifyOutcome), regardless of trigger:
+      - webhook (POST /api/payments/moolre/webhook) — a TRIGGER only.
+        Moolre documents no signature/HMAC mechanism; best-effort
+        source-IP filtering is applied but never treated as sufficient
+        proof (flagged as an open production-risk question — see ADR
+        0006). The handler ALWAYS independently calls Moolre's own
+        status API before trusting anything.
+      - customer polling (getPaymentStatusForCustomer) — re-verifies
+        with the provider only when the last check is stale
+      - admin reconciliation (reconcilePaymentAsAdmin) — same
+        verification call, explicit, never an unrestricted "mark paid"
+      - amount/currency are checked against the immutable Payment
+        record before any confirmation; a mismatch is quarantined via
+        `exceptionReason` and a CRITICAL admin notification — never
+        confirmed
+      - the SUCCEEDED transition is a guarded `updateMany`
+        (`status IN (INITIATED, PENDING)`) — N concurrent duplicate
+        callers can only ever produce one winner, which then calls the
+        SAME `ordersService.confirmOrderPayment` every other payment
+        path uses (no Moolre-specific order-confirmation logic exists)
+      - if the verified success arrives after the Order was already
+        swept to CANCELLED (Workflow F), the Order is NEVER silently
+        reopened — the Payment is marked SUCCEEDED with an
+        `exceptionReason` and a CRITICAL admin exception is raised for
+        manual resolution instead
+```
+
+Refunds: Moolre's current official documentation lists no refund/reversal endpoint anywhere in its Payments API. `MoolreRefundExecutor` (`modules/refunds/moolreExecutor.ts`) exists as a standalone, independently-tested scaffold documenting the fail-closed "manual operation required" outcome a real integration point would need — it is deliberately **not** wired into `resolutionsService.processRefund` today. `processRefund` continues to call `mockRefundExecutor` unconditionally, exactly as M9 left it: it is staff's explicit dev/test refund simulation, and its behavior must never change based on which real collection provider (`env.PAYMENT_PROVIDER`) happens to be configured locally — an earlier version of this milestone coupled the two and broke the M9 refund test suite the moment `PAYMENT_PROVIDER=moolre` was set for real sandbox collection testing. No M9 domain logic changed.

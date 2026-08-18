@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
-import { FlaskConical } from "lucide-react";
+import { FlaskConical, ShieldCheck } from "lucide-react";
 import { Container } from "../../../../../components/ui/Container";
 import { Badge } from "../../../../../components/ui/Badge";
 import { MockPaymentForm } from "../../../../../components/checkout/MockPaymentForm";
+import { MoolrePaymentForm } from "../../../../../components/checkout/MoolrePaymentForm";
 import { formatPrice } from "../../../../../lib/format";
+import { env } from "../../../../../lib/env";
 import { requireSession, getCurrentCustomerProfile } from "../../../../../modules/identity/policy";
 import { ordersService } from "../../../../../modules/orders/service";
 
@@ -38,14 +40,23 @@ export default async function PaymentPage({ params }: { params: Promise<Params> 
   // to retry after a failure is a new, intentional attempt.
   const idempotencyKey = randomUUID();
 
+  const isMoolre = env.PAYMENT_PROVIDER === "moolre";
+
   return (
     <div className="bg-stone-50 py-10 sm:py-14">
       <Container className="max-w-xl">
         <div className="mb-6 flex justify-center">
-          <Badge tone="gold" className="normal-case">
-            <FlaskConical className="size-3.5" strokeWidth={2} />
-            Development mode — simulated payment
-          </Badge>
+          {isMoolre ? (
+            <Badge tone="gold" className="normal-case">
+              <ShieldCheck className="size-3.5" strokeWidth={2} />
+              Secure Mobile Money payment
+            </Badge>
+          ) : (
+            <Badge tone="gold" className="normal-case">
+              <FlaskConical className="size-3.5" strokeWidth={2} />
+              Development mode — simulated payment
+            </Badge>
+          )}
         </div>
 
         <div className="rounded-2xl border border-stone-200 bg-white p-6 sm:p-8">
@@ -61,14 +72,21 @@ export default async function PaymentPage({ params }: { params: Promise<Params> 
             </span>
           </div>
 
-          <p className="mt-4 text-center text-sm leading-relaxed text-stone-500">
-            This is a simulated payment for development — no real money moves and no card
-            details are collected. Choose an outcome below to continue.
-          </p>
-
-          <div className="mt-6">
-            <MockPaymentForm orderId={order.id} idempotencyKey={idempotencyKey} />
-          </div>
+          {isMoolre ? (
+            <div className="mt-6">
+              <MoolrePaymentForm orderId={order.id} />
+            </div>
+          ) : (
+            <>
+              <p className="mt-4 text-center text-sm leading-relaxed text-stone-500">
+                This is a simulated payment for development — no real money moves and no card
+                details are collected. Choose an outcome below to continue.
+              </p>
+              <div className="mt-6">
+                <MockPaymentForm orderId={order.id} idempotencyKey={idempotencyKey} />
+              </div>
+            </>
+          )}
         </div>
       </Container>
     </div>

@@ -114,3 +114,8 @@ export function formatAge(since: Date, now: Date = new Date()): string {
 export function canAccessOperationalModules(role: AdminRole): boolean {
   return role === "SUPER_ADMIN" || role === "OPS_ADMIN";
 }
+
+/** Mirrors app/(admin)/admin/payments/**\/page.tsx's allowedRoles gating (M10A) — same reasoning as canAccessOperationalModules above. */
+export function canAccessFinance(role: AdminRole): boolean {
+  return role === "SUPER_ADMIN" || role === "FINANCE_ADMIN";
+}

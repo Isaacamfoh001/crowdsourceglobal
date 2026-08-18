@@ -445,7 +445,7 @@ export const resolutionsRepository = {
     return result.count === 1;
   },
 
-  markRefundCompleted(refundId: string, providerEventId: string) {
+  markRefundCompleted(refundId: string, providerEventId: string | null) {
     return prisma.refund.update({ where: { id: refundId }, data: { status: "COMPLETED", processedAt: new Date(), providerEventId, failureReason: null } });
   },
 

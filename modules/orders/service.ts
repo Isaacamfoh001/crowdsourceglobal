@@ -523,6 +523,17 @@ export const ordersService = {
       deliveryInfo: order.deliveryInfo as unknown as DeliveryInfo,
       vendorGroups: [...groupsByVendor.values()],
       latestPaymentStatus: order.payments[0]?.status ?? null,
+      latestPayment: order.payments[0]
+        ? {
+            reference: order.payments[0].reference,
+            provider: order.payments[0].provider,
+            network: order.payments[0].network,
+            phoneMasked: order.payments[0].phoneMasked,
+            amount: order.payments[0].amount.toNumber(),
+            currency: order.payments[0].currency,
+            initiatedAt: order.payments[0].initiatedAt,
+          }
+        : null,
     };
   },
 

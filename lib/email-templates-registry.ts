@@ -244,6 +244,19 @@ const registry: Record<string, (data: Record<string, unknown>) => TemplateConten
     ctaLabel: "Review refund",
     ctaPath: `/admin/resolutions/${d["caseId"]}`,
   }),
+  "payment-failed": (d) => ({
+    title: "Your payment could not be completed",
+    intro: `We couldn't complete your payment for order ${d["orderNumber"]}.`,
+    bodyLines: ["You can try again from your order page."],
+    ctaLabel: "View order",
+    ctaPath: `/account/orders/${d["orderId"]}`,
+  }),
+  "admin-payment-requires-attention": (d) => ({
+    title: "Payment requires attention",
+    intro: `Payment ${d["reference"]} for order ${d["orderNumber"]} requires manual review.`,
+    ctaLabel: "Review payment",
+    ctaPath: `/admin/payments/${d["paymentId"]}`,
+  }),
 };
 
 /** Subject is NOT re-derived here — the caller (modules/notifications) sets and stores its own subject at enqueue time (EmailDeliveryJob.subject); this only renders the body. */

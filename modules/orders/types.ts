@@ -65,4 +65,14 @@ export type OrderDetailView = {
   deliveryInfo: DeliveryInfo;
   vendorGroups: OrderVendorGroupView[];
   latestPaymentStatus: string | null;
+  /** Safe summary only — never internal provider debug data or an unmasked phone. */
+  latestPayment: {
+    reference: string;
+    provider: string;
+    network: string | null;
+    phoneMasked: string | null;
+    amount: number;
+    currency: string;
+    initiatedAt: Date;
+  } | null;
 };

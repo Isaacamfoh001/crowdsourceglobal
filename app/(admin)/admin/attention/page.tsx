@@ -24,6 +24,7 @@ const TYPE_FILTERS: { value: AttentionType; label: string }[] = [
   { value: "VENDOR_RESPONSE_OVERDUE", label: "Vendor response overdue" },
   { value: "RETURN_AWAITING_INSPECTION", label: "Return awaiting inspection" },
   { value: "REFUND_FAILED", label: "Refund failed" },
+  { value: "PAYMENT_EXCEPTION", label: "Payment exception" },
 ];
 
 const SEVERITY_FILTERS: { value: AttentionSeverity; label: string }[] = [
@@ -39,6 +40,7 @@ const MODULE_FILTERS: { value: AttentionModule; label: string }[] = [
   { value: "LISTINGS", label: "Listings" },
   { value: "QUOTATIONS", label: "Quotations" },
   { value: "RESOLUTIONS", label: "Resolutions" },
+  { value: "PAYMENTS", label: "Payments" },
 ];
 
 type SearchParams = { type?: string; severity?: string; module?: string; assigned?: string; page?: string };
