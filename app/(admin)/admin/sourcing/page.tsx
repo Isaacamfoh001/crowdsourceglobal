@@ -3,6 +3,8 @@ import { TriangleAlert } from "lucide-react";
 import { requireAdminSession } from "../../../../modules/administration/policy";
 import { sourcingService } from "../../../../modules/sourcing/service";
 import { SourcingStatusBadge } from "../../../../components/sourcing/SourcingStatusBadge";
+import { parsePage } from "../../../../lib/pagination";
+import { Pagination } from "../../../../components/shared/Pagination";
 
 export const metadata = { title: "Sourcing — Admin" };
 export const dynamic = "force-dynamic";
@@ -22,13 +24,14 @@ const STATUS_FILTERS = [
 export default async function AdminSourcingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
   await requireAdminSession("/admin/sourcing");
-  const { status } = await searchParams;
+  const { status, page } = await searchParams;
   const activeStatus = STATUS_FILTERS.find((f) => f.value === status)?.value;
+  const currentPage = parsePage(page);
 
-  const requests = await sourcingService.listForAdmin({ status: activeStatus });
+  const { rows: requests, total, pageSize } = await sourcingService.listForAdminPaginated({ status: activeStatus }, currentPage);
   const soonThreshold = new Date();
   soonThreshold.setDate(soonThreshold.getDate() + 3);
 
@@ -90,6 +93,8 @@ export default async function AdminSourcingPage({
           ))}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/admin/sourcing" extraParams={{ status: activeStatus }} />
     </div>
   );
 }

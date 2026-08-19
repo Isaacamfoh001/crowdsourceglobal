@@ -3,8 +3,11 @@ import { vendorsRepository } from "../vendors/repository";
 import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
 import { ok, err, type Result } from "../../lib/result";
+import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import type { BulkTierInput, ListingFormInput, VendorListingDetail } from "./types";
 import type { NotificationType } from "../notifications/types";
+
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 async function notifyVendorOwner(params: {
   vendorId: string;
@@ -71,6 +74,12 @@ function validateBulkTiers(tiers: BulkTierInput[]): Result<null> {
 export const vendorListingsService = {
   listForVendor(vendorId: string) {
     return vendorListingsRepository.findSummariesForVendor(vendorId);
+  },
+
+  /** (M11.1) Paginated variant backing the vendor portal listings list page. */
+  async listForVendorPaginated(vendorId: string, page = 1) {
+    const { rows, total } = await vendorListingsRepository.findSummariesForVendorPaginated(vendorId, page, PAGE_SIZE);
+    return { rows, total, pageSize: PAGE_SIZE };
   },
 
   async getDetail(vendorId: string, listingId: string): Promise<VendorListingDetail | null> {
@@ -207,6 +216,11 @@ export const vendorListingsService = {
 
   listPendingForAdmin() {
     return vendorListingsRepository.findPendingForAdmin();
+  },
+
+  async listPendingForAdminPaginated(page: number) {
+    const { rows, total } = await vendorListingsRepository.findPendingForAdminPaginated(page, PAGE_SIZE);
+    return { rows, total, pageSize: PAGE_SIZE };
   },
 
   getForAdmin(listingId: string) {

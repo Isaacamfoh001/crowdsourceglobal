@@ -8,7 +8,8 @@ export const metadata = { title: "Earning — Vendor Portal" };
 export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, string> = {
-  PENDING: "Pending settlement",
+  PENDING: "Pending fulfilment",
+  WAITING_PERIOD: "Settlement waiting period",
   ON_HOLD: "On hold",
   ELIGIBLE: "Eligible for settlement",
   INCLUDED_IN_SETTLEMENT: "Included in a settlement",

@@ -5,7 +5,8 @@ import { pricingService } from "../pricing/service";
 import { resolveUnitPrice } from "../pricing/resolveUnitPrice";
 import { generateOrderNumber } from "../../lib/order-number";
 import { quotationRepository } from "../quotation/repository";
-import { ordersRepository } from "./repository";
+import { ordersRepository, toDisplayStatusFulfilments, toDisplayStatusCases } from "./repository";
+import { computeOrderDisplayStatus, ORDER_DISPLAY_STATUS_LABEL } from "./display-status";
 import { ok, err, type Result } from "../../lib/result";
 import type { DeliveryInfo, OrderDetailView, OrderSummaryView } from "./types";
 
@@ -531,6 +532,8 @@ export const ordersService = {
       }
     }
 
+    const { overall, packages } = computeOrderDisplayStatus(order.status, toDisplayStatusFulfilments(order.fulfilments), toDisplayStatusCases(order.resolutionCases));
+
     return {
       id: order.id,
       orderNumber: order.orderNumber,
@@ -542,6 +545,9 @@ export const ordersService = {
       currency: order.currency,
       deliveryInfo: order.deliveryInfo as unknown as DeliveryInfo,
       vendorGroups: [...groupsByVendor.values()],
+      displayStatus: overall,
+      displayStatusLabel: ORDER_DISPLAY_STATUS_LABEL[overall],
+      packages: packages.map((p) => ({ ...p, statusLabel: ORDER_DISPLAY_STATUS_LABEL[p.status] })),
       latestPaymentStatus: order.payments[0]?.status ?? null,
       latestPayment: order.payments[0]
         ? {
@@ -564,15 +570,20 @@ export const ordersService = {
 
   async listOrders(customerProfileId: string): Promise<OrderSummaryView[]> {
     const orders = await ordersRepository.listForCustomer(customerProfileId);
-    return orders.map((order) => ({
-      id: order.id,
-      orderNumber: order.orderNumber,
-      createdAt: order.createdAt,
-      status: order.status,
-      paymentStatus: order.paymentStatus,
-      total: order.total.toNumber(),
-      currency: order.currency,
-      itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
-    }));
+    return orders.map((order) => {
+      const { overall } = computeOrderDisplayStatus(order.status, toDisplayStatusFulfilments(order.fulfilments), toDisplayStatusCases(order.resolutionCases));
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        createdAt: order.createdAt,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        total: order.total.toNumber(),
+        currency: order.currency,
+        itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
+        displayStatus: overall,
+        displayStatusLabel: ORDER_DISPLAY_STATUS_LABEL[overall],
+      };
+    });
   },
 };

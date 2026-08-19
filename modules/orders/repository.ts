@@ -1,4 +1,69 @@
 import { prisma } from "../../lib/db";
+import type { DisplayStatusCase, DisplayStatusFulfilment } from "./display-status";
+
+/** (M11.1) Shared across order list/detail — see modules/orders/display-status.ts for what this feeds. */
+const displayStatusFulfilmentSelect = {
+  id: true,
+  status: true,
+  vendor: { select: { companyName: true } },
+  items: { select: { orderItemId: true } },
+  shipments: { orderBy: { createdAt: "desc" as const }, take: 1, select: { status: true } },
+} as const;
+
+const displayStatusCaseSelect = {
+  status: true,
+  items: {
+    select: {
+      orderItemId: true,
+      approvedResolution: true,
+      refund: { select: { status: true } },
+    },
+  },
+  returns: { select: { status: true } },
+  replacements: {
+    select: {
+      originalOrderItemId: true,
+      replacementOrderItem: { select: { fulfilmentItems: { take: 1, select: { fulfilment: { select: { status: true } } } } } },
+    },
+  },
+} as const;
+
+type RawDisplayStatusFulfilment = {
+  id: string;
+  status: string;
+  vendor: { companyName: string };
+  items: { orderItemId: string }[];
+  shipments: { status: string }[];
+};
+
+type RawDisplayStatusCase = {
+  status: string;
+  items: { orderItemId: string; approvedResolution: string | null; refund: { status: string } | null }[];
+  returns: { status: string }[];
+  replacements: { originalOrderItemId: string; replacementOrderItem: { fulfilmentItems: { fulfilment: { status: string } }[] } | null }[];
+};
+
+function toDisplayStatusFulfilments(rows: RawDisplayStatusFulfilment[]): DisplayStatusFulfilment[] {
+  return rows.map((f) => ({
+    id: f.id,
+    status: f.status,
+    vendorName: f.vendor.companyName,
+    shipmentStatus: f.shipments[0]?.status ?? null,
+    orderItemIds: f.items.map((i) => i.orderItemId),
+  }));
+}
+
+function toDisplayStatusCases(rows: RawDisplayStatusCase[]): DisplayStatusCase[] {
+  return rows.map((c) => ({
+    status: c.status,
+    items: c.items.map((i) => ({ orderItemId: i.orderItemId, approvedResolution: i.approvedResolution, refundStatus: i.refund?.status ?? null })),
+    returnStatuses: c.returns.map((r) => r.status),
+    replacements: c.replacements.map((r) => ({
+      originalOrderItemId: r.originalOrderItemId,
+      replacementFulfilmentStatus: r.replacementOrderItem?.fulfilmentItems[0]?.fulfilment.status ?? null,
+    })),
+  }));
+}
 
 const orderItemSelect = {
   id: true,
@@ -21,6 +86,8 @@ const orderDetailSelect = {
   deliveryInfo: true,
   customerProfileId: true,
   items: { select: orderItemSelect, orderBy: { id: "asc" as const } },
+  fulfilments: { select: displayStatusFulfilmentSelect },
+  resolutionCases: { select: displayStatusCaseSelect },
   payments: {
     select: {
       status: true,
@@ -124,8 +191,12 @@ export const ordersRepository = {
         total: true,
         currency: true,
         items: { select: { quantity: true } },
+        fulfilments: { select: displayStatusFulfilmentSelect },
+        resolutionCases: { select: displayStatusCaseSelect },
       },
       orderBy: { createdAt: "desc" },
     });
   },
 };
+
+export { toDisplayStatusFulfilments, toDisplayStatusCases };

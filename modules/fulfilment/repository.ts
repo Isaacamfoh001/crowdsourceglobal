@@ -1,4 +1,6 @@
 import { prisma } from "../../lib/db";
+import { vendorFinanceRepository } from "../vendor-finance/repository";
+import { paginationSkip } from "../../lib/pagination";
 
 const itemsInclude = { items: { include: { orderItem: { select: { description: true } } } } } as const;
 
@@ -60,6 +62,35 @@ export const fulfilmentRepository = {
       },
       orderBy: { createdAt: "desc" },
     });
+  },
+
+  /**
+   * (M11.1) Paginated variant for the vendor portal orders list page —
+   * distinct from findForVendor, which app/vendor/portal/page.tsx (the
+   * dashboard) still needs unbounded to compute its "new orders"/"issues"
+   * stat-card counts across every fulfilment, not just one page's worth.
+   */
+  async findForVendorPaginated(vendorId: string, status: string | undefined, page: number, pageSize: number) {
+    const where = { vendorId, ...(status ? { status: status as never } : {}) };
+    const [rows, total] = await Promise.all([
+      prisma.fulfilment.findMany({
+        where,
+        select: {
+          id: true,
+          status: true,
+          origin: true,
+          createdAt: true,
+          order: { select: { orderNumber: true } },
+          items: { select: { quantity: true } },
+          issues: { where: { status: "OPEN" }, select: { id: true } },
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.fulfilment.count({ where }),
+    ]);
+    return { rows, total };
   },
 
   findDetailForVendor(vendorId: string, fulfilmentId: string) {
@@ -157,6 +188,47 @@ export const fulfilmentRepository = {
     });
   },
 
+  /**
+   * (M11.1) Paginated variant of findForAdmin, for the admin Operations
+   * queue page. findForAdmin itself stays unbounded — it's also used by
+   * admin-dashboard's fulfilmentAttention(), which needs the full set to
+   * scan for overdue/exception items, not one page of it.
+   */
+  async findForAdminPaginated(filter: { status?: string; origin?: string }, page: number, pageSize: number) {
+    const where = {
+      ...(filter.status ? { status: filter.status as never } : {}),
+      ...(filter.origin ? { origin: filter.origin as never } : {}),
+    };
+    const [rows, total] = await Promise.all([
+      prisma.fulfilment.findMany({
+        where,
+        select: {
+          id: true,
+          status: true,
+          origin: true,
+          createdAt: true,
+          updatedAt: true,
+          vendor: { select: { id: true, companyName: true, leadTimeDaysDefault: true } },
+          order: { select: { orderNumber: true } },
+          items: { select: { id: true } },
+          issues: { where: { status: "OPEN" }, select: { id: true } },
+          shipments: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: { status: true, shippedAt: true, receivedAt: true },
+          },
+        },
+        // Oldest-first — deliberate Operations queue order (staff work the
+        // oldest fulfilment first). Not a bug; do not flip to desc.
+        orderBy: { createdAt: "asc" },
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.fulfilment.count({ where }),
+    ]);
+    return { rows, total };
+  },
+
   findDetailForAdmin(fulfilmentId: string) {
     return prisma.fulfilment.findUnique({
       where: { id: fulfilmentId },
@@ -248,6 +320,11 @@ export const fulfilmentRepository = {
       await tx.shipment.update({ where: { id: shipment.id }, data: { status: toStatus as never, ...extra } });
       if (toStatus === "DELIVERED") {
         await tx.fulfilment.update({ where: { id: fulfilmentId }, data: { status: "DELIVERED" } });
+        // M11.1 — event-driven PENDING -> WAITING_PERIOD, in the same
+        // transaction as the delivery itself (never a separate, later step
+        // the sweep would need to reconstruct).
+        const deliveredAt = (extra as { deliveredAt?: Date }).deliveredAt ?? new Date();
+        await vendorFinanceRepository.startWaitingPeriodForFulfilmentTx(tx, fulfilmentId, deliveredAt);
       }
       if (toStatus === "EXCEPTION" || toStatus === "DELIVERY_FAILED") {
         await tx.fulfilment.update({ where: { id: fulfilmentId }, data: { status: "EXCEPTION" } });

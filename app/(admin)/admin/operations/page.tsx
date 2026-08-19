@@ -3,6 +3,8 @@ import { AlertTriangle } from "lucide-react";
 import { FulfilmentStatusBadge } from "../../../../components/fulfilment/FulfilmentStatusBadge";
 import { requireAdminSession } from "../../../../modules/administration/policy";
 import { fulfilmentService } from "../../../../modules/fulfilment/service";
+import { parsePage } from "../../../../lib/pagination";
+import { Pagination } from "../../../../components/shared/Pagination";
 
 export const metadata = { title: "Operations — Admin" };
 export const dynamic = "force-dynamic";
@@ -20,11 +22,12 @@ const STATUS_FILTERS = [
 export default async function AdminOperationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; origin?: string }>;
+  searchParams: Promise<{ status?: string; origin?: string; page?: string }>;
 }) {
   await requireAdminSession("/admin/operations", ["SUPER_ADMIN", "OPS_ADMIN"]);
-  const { status, origin } = await searchParams;
-  const fulfilments = await fulfilmentService.listForAdmin({ status, origin });
+  const { status, origin, page } = await searchParams;
+  const currentPage = parsePage(page);
+  const { rows: fulfilments, total, pageSize } = await fulfilmentService.listForAdminPaginated({ status, origin }, currentPage);
 
   const qs = (nextStatus?: string) => {
     const params = new URLSearchParams();
@@ -96,6 +99,14 @@ export default async function AdminOperationsPage({
           ))}
         </div>
       )}
+
+      <Pagination
+        currentPage={currentPage}
+        total={total}
+        pageSize={pageSize}
+        basePath="/admin/operations"
+        extraParams={{ status, origin }}
+      />
     </div>
   );
 }

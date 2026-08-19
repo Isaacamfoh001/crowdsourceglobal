@@ -1,20 +1,28 @@
 import { CheckCircle2, Circle, AlertTriangle } from "lucide-react";
 import { ConfirmReceiptButton } from "./ConfirmReceiptButton";
+import { OrderStatusBadge } from "./OrderStatusBadge";
 import type { CustomerPackageTracking } from "../../modules/fulfilment/types";
+import type { OrderDisplayStatus } from "../../modules/orders/display-status";
+
+const RAW_PROGRESSION_STATUSES = new Set<OrderDisplayStatus>(["ORDER_CONFIRMED", "PREPARING", "COLLECTED", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED"]);
 
 export function PackageTracking({
   tracking,
   orderId,
   multiPackage,
   index,
+  packageStatus,
 }: {
   tracking: CustomerPackageTracking;
   orderId: string;
   multiPackage: boolean;
   index: number;
+  /** (M11.1) Derived, resolution-aware status for this specific vendor's package — see modules/orders/display-status.ts. Only shown when it says something the plain step timeline below doesn't (an active case/return/refund/replacement). */
+  packageStatus?: { status: OrderDisplayStatus; label: string };
 }) {
   const lastStep = tracking.steps.at(-1);
   const isDelivered = Boolean(lastStep?.done);
+  const showDerivedBadge = packageStatus && !RAW_PROGRESSION_STATUSES.has(packageStatus.status);
 
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-5">
@@ -23,12 +31,15 @@ export function PackageTracking({
           {multiPackage ? `Package ${index + 1} — ` : ""}
           {tracking.vendorName}
         </p>
-        {tracking.hasIssue ? (
-          <span className="flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
-            <AlertTriangle className="size-3.5" strokeWidth={2} />
-            Needs attention
-          </span>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {showDerivedBadge ? <OrderStatusBadge status={packageStatus.status} label={packageStatus.label} /> : null}
+          {tracking.hasIssue ? (
+            <span className="flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
+              <AlertTriangle className="size-3.5" strokeWidth={2} />
+              Needs attention
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <ul className="mt-3 flex flex-col gap-1">

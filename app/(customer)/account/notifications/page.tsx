@@ -2,16 +2,23 @@ import Link from "next/link";
 import { CheckCheck } from "lucide-react";
 import { MarkAllReadButton } from "../../../../components/notifications/MarkAllReadButton";
 import { NotificationRow } from "../../../../components/notifications/NotificationRow";
+import { Pagination } from "../../../../components/shared/Pagination";
 import { requireSession } from "../../../../modules/identity/policy";
 import { notificationsService } from "../../../../modules/notifications/service";
+import { parsePage } from "../../../../lib/pagination";
 
 export const metadata = { title: "Notifications" };
 export const dynamic = "force-dynamic";
 
-export default async function NotificationsPage() {
+export default async function NotificationsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const session = await requireSession("/account/notifications");
-  const notifications = await notificationsService.listForUser(session.user.id);
-  const unreadCount = notifications.filter((n) => !n.readAt).length;
+  const { page } = await searchParams;
+  const currentPage = parsePage(page);
+  const { rows: notifications, total, pageSize } = await notificationsService.listForUser(session.user.id, currentPage);
+  // Site-wide unread count, not just this page's rows — pagination must not
+  // hide the "mark all read" action when unread notifications exist on
+  // other pages.
+  const unreadCount = await notificationsService.getUnreadCount(session.user.id);
 
   return (
     <div className="flex flex-col gap-6">
@@ -45,6 +52,8 @@ export default async function NotificationsPage() {
           ))}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/account/notifications" />
     </div>
   );
 }

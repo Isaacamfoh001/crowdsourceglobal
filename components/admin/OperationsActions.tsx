@@ -118,28 +118,36 @@ export function ConfirmCollectedButton({ fulfilmentId, label }: { fulfilmentId: 
   );
 }
 
-export function ProgressButtons({ fulfilmentId }: { fulfilmentId: string }) {
+/**
+ * Renders exactly ONE action — the single valid next progression step for
+ * the shipment's current status — never all three at once (M11.1: an admin
+ * must always be able to tell what the one right next action is). The
+ * backend already rejects a skipped transition via its own guarded
+ * updateMany (see modules/fulfilment/repository.ts's progressShipment); this
+ * only controls what's offered, and now surfaces a rejection if one somehow
+ * still occurs (e.g. a stale page, another admin acting concurrently).
+ */
+export function ProgressButtons({ fulfilmentId, shipmentStatus }: { fulfilmentId: string; shipmentStatus: string }) {
+  const nextAction =
+    shipmentStatus === "COLLECTED"
+      ? { action: progressToInTransitAction, label: "Mark in transit" }
+      : shipmentStatus === "IN_TRANSIT"
+        ? { action: progressToOutForDeliveryAction, label: "Mark out for delivery" }
+        : shipmentStatus === "OUT_FOR_DELIVERY"
+          ? { action: confirmDeliveredAction, label: "Confirm delivered" }
+          : null;
+
+  const [state, formAction, isPending] = useActionState(nextAction?.action ?? progressToInTransitAction, null);
+  if (!nextAction) return null;
+
   return (
-    <div className="flex flex-wrap gap-2">
-      <form action={progressToInTransitAction}>
-        <input type="hidden" name="fulfilmentId" value={fulfilmentId} />
-        <Button type="submit" size="sm" variant="outline">
-          Mark in transit
-        </Button>
-      </form>
-      <form action={progressToOutForDeliveryAction}>
-        <input type="hidden" name="fulfilmentId" value={fulfilmentId} />
-        <Button type="submit" size="sm" variant="outline">
-          Mark out for delivery
-        </Button>
-      </form>
-      <form action={confirmDeliveredAction}>
-        <input type="hidden" name="fulfilmentId" value={fulfilmentId} />
-        <Button type="submit" size="sm">
-          Confirm delivered
-        </Button>
-      </form>
-    </div>
+    <form action={formAction} className="flex flex-col items-start gap-2">
+      <input type="hidden" name="fulfilmentId" value={fulfilmentId} />
+      {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
+      <Button type="submit" size="sm" disabled={isPending}>
+        {isPending ? "Saving…" : nextAction.label}
+      </Button>
+    </form>
   );
 }
 

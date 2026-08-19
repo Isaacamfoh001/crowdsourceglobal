@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/db";
 import { Prisma } from "../../generated/prisma/client";
+import { paginationSkip } from "../../lib/pagination";
 import type { NotifyInput } from "./types";
 
 export const notificationsRepository = {
@@ -47,6 +48,21 @@ export const notificationsRepository = {
       orderBy: { createdAt: "desc" },
       take,
     });
+  },
+
+  /** (M11.1) Paginated variant for the account notifications history page — distinct from listForUser(userId, take), which the notification bell still uses for its fixed-size "recent" fetch. */
+  async listForUserPaginated(userId: string, page: number, pageSize: number) {
+    const where = { recipientUserId: userId };
+    const [rows, total] = await Promise.all([
+      prisma.notification.findMany({
+        where,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.notification.count({ where }),
+    ]);
+    return { rows, total };
   },
 
   countUnread(userId: string) {

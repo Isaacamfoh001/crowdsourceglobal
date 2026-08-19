@@ -31,7 +31,7 @@ export default async function AdminVendorFinanceDetailPage({ params }: { params:
         <h1 className="mt-2 font-display text-2xl font-medium text-stone-900">{detail.vendorName}</h1>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <div className="rounded-2xl border border-stone-200 bg-white p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-stone-500">Eligible</p>
           <p className="mt-1.5 font-display text-lg font-medium text-emerald-700">{formatPrice(detail.eligible, detail.currency)}</p>
@@ -39,6 +39,10 @@ export default async function AdminVendorFinanceDetailPage({ params }: { params:
         <div className="rounded-2xl border border-stone-200 bg-white p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-stone-500">Pending</p>
           <p className="mt-1.5 font-display text-lg font-medium text-stone-900">{formatPrice(detail.pending, detail.currency)}</p>
+        </div>
+        <div className="rounded-2xl border border-stone-200 bg-white p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-stone-500">Waiting period</p>
+          <p className="mt-1.5 font-display text-lg font-medium text-amber-700">{formatPrice(detail.waitingPeriod, detail.currency)}</p>
         </div>
         <div className="rounded-2xl border border-stone-200 bg-white p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-stone-500">On hold</p>

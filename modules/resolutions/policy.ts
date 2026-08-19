@@ -73,3 +73,20 @@ export function requiresReturn(decision: string): boolean {
 export function isReplacement(decision: string): boolean {
   return REPLACEMENT_DECISIONS.has(decision);
 }
+
+const FULL_CLOSURE_DECISIONS = new Set(["FULL_REFUND", "RETURN_AND_REFUND"]);
+
+/**
+ * (M11.1) A full Vendor-attributable refund/return that covers the ENTIRE
+ * affected FulfilmentItem quantity closes that Vendor's earning permanently
+ * — there is no remaining fulfilment obligation, so the earning should be
+ * CANCELLED rather than parked ON_HOLD waiting for a release that would
+ * never legitimately restore it (see resolveCase's hold-release logic,
+ * which only ever targets still-ON_HOLD earnings). A decision covering only
+ * part of the FulfilmentItem's quantity never qualifies, even when the
+ * decision TYPE is FULL_REFUND for that sub-quantity — the FulfilmentItem
+ * (and its one VendorEarning) still carries unaffected remaining value.
+ */
+export function isFullVendorClosure(decision: string, quantityAffected: number, fulfilmentItemQuantity: number): boolean {
+  return FULL_CLOSURE_DECISIONS.has(decision) && quantityAffected >= fulfilmentItemQuantity;
+}

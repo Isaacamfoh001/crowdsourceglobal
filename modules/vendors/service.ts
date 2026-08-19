@@ -1,17 +1,17 @@
 import { vendorsRepository } from "./repository";
-import { catalogueService } from "../catalogue/service";
+import { catalogueService, CATALOGUE_PAGE_SIZE } from "../catalogue/service";
 import { ok, err, type Result } from "../../lib/result";
 import type { StoreProfileInput } from "./types";
 
 export const vendorsService = {
-  async getStorefront(slug: string) {
+  async getStorefront(slug: string, page = 1, pageSize = CATALOGUE_PAGE_SIZE) {
     const vendor = await vendorsRepository.findPublicVendorBySlug(slug);
     if (!vendor) {
       return null;
     }
 
-    const listings = await catalogueService.listListings({ vendorId: vendor.id });
-    return { vendor, listings };
+    const { rows, total } = await catalogueService.listListings({ vendorId: vendor.id }, page, pageSize);
+    return { vendor, listings: rows, total, pageSize };
   },
 
   getFirstMembershipForUser(userId: string) {

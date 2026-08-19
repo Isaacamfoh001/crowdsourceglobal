@@ -78,7 +78,7 @@ export default async function OrderDetailPage({
             })}
           </p>
         </div>
-        <OrderStatusBadge status={order.status} />
+        <OrderStatusBadge status={order.displayStatus} label={order.displayStatusLabel} />
       </div>
 
       {order.status === "PENDING_PAYMENT" ? (
@@ -99,9 +99,19 @@ export default async function OrderDetailPage({
               Your order will arrive in {tracking.length} deliveries, one per vendor.
             </p>
           ) : null}
-          {tracking.map((pkg, index) => (
-            <PackageTracking key={pkg.fulfilmentId} tracking={pkg} orderId={order.id} multiPackage={tracking.length > 1} index={index} />
-          ))}
+          {tracking.map((pkg, index) => {
+            const derived = order.packages.find((p) => p.fulfilmentId === pkg.fulfilmentId);
+            return (
+              <PackageTracking
+                key={pkg.fulfilmentId}
+                tracking={pkg}
+                orderId={order.id}
+                multiPackage={tracking.length > 1}
+                index={index}
+                packageStatus={derived ? { status: derived.status, label: derived.statusLabel } : undefined}
+              />
+            );
+          })}
           <div className="flex flex-wrap items-center gap-4">
             <AskAboutButton
               contextType="ORDER"

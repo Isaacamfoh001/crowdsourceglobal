@@ -2,13 +2,17 @@ import Link from "next/link";
 import { requireAdminSession } from "../../../../modules/administration/policy";
 import { vendorListingsService } from "../../../../modules/vendor-listings/service";
 import { formatPrice } from "../../../../lib/format";
+import { parsePage } from "../../../../lib/pagination";
+import { Pagination } from "../../../../components/shared/Pagination";
 
 export const metadata = { title: "Listing moderation — Admin" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminListingsPage() {
+export default async function AdminListingsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   await requireAdminSession("/admin/listings");
-  const listings = await vendorListingsService.listPendingForAdmin();
+  const { page } = await searchParams;
+  const currentPage = parsePage(page);
+  const { rows: listings, total, pageSize } = await vendorListingsService.listPendingForAdminPaginated(currentPage);
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,6 +47,8 @@ export default async function AdminListingsPage() {
           ))}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/admin/listings" />
     </div>
   );
 }

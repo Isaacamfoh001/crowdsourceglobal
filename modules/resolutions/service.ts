@@ -20,8 +20,10 @@ import {
   isRefundBearing,
   requiresReturn,
   isReplacement,
+  isFullVendorClosure,
 } from "./policy";
 import { ok, err, type Result } from "../../lib/result";
+import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import type { MockRefundOutcome } from "../refunds/types";
 import type {
   AdminCaseDetail,
@@ -32,6 +34,7 @@ import type {
   CustomerCaseSummary,
   OrderCancellationContext,
   ResolutionCaseStatus,
+  ResolutionIssueType,
   SubmitCaseInput,
   VendorCaseDetail,
   VendorCaseSummary,
@@ -48,6 +51,48 @@ const STATUS_LABELS: Record<ResolutionCaseStatus, string> = {
   REJECTED: "Not approved",
   CLOSED: "Closed",
 };
+
+function toCustomerCaseSummary(row: {
+  id: string;
+  caseNumber: string;
+  status: ResolutionCaseStatus;
+  issueType: ResolutionIssueType;
+  orderId: string;
+  order: { orderNumber: string };
+  createdAt: Date;
+}): CustomerCaseSummary {
+  return {
+    id: row.id,
+    caseNumber: row.caseNumber,
+    status: row.status,
+    statusLabel: STATUS_LABELS[row.status],
+    issueType: row.issueType,
+    orderId: row.orderId,
+    orderNumber: row.order.orderNumber,
+    createdAt: row.createdAt,
+  };
+}
+
+function toVendorCaseSummary(row: {
+  id: string;
+  caseNumber: string;
+  status: ResolutionCaseStatus;
+  issueType: ResolutionIssueType;
+  fulfilmentId: string | null;
+  order: { orderNumber: string };
+  createdAt: Date;
+}): VendorCaseSummary {
+  return {
+    id: row.id,
+    caseNumber: row.caseNumber,
+    status: row.status,
+    statusLabel: STATUS_LABELS[row.status],
+    issueType: row.issueType,
+    fulfilmentId: row.fulfilmentId,
+    orderNumber: row.order.orderNumber,
+    createdAt: row.createdAt,
+  };
+}
 
 function toCaseItemView(row: {
   id: string;
@@ -260,16 +305,13 @@ export const resolutionsService = {
 
   async listForCustomer(customerProfileId: string): Promise<CustomerCaseSummary[]> {
     const rows = await resolutionsRepository.listForCustomer(customerProfileId);
-    return rows.map((row) => ({
-      id: row.id,
-      caseNumber: row.caseNumber,
-      status: row.status,
-      statusLabel: STATUS_LABELS[row.status],
-      issueType: row.issueType,
-      orderId: row.orderId,
-      orderNumber: row.order.orderNumber,
-      createdAt: row.createdAt,
-    }));
+    return rows.map(toCustomerCaseSummary);
+  },
+
+  /** (M11.1) Paginated variant backing the account resolutions list page. */
+  async listForCustomerPaginated(customerProfileId: string, page = 1): Promise<{ rows: CustomerCaseSummary[]; total: number; pageSize: number }> {
+    const { rows, total } = await resolutionsRepository.listForCustomerPaginated(customerProfileId, page, DEFAULT_PAGE_SIZE);
+    return { rows: rows.map(toCustomerCaseSummary), total, pageSize: DEFAULT_PAGE_SIZE };
   },
 
   async getForCustomer(customerProfileId: string, caseId: string): Promise<CustomerCaseDetail | null> {
@@ -299,16 +341,13 @@ export const resolutionsService = {
 
   async listForVendor(vendorId: string): Promise<VendorCaseSummary[]> {
     const rows = await resolutionsRepository.listForVendor(vendorId);
-    return rows.map((row) => ({
-      id: row.id,
-      caseNumber: row.caseNumber,
-      status: row.status,
-      statusLabel: STATUS_LABELS[row.status],
-      issueType: row.issueType,
-      fulfilmentId: row.fulfilmentId,
-      orderNumber: row.order.orderNumber,
-      createdAt: row.createdAt,
-    }));
+    return rows.map(toVendorCaseSummary);
+  },
+
+  /** (M11.1) Paginated variant backing the vendor portal resolutions list page. */
+  async listForVendorPaginated(vendorId: string, page = 1): Promise<{ rows: VendorCaseSummary[]; total: number; pageSize: number }> {
+    const { rows, total } = await resolutionsRepository.listForVendorPaginated(vendorId, page, DEFAULT_PAGE_SIZE);
+    return { rows: rows.map(toVendorCaseSummary), total, pageSize: DEFAULT_PAGE_SIZE };
   },
 
   async getForVendor(vendorId: string, caseId: string): Promise<VendorCaseDetail | null> {
@@ -329,22 +368,29 @@ export const resolutionsService = {
 
   // --- Admin -----------------------------------------------------------
 
-  async listForAdmin(filter: { status?: string; assignedStaffId?: string }): Promise<AdminCaseSummary[]> {
-    const rows = await resolutionsRepository.listForAdmin(filter);
-    return rows.map((row) => ({
-      id: row.id,
-      caseNumber: row.caseNumber,
-      status: row.status,
-      statusLabel: STATUS_LABELS[row.status],
-      issueType: row.issueType,
-      orderId: row.orderId,
-      orderNumber: row.order.orderNumber,
-      customerName: row.customerProfile.displayName ?? row.customerProfile.user.name,
-      assignedStaffId: row.assignedStaffId,
-      assignedStaffName: row.assignedStaff?.user.name ?? null,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-    }));
+  async listForAdmin(
+    filter: { status?: string; assignedStaffId?: string },
+    page = 1,
+  ): Promise<{ rows: AdminCaseSummary[]; total: number; pageSize: number }> {
+    const { rows, total } = await resolutionsRepository.listForAdmin(filter, page, DEFAULT_PAGE_SIZE);
+    return {
+      rows: rows.map((row) => ({
+        id: row.id,
+        caseNumber: row.caseNumber,
+        status: row.status,
+        statusLabel: STATUS_LABELS[row.status],
+        issueType: row.issueType,
+        orderId: row.orderId,
+        orderNumber: row.order.orderNumber,
+        customerName: row.customerProfile.displayName ?? row.customerProfile.user.name,
+        assignedStaffId: row.assignedStaffId,
+        assignedStaffName: row.assignedStaff?.user.name ?? null,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      })),
+      total,
+      pageSize: DEFAULT_PAGE_SIZE,
+    };
   },
 
   async getDetailForAdmin(caseId: string): Promise<AdminCaseDetail | null> {
@@ -556,10 +602,11 @@ export const resolutionsService = {
 
     // payoutHold needs the raw fulfilmentItemId, which CaseItemView doesn't carry — resolve separately.
     const heldVendorIds = new Set<string>();
+    const fullClosureFulfilmentItemIds: string[] = [];
     if (input.responsibility === "VENDOR") {
       const rawItems = await prisma.resolutionCaseItem.findMany({
         where: { id: { in: input.items.map((i) => i.caseItemId) } },
-        select: { id: true, fulfilmentItemId: true, fulfilmentItem: { select: { fulfilment: { select: { vendorId: true } } } } },
+        select: { id: true, fulfilmentItemId: true, fulfilmentItem: { select: { quantity: true, fulfilment: { select: { vendorId: true } } } } },
       });
       for (const decision of input.items) {
         if (!isRefundBearing(decision.approvedResolution) && !isReplacement(decision.approvedResolution)) continue;
@@ -567,6 +614,10 @@ export const resolutionsService = {
         if (raw?.fulfilmentItemId) {
           payoutHoldFulfilmentItemIds.push(raw.fulfilmentItemId);
           if (raw.fulfilmentItem?.fulfilment.vendorId) heldVendorIds.add(raw.fulfilmentItem.fulfilment.vendorId);
+          const caseItem = caseDetail.items.find((item) => item.id === decision.caseItemId);
+          if (caseItem && raw.fulfilmentItem && isFullVendorClosure(decision.approvedResolution, caseItem.quantityAffected, raw.fulfilmentItem.quantity)) {
+            fullClosureFulfilmentItemIds.push(raw.fulfilmentItemId);
+          }
         }
       }
     }
@@ -601,6 +652,7 @@ export const resolutionsService = {
       returnNeeded,
       replacements,
       payoutHoldFulfilmentItemIds,
+      fullClosureFulfilmentItemIds,
       payoutHoldReason: `Pending resolution case ${caseDetail.caseNumber}`,
       cancelFulfilment,
       actorUserId: staffId,

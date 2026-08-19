@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FulfilmentStatusBadge } from "../../../../../components/fulfilment/FulfilmentStatusBadge";
 import { FormMessage } from "../../../../../components/ui/FormMessage";
@@ -9,8 +10,11 @@ import {
 } from "../../../../../components/vendor-portal/FulfilmentActions";
 import { requireVendorPortalContext } from "../../../../../modules/vendors/policy";
 import { fulfilmentService } from "../../../../../modules/fulfilment/service";
+import { resolutionsService } from "../../../../../modules/resolutions/service";
 
 type Params = { fulfilmentId: string };
+
+const OPEN_CASE_STATUSES = new Set(["OPEN", "UNDER_REVIEW", "AWAITING_CUSTOMER", "AWAITING_VENDOR", "RESOLUTION_APPROVED", "RESOLUTION_IN_PROGRESS"]);
 
 export const metadata = { title: "Order — Vendor Portal" };
 export const dynamic = "force-dynamic";
@@ -25,6 +29,13 @@ export default async function VendorFulfilmentDetailPage({ params }: { params: P
   }
 
   const international = fulfilment.origin === "INTERNATIONAL_INBOUND";
+
+  // (M11.1) A Buyer/CrownSource-managed case may hold this order in review
+  // without the vendor having reported anything themselves (that's the
+  // separate openIssue/FulfilmentIssue mechanism below) — surface it so the
+  // vendor isn't left guessing why a delivered package still shows activity.
+  const allCases = await resolutionsService.listForVendor(vendorId);
+  const openCase = allCases.find((c) => c.fulfilmentId === fulfilment.id && OPEN_CASE_STATUSES.has(c.status));
 
   return (
     <div className="flex flex-col gap-6">

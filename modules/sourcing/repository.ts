@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/db";
 import { Prisma } from "../../generated/prisma/client";
+import { paginationSkip } from "../../lib/pagination";
 import type { SourcingRequestStatus } from "./types";
 
 const attachmentSelect = {
@@ -116,21 +117,28 @@ export const sourcingRepository = {
     });
   },
 
-  findSummariesForCustomer(customerProfileId: string) {
-    return prisma.customSourcingRequest.findMany({
-      where: { customerProfileId },
-      select: {
-        id: true,
-        requestNumber: true,
-        title: true,
-        quantity: true,
-        quantityUnit: true,
-        status: true,
-        submittedAt: true,
-        quotations: { select: { id: true }, take: 1 },
-      },
-      orderBy: { submittedAt: "desc" },
-    });
+  async findSummariesForCustomer(customerProfileId: string, page: number, pageSize: number) {
+    const where = { customerProfileId };
+    const [rows, total] = await Promise.all([
+      prisma.customSourcingRequest.findMany({
+        where,
+        select: {
+          id: true,
+          requestNumber: true,
+          title: true,
+          quantity: true,
+          quantityUnit: true,
+          status: true,
+          submittedAt: true,
+          quotations: { select: { id: true }, take: 1 },
+        },
+        orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.customSourcingRequest.count({ where }),
+    ]);
+    return { rows, total };
   },
 
   findDetailForCustomer(id: string, customerProfileId: string) {
@@ -196,6 +204,45 @@ export const sourcingRepository = {
       orderBy: { submittedAt: "desc" },
       take: 200,
     });
+  },
+
+  /**
+   * (M11.1) Paginated variant of listForAdmin, for the admin sourcing
+   * requests queue page. listForAdmin itself stays unbounded (capped at
+   * 200) — it's also used by admin-dashboard's sourcingAttention(), which
+   * needs the full open set to scan for unassigned/stale/deadline-risk
+   * requests, not one page of it.
+   */
+  async listForAdminPaginated(filter: { status?: SourcingRequestStatus; assignedStaffId?: string }, page: number, pageSize: number) {
+    const where = {
+      status: filter.status,
+      assignedStaffId: filter.assignedStaffId,
+    };
+    const [rows, total] = await Promise.all([
+      prisma.customSourcingRequest.findMany({
+        where,
+        select: {
+          id: true,
+          requestNumber: true,
+          title: true,
+          quantity: true,
+          quantityUnit: true,
+          status: true,
+          submittedAt: true,
+          updatedAt: true,
+          requiredByDate: true,
+          customerProfile: { select: { displayName: true } },
+          assignedStaffId: true,
+          assignedStaff: { select: { user: { select: { name: true } } } },
+          quotations: { select: { id: true }, take: 1 },
+        },
+        orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.customSourcingRequest.count({ where }),
+    ]);
+    return { rows, total };
   },
 
   findDetailForAdmin(id: string) {

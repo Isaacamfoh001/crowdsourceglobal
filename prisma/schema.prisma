@@ -2017,7 +2017,13 @@ model NotificationPreference {
 // ---------------------------------------------------------------------------
 
 enum EarningStatus {
+  /// Fulfilment work is still outstanding — the Vendor hasn't delivered yet.
   PENDING
+  /// (M11.1) Fulfilment has reached DELIVERED, but the configured post-
+  /// delivery settlement window (VENDOR_PAYOUT_HOLD_HOURS) hasn't elapsed
+  /// yet. Distinct from PENDING so "waiting on the Vendor" and "waiting on
+  /// the clock" are never conflated in either the data or the UI.
+  WAITING_PERIOD
   ON_HOLD
   ELIGIBLE
   INCLUDED_IN_SETTLEMENT
@@ -2064,6 +2070,13 @@ model VendorEarning {
   /// Set once every gating condition (Fulfilment DELIVERED, configured hold
   /// window elapsed, no active hold) is first met.
   eligibleAt DateTime?
+
+  /// (M11.1) Set once, event-driven, the moment the parent Fulfilment first
+  /// reaches DELIVERED — this is what starts the WAITING_PERIOD clock the
+  /// sweep reads from. Never re-derived from Shipment history afterward; a
+  /// hold/release cycle never clears it, since it records a physical fact
+  /// (delivery happened), not the current lifecycle status.
+  deliveredAt DateTime?
 
   vendorId String
   vendor   Vendor @relation(fields: [vendorId], references: [id])

@@ -1,3 +1,5 @@
+import type { OrderDisplayStatus } from "./display-status";
+
 export const GHANA_REGIONS = [
   "Ahafo",
   "Ashanti",
@@ -51,6 +53,9 @@ export type OrderSummaryView = {
   total: number;
   currency: string;
   itemCount: number;
+  /** (M11.1) Derived, resolution-aware display status — see modules/orders/display-status.ts. */
+  displayStatus: OrderDisplayStatus;
+  displayStatusLabel: string;
 };
 
 export type OrderDetailView = {
@@ -64,6 +69,11 @@ export type OrderDetailView = {
   currency: string;
   deliveryInfo: DeliveryInfo;
   vendorGroups: OrderVendorGroupView[];
+  /** (M11.1) Derived, resolution-aware display status — see modules/orders/display-status.ts. */
+  displayStatus: OrderDisplayStatus;
+  displayStatusLabel: string;
+  /** Per-vendor-package breakdown — a multi-vendor Order never collapses one vendor's outcome into another's (e.g. one refunded, one still in transit). */
+  packages: { fulfilmentId: string; vendorName: string; status: OrderDisplayStatus; statusLabel: string }[];
   latestPaymentStatus: string | null;
   /** Safe summary only — never internal provider debug data or an unmasked phone. */
   latestPayment: {

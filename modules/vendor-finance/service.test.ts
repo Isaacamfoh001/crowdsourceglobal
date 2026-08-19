@@ -94,10 +94,18 @@ describe("vendorFinanceService — M11 Vendor Finance", () => {
     return created.value.orderId;
   }
 
+  /**
+   * Raw-Prisma delivery fixture — deliberately bypasses
+   * modules/fulfilment/repository.ts's progressShipment (the real
+   * production trigger), so it must mirror that function's M11.1
+   * event-driven PENDING -> WAITING_PERIOD write by hand.
+   */
   async function markDelivered(orderId: string, vendorId: string, hoursAgo: number) {
     const fulfilment = await prisma.fulfilment.findFirstOrThrow({ where: { orderId, vendorId } });
+    const deliveredAt = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
     await prisma.fulfilment.update({ where: { id: fulfilment.id }, data: { status: "DELIVERED" } });
-    await prisma.shipment.updateMany({ where: { fulfilmentId: fulfilment.id }, data: { status: "DELIVERED", deliveredAt: new Date(Date.now() - hoursAgo * 60 * 60 * 1000) } });
+    await prisma.shipment.updateMany({ where: { fulfilmentId: fulfilment.id }, data: { status: "DELIVERED", deliveredAt } });
+    await prisma.vendorEarning.updateMany({ where: { fulfilmentId: fulfilment.id, status: "PENDING" }, data: { status: "WAITING_PERIOD", deliveredAt } });
     return fulfilment.id;
   }
 
@@ -126,7 +134,7 @@ describe("vendorFinanceService — M11 Vendor Finance", () => {
     expect(new Set(earnings.map((e) => e.vendorId)).size).toBe(2);
   });
 
-  it("sweepEligibleEarnings moves a PENDING earning to ELIGIBLE once its Fulfilment is DELIVERED and the hold window has elapsed — not before", async () => {
+  it("sweepEligibleEarnings moves a WAITING_PERIOD earning to ELIGIBLE once the hold window has elapsed — not before", async () => {
     await setupCustomer();
     const vendorId = await createVendor("sweep");
     const orderId = await createConfirmedOrder([vendorId], 70);
@@ -134,9 +142,12 @@ describe("vendorFinanceService — M11 Vendor Finance", () => {
 
     const tooSoon = await vendorFinanceService.sweepEligibleEarnings();
     let earning = await prisma.vendorEarning.findFirstOrThrow({ where: { orderId, vendorId } });
-    expect(earning.status).toBe("PENDING");
+    expect(earning.status).toBe("WAITING_PERIOD");
 
-    await prisma.shipment.updateMany({ where: { fulfilment: { orderId } }, data: { deliveredAt: new Date(Date.now() - 30 * 60 * 60 * 1000) } }); // now 30h ago
+    // The sweep reads VendorEarning.deliveredAt directly (M11.1) — updating Shipment alone
+    // would no longer move anything; simulate the clock having moved on since the real
+    // event-driven write (modules/fulfilment/repository.ts's progressShipment) happened.
+    await prisma.vendorEarning.updateMany({ where: { orderId, vendorId }, data: { deliveredAt: new Date(Date.now() - 30 * 60 * 60 * 1000) } }); // now 30h ago
     const nowEligible = await vendorFinanceService.sweepEligibleEarnings();
     expect(nowEligible.madeEligible).toBeGreaterThanOrEqual(1);
     earning = await prisma.vendorEarning.findFirstOrThrow({ where: { orderId, vendorId } });

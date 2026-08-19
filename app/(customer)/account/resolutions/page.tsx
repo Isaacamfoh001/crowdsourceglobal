@@ -2,14 +2,20 @@ import Link from "next/link";
 import { requireSession, getCurrentCustomerProfile } from "../../../../modules/identity/policy";
 import { resolutionsService } from "../../../../modules/resolutions/service";
 import { CaseStatusBadge } from "../../../../components/resolutions/CaseStatusBadge";
+import { Pagination } from "../../../../components/shared/Pagination";
+import { parsePage } from "../../../../lib/pagination";
 
 export const metadata = { title: "Returns & Issues" };
 export const dynamic = "force-dynamic";
 
-export default async function ResolutionsPage() {
+export default async function ResolutionsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const session = await requireSession("/account/resolutions");
   const customerProfile = await getCurrentCustomerProfile(session.user.id);
-  const cases = customerProfile ? await resolutionsService.listForCustomer(customerProfile.id) : [];
+  const { page } = await searchParams;
+  const currentPage = parsePage(page);
+  const { rows: cases, total, pageSize } = customerProfile
+    ? await resolutionsService.listForCustomerPaginated(customerProfile.id, currentPage)
+    : { rows: [], total: 0, pageSize: 20 };
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,6 +50,8 @@ export default async function ResolutionsPage() {
           ))}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/account/resolutions" />
     </div>
   );
 }

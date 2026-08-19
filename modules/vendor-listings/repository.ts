@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/db";
 import { Prisma } from "../../generated/prisma/client";
+import { paginationSkip } from "../../lib/pagination";
 import type { PendingChangesPayload } from "./types";
 
 function toPlainNumber(value: { toNumber: () => number }): number {
@@ -98,6 +99,54 @@ export const vendorListingsRepository = {
     }));
   },
 
+  /**
+   * (M11.1) Paginated variant for the vendor portal listings list page —
+   * distinct from findSummariesForVendor, which app/vendor/portal/page.tsx
+   * (the dashboard) still needs unbounded to compute its stat-card counts
+   * across every listing, not just one page's worth.
+   */
+  async findSummariesForVendorPaginated(vendorId: string, page: number, pageSize: number) {
+    const where = { vendorId };
+    const [rows, total] = await Promise.all([
+      prisma.vendorListing.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          basePrice: true,
+          currency: true,
+          approvalStatus: true,
+          listingStatus: true,
+          availabilityStatus: true,
+          availableQuantity: true,
+          changesRequestedReason: true,
+          pendingChanges: true,
+          updatedAt: true,
+        },
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.vendorListing.count({ where }),
+    ]);
+    return {
+      rows: rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        basePrice: toPlainNumber(row.basePrice),
+        currency: row.currency,
+        approvalStatus: row.approvalStatus,
+        listingStatus: row.listingStatus,
+        availabilityStatus: row.availabilityStatus,
+        availableQuantity: row.availableQuantity,
+        hasPendingChanges: row.pendingChanges !== null,
+        changesRequestedReason: row.changesRequestedReason,
+        updatedAt: row.updatedAt,
+      })),
+      total,
+    };
+  },
+
   async findDetailForVendor(vendorId: string, listingId: string) {
     const row = await prisma.vendorListing.findFirst({
       where: { id: listingId, vendorId },
@@ -188,6 +237,55 @@ export const vendorListingsRepository = {
       submittedAt: row.submittedAt as Date,
       updatedAt: row.updatedAt,
     }));
+  },
+
+  /**
+   * (M11.1) Paginated variant of findPendingForAdmin, for the admin listing
+   * moderation queue page. findPendingForAdmin itself stays unbounded and
+   * unpaginated — it's also used for admin-dashboard attention/summary
+   * counts, which need the full pending set, not one page of it.
+   */
+  async findPendingForAdminPaginated(page: number, pageSize: number) {
+    const where = { approvalStatus: "PENDING" as const, submittedAt: { not: null } };
+    const [rows, total] = await Promise.all([
+      prisma.vendorListing.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          basePrice: true,
+          currency: true,
+          approvalStatus: true,
+          listingStatus: true,
+          pendingChanges: true,
+          submittedAt: true,
+          updatedAt: true,
+          vendor: { select: { id: true, companyName: true } },
+        },
+        // Oldest-first — deliberate queue order so staff review the
+        // longest-waiting submission first. Not a bug; do not flip to desc.
+        orderBy: { updatedAt: "asc" },
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.vendorListing.count({ where }),
+    ]);
+    return {
+      rows: rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        basePrice: toPlainNumber(row.basePrice),
+        currency: row.currency,
+        approvalStatus: row.approvalStatus,
+        listingStatus: row.listingStatus,
+        isEdit: row.pendingChanges !== null,
+        vendorId: row.vendor.id,
+        vendorName: row.vendor.companyName,
+        submittedAt: row.submittedAt as Date,
+        updatedAt: row.updatedAt,
+      })),
+      total,
+    };
   },
 
   async findForAdmin(listingId: string) {

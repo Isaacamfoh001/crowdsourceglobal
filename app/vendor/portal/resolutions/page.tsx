@@ -2,13 +2,17 @@ import Link from "next/link";
 import { requireVendorPortalContext } from "../../../../modules/vendors/policy";
 import { resolutionsService } from "../../../../modules/resolutions/service";
 import { CaseStatusBadge } from "../../../../components/resolutions/CaseStatusBadge";
+import { Pagination } from "../../../../components/shared/Pagination";
+import { parsePage } from "../../../../lib/pagination";
 
 export const metadata = { title: "Issues — Vendor Portal" };
 export const dynamic = "force-dynamic";
 
-export default async function VendorResolutionsPage() {
+export default async function VendorResolutionsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const { vendorId } = await requireVendorPortalContext("/vendor/portal/resolutions");
-  const cases = await resolutionsService.listForVendor(vendorId);
+  const { page } = await searchParams;
+  const currentPage = parsePage(page);
+  const { rows: cases, total, pageSize } = await resolutionsService.listForVendorPaginated(vendorId, currentPage);
 
   return (
     <div className="flex flex-col gap-6">
@@ -38,6 +42,8 @@ export default async function VendorResolutionsPage() {
           ))}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/vendor/portal/resolutions" />
     </div>
   );
 }

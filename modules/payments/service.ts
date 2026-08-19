@@ -16,6 +16,7 @@ import { generatePaymentReference } from "../../lib/payment-number";
 import { normalizeGhanaPhone, maskGhanaPhone } from "../../lib/phone";
 import { ok, err, type Result } from "../../lib/result";
 import { env } from "../../lib/env";
+import { DEFAULT_PAGE_SIZE, paginationSkip } from "../../lib/pagination";
 import type { MockPaymentOutcome, MobileMoneyNetworkCode, PaymentStatusView } from "./types";
 
 /** Safe, secret-free structured logging for the payment lifecycle (CLAUDE.md §22). */
@@ -809,35 +810,44 @@ export const paymentsService = {
   // --- Admin (M10A) --------------------------------------------------------
 
   /** Safe summary fields only — never provider debug payloads or full phone numbers. */
-  async listForAdmin(filters: { provider?: "MOCK" | "MOOLRE" | "PAYSTACK"; status?: PaymentStatusDb; requiresAttention?: boolean }) {
-    const payments = await prisma.payment.findMany({
-      where: {
-        provider: filters.provider,
-        status: filters.status,
-        exceptionReason: filters.requiresAttention ? { not: null } : undefined,
-      },
-      select: {
-        id: true,
-        reference: true,
-        provider: true,
-        method: true,
-        network: true,
-        cardBrand: true,
-        cardLast4: true,
-        status: true,
-        amount: true,
-        currency: true,
-        phoneMasked: true,
-        exceptionReason: true,
-        initiatedAt: true,
-        confirmedAt: true,
-        attemptNumber: true,
-        order: { select: { orderNumber: true, customerProfile: { select: { displayName: true } } } },
-      },
-      orderBy: { initiatedAt: "desc" },
-      take: 100,
-    });
-    return payments;
+  async listForAdmin(
+    filters: { provider?: "MOCK" | "MOOLRE" | "PAYSTACK"; status?: PaymentStatusDb; requiresAttention?: boolean },
+    page = 1,
+  ) {
+    const where = {
+      provider: filters.provider,
+      status: filters.status,
+      exceptionReason: filters.requiresAttention ? { not: null } : undefined,
+    };
+    const pageSize = DEFAULT_PAGE_SIZE;
+    const [rows, total] = await Promise.all([
+      prisma.payment.findMany({
+        where,
+        select: {
+          id: true,
+          reference: true,
+          provider: true,
+          method: true,
+          network: true,
+          cardBrand: true,
+          cardLast4: true,
+          status: true,
+          amount: true,
+          currency: true,
+          phoneMasked: true,
+          exceptionReason: true,
+          initiatedAt: true,
+          confirmedAt: true,
+          attemptNumber: true,
+          order: { select: { orderNumber: true, customerProfile: { select: { displayName: true } } } },
+        },
+        orderBy: [{ initiatedAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.payment.count({ where }),
+    ]);
+    return { rows, total, pageSize };
   },
 
   async getForAdmin(paymentId: string) {

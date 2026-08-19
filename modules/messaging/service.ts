@@ -7,9 +7,10 @@ import { administrationRepository } from "../administration/repository";
 import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
 import { ok, err, type Result } from "../../lib/result";
+import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import type { ConversationDetail, ConversationSummary, MessageView, AdminConversationSummary } from "./types";
 
-type RawConversation = Awaited<ReturnType<typeof messagingRepository.findAllForAdmin>>[number];
+type RawConversation = Awaited<ReturnType<typeof messagingRepository.findAllForAdmin>>["rows"][number];
 
 /**
  * Staff-attention notification for an inbound customer/vendor message —
@@ -97,9 +98,9 @@ function toAdminSummary(row: RawConversation): AdminConversationSummary {
 export const messagingService = {
   // --- Customer --------------------------------------------------------
 
-  async listForCustomer(customerProfileId: string): Promise<ConversationSummary[]> {
-    const rows = await messagingRepository.findCustomerConversations(customerProfileId);
-    return rows.map(toSummary);
+  async listForCustomer(customerProfileId: string, page = 1): Promise<{ rows: ConversationSummary[]; total: number; pageSize: number }> {
+    const { rows, total } = await messagingRepository.findCustomerConversations(customerProfileId, page, DEFAULT_PAGE_SIZE);
+    return { rows: rows.map(toSummary), total, pageSize: DEFAULT_PAGE_SIZE };
   },
 
   async getForCustomer(customerProfileId: string, conversationId: string): Promise<ConversationDetail | null> {
@@ -208,9 +209,9 @@ export const messagingService = {
 
   // --- Vendor ------------------------------------------------------------
 
-  async listForVendor(vendorId: string): Promise<ConversationSummary[]> {
-    const rows = await messagingRepository.findVendorConversations(vendorId);
-    return rows.map(toSummary);
+  async listForVendor(vendorId: string, page = 1): Promise<{ rows: ConversationSummary[]; total: number; pageSize: number }> {
+    const { rows, total } = await messagingRepository.findVendorConversations(vendorId, page, DEFAULT_PAGE_SIZE);
+    return { rows: rows.map(toSummary), total, pageSize: DEFAULT_PAGE_SIZE };
   },
 
   async getForVendor(vendorId: string, conversationId: string): Promise<ConversationDetail | null> {
@@ -277,9 +278,9 @@ export const messagingService = {
 
   // --- Admin/staff -------------------------------------------------------
 
-  async listForAdmin(status?: "OPEN" | "CLOSED"): Promise<AdminConversationSummary[]> {
-    const rows = await messagingRepository.findAllForAdmin(status);
-    return rows.map(toAdminSummary);
+  async listForAdmin(status?: "OPEN" | "CLOSED", page = 1): Promise<{ rows: AdminConversationSummary[]; total: number; pageSize: number }> {
+    const { rows, total } = await messagingRepository.findAllForAdmin(status, page, DEFAULT_PAGE_SIZE);
+    return { rows: rows.map(toAdminSummary), total, pageSize: DEFAULT_PAGE_SIZE };
   },
 
   async getForAdmin(conversationId: string): Promise<ConversationDetail | null> {

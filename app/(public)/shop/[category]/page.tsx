@@ -5,7 +5,9 @@ import { ListingCard } from "../../../../components/catalogue/ListingCard";
 import { EmptyState } from "../../../../components/catalogue/EmptyState";
 import { SearchForm } from "../../../../components/catalogue/SearchForm";
 import { Breadcrumbs } from "../../../../components/catalogue/Breadcrumbs";
-import { catalogueService } from "../../../../modules/catalogue/service";
+import { Pagination } from "../../../../components/shared/Pagination";
+import { parsePage } from "../../../../lib/pagination";
+import { catalogueService, CATALOGUE_PAGE_SIZE } from "../../../../modules/catalogue/service";
 
 type Params = { category: string };
 
@@ -20,21 +22,22 @@ export default async function CategoryPage({
   searchParams,
 }: {
   params: Promise<Params>;
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   const { category: slug } = await params;
-  const { q } = await searchParams;
+  const { q, page: pageRaw } = await searchParams;
+  const page = parsePage(pageRaw);
 
   const [categories, result] = await Promise.all([
     catalogueService.listCategories(),
-    catalogueService.listListingsForCategorySlug(slug, { search: q }),
+    catalogueService.listListingsForCategorySlug(slug, { search: q, page, pageSize: CATALOGUE_PAGE_SIZE }),
   ]);
 
   if (!result.category) {
     notFound();
   }
 
-  const { category, listings } = result;
+  const { category, rows: listings, total } = result;
   const parent = categories.find((topLevel) =>
     topLevel.children.some((child) => child.slug === slug),
   );
@@ -73,6 +76,16 @@ export default async function CategoryPage({
                 ))}
               </div>
             )}
+
+            <div className="mt-6">
+              <Pagination
+                currentPage={page}
+                pageSize={CATALOGUE_PAGE_SIZE}
+                total={total}
+                basePath={`/shop/${slug}`}
+                extraParams={{ q }}
+              />
+            </div>
           </div>
         </div>
       </Container>

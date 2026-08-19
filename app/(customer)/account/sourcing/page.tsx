@@ -1,16 +1,22 @@
 import Link from "next/link";
 import { Button } from "../../../../components/ui/Button";
 import { SourcingStatusBadge } from "../../../../components/sourcing/SourcingStatusBadge";
+import { Pagination } from "../../../../components/shared/Pagination";
 import { requireSession, getCurrentCustomerProfile } from "../../../../modules/identity/policy";
 import { sourcingService } from "../../../../modules/sourcing/service";
+import { parsePage } from "../../../../lib/pagination";
 
 export const metadata = { title: "Your sourcing requests" };
 export const dynamic = "force-dynamic";
 
-export default async function SourcingRequestsPage() {
+export default async function SourcingRequestsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const session = await requireSession("/account/sourcing");
   const customerProfile = await getCurrentCustomerProfile(session.user.id);
-  const requests = customerProfile ? await sourcingService.listForCustomer(customerProfile.id) : [];
+  const { page } = await searchParams;
+  const currentPage = parsePage(page);
+  const { rows: requests, total, pageSize } = customerProfile
+    ? await sourcingService.listForCustomer(customerProfile.id, currentPage)
+    : { rows: [], total: 0, pageSize: 20 };
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,6 +60,8 @@ export default async function SourcingRequestsPage() {
           ))}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/account/sourcing" />
     </div>
   );
 }

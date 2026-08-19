@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireAdminSession } from "../../../../modules/administration/policy";
 import { paymentsService } from "../../../../modules/payments/service";
 import { formatPrice } from "../../../../lib/format";
+import { parsePage } from "../../../../lib/pagination";
+import { Pagination } from "../../../../components/shared/Pagination";
 
 export const metadata = { title: "Payments — Admin" };
 export const dynamic = "force-dynamic";
@@ -26,19 +28,23 @@ const PROVIDER_FILTERS = [
 export default async function AdminPaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; provider?: string; attention?: string }>;
+  searchParams: Promise<{ status?: string; provider?: string; attention?: string; page?: string }>;
 }) {
   await requireAdminSession("/admin/payments", [...ADMIN_FINANCE_ROLES]);
-  const { status, provider, attention } = await searchParams;
+  const { status, provider, attention, page } = await searchParams;
   const activeStatus = STATUS_FILTERS.find((f) => f.value === status)?.value;
   const activeProvider = PROVIDER_FILTERS.find((f) => f.value === provider)?.value;
   const requiresAttention = attention === "1";
+  const currentPage = parsePage(page);
 
-  const payments = await paymentsService.listForAdmin({
-    status: activeStatus as "PENDING" | "SUCCEEDED" | "FAILED" | "CANCELLED" | undefined,
-    provider: activeProvider,
-    requiresAttention: requiresAttention || undefined,
-  });
+  const { rows: payments, total, pageSize } = await paymentsService.listForAdmin(
+    {
+      status: activeStatus as "PENDING" | "SUCCEEDED" | "FAILED" | "CANCELLED" | undefined,
+      provider: activeProvider,
+      requiresAttention: requiresAttention || undefined,
+    },
+    currentPage,
+  );
 
   const withParam = (key: "status" | "provider", value: string | undefined) => {
     const params = new URLSearchParams();
@@ -137,6 +143,14 @@ export default async function AdminPaymentsPage({
           ))}
         </div>
       )}
+
+      <Pagination
+        currentPage={currentPage}
+        total={total}
+        pageSize={pageSize}
+        basePath="/admin/payments"
+        extraParams={{ status: activeStatus, provider: activeProvider, attention: requiresAttention ? "1" : undefined }}
+      />
     </div>
   );
 }

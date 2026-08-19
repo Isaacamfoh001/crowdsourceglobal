@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireAdminSession } from "../../../../modules/administration/policy";
 import { resolutionsService } from "../../../../modules/resolutions/service";
 import { CaseStatusBadge } from "../../../../components/resolutions/CaseStatusBadge";
+import { parsePage } from "../../../../lib/pagination";
+import { Pagination } from "../../../../components/shared/Pagination";
 
 export const metadata = { title: "Resolutions — Admin" };
 export const dynamic = "force-dynamic";
@@ -20,12 +22,13 @@ const STATUS_FILTERS = [
   { value: "CLOSED", label: "Closed" },
 ];
 
-export default async function AdminResolutionsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+export default async function AdminResolutionsPage({ searchParams }: { searchParams: Promise<{ status?: string; page?: string }> }) {
   await requireAdminSession("/admin/resolutions", [...ADMIN_OPS_ROLES]);
-  const { status } = await searchParams;
+  const { status, page } = await searchParams;
   const activeStatus = STATUS_FILTERS.find((f) => f.value === status)?.value;
+  const currentPage = parsePage(page);
 
-  const cases = await resolutionsService.listForAdmin({ status: activeStatus });
+  const { rows: cases, total, pageSize } = await resolutionsService.listForAdmin({ status: activeStatus }, currentPage);
 
   return (
     <div className="flex flex-col gap-6">
@@ -69,6 +72,8 @@ export default async function AdminResolutionsPage({ searchParams }: { searchPar
           ))}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/admin/resolutions" extraParams={{ status: activeStatus }} />
     </div>
   );
 }

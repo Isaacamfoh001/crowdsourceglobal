@@ -2,6 +2,7 @@ import { notificationsRepository } from "./repository";
 import { shouldSendEmail } from "./policy";
 import { processEmailQueue } from "../../lib/email-worker";
 import { ok, err, type Result } from "../../lib/result";
+import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import type { NotifyInput, NotificationView, PreferencesView, PreferencesInput } from "./types";
 
 function toView(row: {
@@ -63,9 +64,9 @@ export const notificationsService = {
     }
   },
 
-  async listForUser(userId: string): Promise<NotificationView[]> {
-    const rows = await notificationsRepository.listForUser(userId);
-    return rows.map(toView);
+  async listForUser(userId: string, page = 1): Promise<{ rows: NotificationView[]; total: number; pageSize: number }> {
+    const { rows, total } = await notificationsRepository.listForUserPaginated(userId, page, DEFAULT_PAGE_SIZE);
+    return { rows: rows.map(toView), total, pageSize: DEFAULT_PAGE_SIZE };
   },
 
   getUnreadCount(userId: string): Promise<number> {

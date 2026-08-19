@@ -13,6 +13,8 @@ dist/
 .env
 .env*.local
 !.env.example
+CLAUDE.md 
+PROJECT.md
 
 # testing
 coverage/

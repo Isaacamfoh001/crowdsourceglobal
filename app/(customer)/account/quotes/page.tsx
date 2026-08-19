@@ -1,17 +1,23 @@
 import Link from "next/link";
 import { Button } from "../../../../components/ui/Button";
 import { QuoteStatusBadge } from "../../../../components/quotation/QuoteStatusBadge";
+import { Pagination } from "../../../../components/shared/Pagination";
 import { formatPrice } from "../../../../lib/format";
 import { requireSession, getCurrentCustomerProfile } from "../../../../modules/identity/policy";
 import { quotationService } from "../../../../modules/quotation/service";
+import { parsePage } from "../../../../lib/pagination";
 
 export const metadata = { title: "Your quotes" };
 export const dynamic = "force-dynamic";
 
-export default async function QuotesPage() {
+export default async function QuotesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const session = await requireSession("/account/quotes");
   const customerProfile = await getCurrentCustomerProfile(session.user.id);
-  const quotes = customerProfile ? await quotationService.listForCustomer(customerProfile.id) : [];
+  const { page } = await searchParams;
+  const currentPage = parsePage(page);
+  const { rows: quotes, total, pageSize } = customerProfile
+    ? await quotationService.listForCustomer(customerProfile.id, currentPage)
+    : { rows: [], total: 0, pageSize: 20 };
 
   return (
     <div className="flex flex-col gap-6">
@@ -58,6 +64,8 @@ export default async function QuotesPage() {
           ))}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/account/quotes" />
     </div>
   );
 }

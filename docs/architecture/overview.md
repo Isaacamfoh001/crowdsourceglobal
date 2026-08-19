@@ -232,6 +232,12 @@ This is not a new RBAC framework — it is simply `requireAdminSession`'s existi
 
 **Internal notes live in the activity log, not a second table.** `ResolutionCaseActivity` (mirroring M6's `SourcingRequestActivity` exactly) doubles as both the case timeline and the home for staff-only internal notes (`type: "internal_note"`) — this log was already never customer/vendor-visible, so it needed no new model to also hold notes.
 
+## List Ordering & Pagination *(standardized M11.1)*
+
+Every operational/history list (Customer orders/resolutions/messages/notifications/quotes/sourcing; Vendor listings/orders/messages/resolutions/earnings/settlements; Admin listings/operations/resolutions/payments/vendor-applications/sourcing/quotations/messages/settlements) sorts newest-first (`createdAt desc` or the entity's equivalent activity timestamp), with two deliberate exceptions kept oldest-first by design — the admin listing-moderation queue and vendor-application queue, where the oldest unreviewed item should surface first. Within a single record's own activity timeline (Order tracking, Resolution case activity, Sourcing activity), ordering stays chronological (oldest → newest) — a narrative should read forward, never reversed.
+
+Every list capable of growing unbounded is paginated server-side using one shared shape, rather than a bespoke pattern per page: `lib/pagination.ts` (`parsePage`, `DEFAULT_PAGE_SIZE`, `paginationSkip`) plus `components/shared/Pagination.tsx`, standardizing on the `skip`/`take` + separate `count()` convention M11's Vendor Finance settlement lists already established. Filter query params (status, search text, etc.) are preserved across a page change via the pagination links' own `extraParams`; changing a filter naturally resets to page 1 by omitting `page` from the filter link's own href. The public `/shop`, `/shop/[category]`, and vendor storefront pages moved off a silent, un-paginated 48-row hard cap onto the same convention.
+
 ## Security Summary
 
 Full detail in `/docs/workflows/workflows.md` and the decision records; the headline mechanisms:

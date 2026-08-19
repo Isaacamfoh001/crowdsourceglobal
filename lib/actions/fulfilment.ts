@@ -148,25 +148,31 @@ export async function confirmCollectedAction(formData: FormData): Promise<void> 
   revalidatePath("/admin/operations");
 }
 
-export async function progressToInTransitAction(formData: FormData): Promise<void> {
+export async function progressToInTransitAction(_prevState: Result<null> | null, formData: FormData): Promise<Result<null>> {
   await requireAdminSession("/admin/operations", [...ADMIN_OPS_ROLES]);
   const fulfilmentId = String(formData.get("fulfilmentId") ?? "");
-  await fulfilmentService.progressToInTransit(fulfilmentId);
+  const result = await fulfilmentService.progressToInTransit(fulfilmentId);
+  if (!result.ok) return result;
   revalidatePath(`/admin/operations/${fulfilmentId}`);
+  return ok(null);
 }
 
-export async function progressToOutForDeliveryAction(formData: FormData): Promise<void> {
+export async function progressToOutForDeliveryAction(_prevState: Result<null> | null, formData: FormData): Promise<Result<null>> {
   await requireAdminSession("/admin/operations", [...ADMIN_OPS_ROLES]);
   const fulfilmentId = String(formData.get("fulfilmentId") ?? "");
-  await fulfilmentService.progressToOutForDelivery(fulfilmentId);
+  const result = await fulfilmentService.progressToOutForDelivery(fulfilmentId);
+  if (!result.ok) return result;
   revalidatePath(`/admin/operations/${fulfilmentId}`);
+  return ok(null);
 }
 
-export async function confirmDeliveredAction(formData: FormData): Promise<void> {
+export async function confirmDeliveredAction(_prevState: Result<null> | null, formData: FormData): Promise<Result<null>> {
   await requireAdminSession("/admin/operations", [...ADMIN_OPS_ROLES]);
   const fulfilmentId = String(formData.get("fulfilmentId") ?? "");
-  await fulfilmentService.confirmDelivered(fulfilmentId);
+  const result = await fulfilmentService.confirmDelivered(fulfilmentId);
+  if (!result.ok) return result;
   revalidatePath(`/admin/operations/${fulfilmentId}`);
+  return ok(null);
 }
 
 export async function reportDeliveryFailedAction(

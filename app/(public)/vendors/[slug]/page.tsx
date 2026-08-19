@@ -6,7 +6,10 @@ import { ListingCard } from "../../../../components/catalogue/ListingCard";
 import { EmptyState } from "../../../../components/catalogue/EmptyState";
 import { Breadcrumbs } from "../../../../components/catalogue/Breadcrumbs";
 import { AskAboutButton } from "../../../../components/messaging/AskAboutButton";
+import { Pagination } from "../../../../components/shared/Pagination";
+import { parsePage } from "../../../../lib/pagination";
 import { vendorsService } from "../../../../modules/vendors/service";
+import { CATALOGUE_PAGE_SIZE } from "../../../../modules/catalogue/service";
 import { getCurrentSession } from "../../../../modules/identity/policy";
 import { getPendingMessageIntent } from "../../../../lib/actions/messaging";
 
@@ -20,15 +23,23 @@ export async function generateMetadata({ params }: { params: Promise<Params> }) 
   return { title: storefront ? storefront.vendor.companyName : "Vendor" };
 }
 
-export default async function VendorStorefrontPage({ params }: { params: Promise<Params> }) {
+export default async function VendorStorefrontPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<Params>;
+  searchParams: Promise<{ page?: string }>;
+}) {
   const { slug } = await params;
-  const storefront = await vendorsService.getStorefront(slug);
+  const { page: pageRaw } = await searchParams;
+  const page = parsePage(pageRaw);
+  const storefront = await vendorsService.getStorefront(slug, page, CATALOGUE_PAGE_SIZE);
 
   if (!storefront) {
     notFound();
   }
 
-  const { vendor, listings } = storefront;
+  const { vendor, listings, total } = storefront;
   const session = await getCurrentSession();
   const isSignedIn = Boolean(session);
   const resumedMessage = await getPendingMessageIntent("VENDOR", vendor.id);
@@ -90,6 +101,15 @@ export default async function VendorStorefrontPage({ params }: { params: Promise
               ))}
             </div>
           )}
+
+          <div className="mt-6">
+            <Pagination
+              currentPage={page}
+              pageSize={CATALOGUE_PAGE_SIZE}
+              total={total}
+              basePath={`/vendors/${vendor.storefrontSlug}`}
+            />
+          </div>
         </div>
       </Container>
     </div>

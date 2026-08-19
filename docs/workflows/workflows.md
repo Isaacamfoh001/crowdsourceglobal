@@ -76,7 +76,7 @@ Fulfilment PENDING → ACCEPTED → PREPARING → READY → DISPATCHED (vendor-d
 
 ## I. Delivery Completion
 
-Last Shipment on a Fulfilment reaches DELIVERED → Fulfilment → DELIVERED *(never COMPLETED — no code anywhere transitions a Fulfilment to COMPLETED; a pre-existing M4/M5 gap, out of scope for M11, that made DELIVERED the only observable eligibility trigger — see ADR 0009)*. Once all of an Order's Fulfilments are DELIVERED, Order → COMPLETED (not currently automated — see Known Limitations in ADR 0009).
+Last Shipment on a Fulfilment reaches DELIVERED → Fulfilment → DELIVERED *(never COMPLETED — no code anywhere transitions a Fulfilment to COMPLETED; a pre-existing M4/M5 gap, out of scope for M11, that made DELIVERED the only observable eligibility trigger — see ADR 0009)*, and, in the SAME transaction *(M11.1)*, every PENDING `VendorEarning` on that Fulfilment moves to WAITING_PERIOD with `deliveredAt` stamped — the earning's payable clock starts here, event-driven, never waiting for a later sweep pass to notice. Once all of an Order's Fulfilments are DELIVERED, Order → COMPLETED (not currently automated — see Known Limitations in ADR 0009).
 
 ## J. Vendor Payout *(implemented M11 — VendorEarning/VendorSettlement, see ADR 0009; supersedes the PayoutRun/PayoutItem preview names below M9's implementation note)*
 
@@ -85,12 +85,14 @@ Order confirmed → Fulfilments/FulfilmentItems created
   → VendorEarning created per FulfilmentItem, status PENDING,
     originalPayableAmount snapshotted from FulfilmentItem.vendorPayableBasis
     (immutable from this point on)
-  → Fulfilment reaches DELIVERED
+  → Fulfilment reaches DELIVERED (event-driven, same transaction, M11.1):
+    PENDING earnings on that Fulfilment → WAITING_PERIOD, deliveredAt stamped
   → scripts/sweep-earnings-eligibility.ts (scheduled, DB-backed, no message
-    broker — same architecture as sweep-abandoned-payments.ts): PENDING
-    earnings whose Fulfilment has been DELIVERED for at least
-    VENDOR_PAYOUT_HOLD_HOURS (configurable operational buffer, not a
-    contractual SLA) → ELIGIBLE, eligibleAt set
+    broker — same architecture as sweep-abandoned-payments.ts): WAITING_PERIOD
+    earnings whose deliveredAt is at least VENDOR_PAYOUT_HOLD_HOURS ago
+    (configurable operational buffer, not a contractual SLA) → ELIGIBLE,
+    eligibleAt set — this is the sweep's ONLY job; holds, cancellations, and
+    adjustments are all event-driven elsewhere (M11.1)
   → Admin (Finance) selects some/all of a Vendor's ELIGIBLE earnings →
     createSettlement:
       - claims exactly the selected earnings (guarded, ELIGIBLE only) →
@@ -119,7 +121,8 @@ Automated disbursement (Paystack/Hubtel/Moolre transfer APIs) is explicitly defe
 | Case | Mechanism | Business policy needed? |
 |---|---|---|
 | Refund before fulfilment | Payment refunded; Order → CANCELLED; no VendorEarning ever reaches ELIGIBLE (Fulfilment never exists) | No |
-| Refund after fulfilment, before settlement | `FulfilmentItem.payoutHold = true` (M9, unchanged) AND the linked `VendorEarning` → ON_HOLD (M11), when the refund reason is vendor-fault (`responsibility = VENDOR`) | Resolved — `approveResolution()`'s explicit `responsibility` field decides vendor-fault; admin judgment, matching ADR 0005's "until a firmer policy exists" default |
+| Refund after fulfilment, before settlement — partial, or a replacement decided | `FulfilmentItem.payoutHold = true` (M9, unchanged) AND the linked `VendorEarning` → ON_HOLD (M11), when the refund reason is vendor-fault (`responsibility = VENDOR`); released later to PENDING/WAITING_PERIOD/ELIGIBLE (never blindly PENDING — M11.1) once the case resolves | Resolved — `approveResolution()`'s explicit `responsibility` field decides vendor-fault; admin judgment, matching ADR 0005's "until a firmer policy exists" default |
+| Refund after fulfilment, before settlement — FULL vendor-fault refund/return, no replacement | The linked `VendorEarning` → CANCELLED directly (M11.1) — never parked ON_HOLD, since there is no remaining Vendor obligation to wait for | No — mechanical, once responsibility=VENDOR and the decision covers the entire FulfilmentItem quantity |
 | Refund after vendor settlement/payout | A negative `VendorFinancialAdjustment` (category `RESOLUTION_REFUND`) is created against the Vendor + earning, `appliedToSettlementId = null`, netted against that vendor's *next* Settlement. No reverse-transfer is attempted | Resolved — net-off-next-settlement, per ADR 0005's default |
 | Partial refund | Ties to the specific ResolutionCaseItem's own `approvedRefundAmount` — the adjustment is exactly that amount, never the whole case's total | No — mechanical |
 | Cancelled order | Inventory reservation released; no Fulfilment/VendorEarning ever created | No |
@@ -131,6 +134,8 @@ Automated disbursement (Paystack/Hubtel/Moolre transfer APIs) is explicitly defe
 There is deliberately no full accounting ledger — `payoutHold`/`VendorEarning.status` (prevention) and `VendorFinancialAdjustment` (correction) are the complete mechanism. See ADR 0005 (original design) and ADR 0009 (M11 implementation).
 
 **M9/M11 implementation note:** this table described the mechanism during architecture planning, before any code existed. M9 built the prevention half (`payoutHold`, via `approveResolution()`'s `responsibility` field) and inventory-reservation release (Workflow U). M11 builds the rest: `VendorEarning` (the actual, implemented payable lifecycle — see state-machines.md), `VendorFinancialAdjustment` (ADR 0005's `PayoutAdjustment`, implemented, including the post-settlement case), and `VendorSettlement` (the manual-payout batching unit). Refund creation/approval/execution itself is still Workflows T/V above, not this table — M11 only adds what happens to the Vendor's own payable as a side effect of those same decisions.
+
+**M11.1 note — what the Customer/Vendor actually see.** None of the Vendor-payable mechanics above are ever shown to a Customer, and the internal `responsibility` field is never shown to a Vendor. What a Customer sees on their Order (and what a Vendor sees on their own package) is the separate, purely-derived display-status layer described in `docs/domain/state-machines.md`'s Notes section and implemented in `modules/orders/display-status.ts` — it reads the same underlying Fulfilment/Refund/Return/Replacement facts these workflows produce, but computes a small human-facing label from them at read time rather than exposing raw internal states.
 
 ## L. Buyer → CrownSource Messaging
 

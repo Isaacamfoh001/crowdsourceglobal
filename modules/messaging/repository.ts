@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/db";
+import { paginationSkip } from "../../lib/pagination";
 
 const contextSelect = {
   contextListing: { select: { id: true, title: true, vendor: { select: { companyName: true } } } },
@@ -41,12 +42,19 @@ const conversationSummaryInclude = {
 export const messagingRepository = {
   // --- Customer side ---------------------------------------------------
 
-  findCustomerConversations(customerProfileId: string) {
-    return prisma.conversation.findMany({
-      where: { participantType: "CUSTOMER", customerProfileId },
-      include: conversationSummaryInclude,
-      orderBy: { updatedAt: "desc" },
-    });
+  async findCustomerConversations(customerProfileId: string, page: number, pageSize: number) {
+    const where = { participantType: "CUSTOMER" as const, customerProfileId };
+    const [rows, total] = await Promise.all([
+      prisma.conversation.findMany({
+        where,
+        include: conversationSummaryInclude,
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.conversation.count({ where }),
+    ]);
+    return { rows, total };
   },
 
   findCustomerConversationById(customerProfileId: string, conversationId: string) {
@@ -115,12 +123,19 @@ export const messagingRepository = {
 
   // --- Vendor side -------------------------------------------------------
 
-  findVendorConversations(vendorId: string) {
-    return prisma.conversation.findMany({
-      where: { participantType: "VENDOR", vendorId },
-      include: conversationSummaryInclude,
-      orderBy: { updatedAt: "desc" },
-    });
+  async findVendorConversations(vendorId: string, page: number, pageSize: number) {
+    const where = { participantType: "VENDOR" as const, vendorId };
+    const [rows, total] = await Promise.all([
+      prisma.conversation.findMany({
+        where,
+        include: conversationSummaryInclude,
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.conversation.count({ where }),
+    ]);
+    return { rows, total };
   },
 
   findVendorConversationById(vendorId: string, conversationId: string) {
@@ -163,12 +178,19 @@ export const messagingRepository = {
 
   // --- Admin -----------------------------------------------------------
 
-  findAllForAdmin(status?: "OPEN" | "CLOSED") {
-    return prisma.conversation.findMany({
-      where: status ? { status } : undefined,
-      include: conversationSummaryInclude,
-      orderBy: { updatedAt: "desc" },
-    });
+  async findAllForAdmin(status: "OPEN" | "CLOSED" | undefined, page: number, pageSize: number) {
+    const where = status ? { status } : undefined;
+    const [rows, total] = await Promise.all([
+      prisma.conversation.findMany({
+        where,
+        include: conversationSummaryInclude,
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.conversation.count({ where }),
+    ]);
+    return { rows, total };
   },
 
   findByIdForAdmin(conversationId: string) {

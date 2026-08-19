@@ -62,8 +62,8 @@ describe("catalogueRepository", () => {
   });
 
   it("excludes listings that are not approved and active", async () => {
-    const results = await catalogueRepository.listListings({ vendorId });
-    expect(results.find((listing) => listing.id === hiddenListingId)).toBeUndefined();
+    const { rows } = await catalogueRepository.listListings({ vendorId }, { page: 1, pageSize: 48 });
+    expect(rows.find((listing) => listing.id === hiddenListingId)).toBeUndefined();
   });
 
   it("getListingById returns null for a listing that is not publicly visible", async () => {
@@ -72,7 +72,8 @@ describe("catalogueRepository", () => {
   });
 
   it("never exposes vendor cost/margin fields on a public listing detail", async () => {
-    const [publicListing] = await catalogueRepository.listListings({});
+    const { rows } = await catalogueRepository.listListings({}, { page: 1, pageSize: 1 });
+    const [publicListing] = rows;
     expect(publicListing).toBeDefined();
 
     const detail = await catalogueRepository.getListingById(publicListing!.id);
@@ -92,9 +93,9 @@ describe("catalogueRepository", () => {
 
     const childSlugs = new Set(parent!.children.map((child) => child.slug));
     const categoryIds = [parent!.id, ...parent!.children.map((child) => child.id)];
-    const results = await catalogueRepository.listListings({ categoryIds });
+    const { rows } = await catalogueRepository.listListings({ categoryIds }, { page: 1, pageSize: 48 });
 
-    const hasSubcategoryListing = results.some((listing) => childSlugs.has(listing.category.slug));
+    const hasSubcategoryListing = rows.some((listing) => childSlugs.has(listing.category.slug));
     expect(hasSubcategoryListing).toBe(true);
   });
 });

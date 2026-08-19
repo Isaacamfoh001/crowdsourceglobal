@@ -4,6 +4,7 @@ import { resolveUnitPrice } from "../pricing/resolveUnitPrice";
 import { generateQuoteReference } from "../../lib/quote-number";
 import { env } from "../../lib/env";
 import { ok, err, type Result } from "../../lib/result";
+import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
 import { quotationRepository } from "./repository";
@@ -24,6 +25,35 @@ function deriveEffectiveStatus(status: string, expiresAt: Date): QuotationEffect
     return "EXPIRED";
   }
   return status as QuotationEffectiveStatus;
+}
+
+type RawAdminQuotationRow = {
+  id: string;
+  reference: string;
+  origin: string;
+  status: string;
+  total: { toNumber: () => number };
+  currency: string;
+  issuedAt: Date;
+  expiresAt: Date;
+  items: { id: string }[];
+  customerProfile: { displayName: string; user: { email: string } };
+};
+
+function toAdminQuotationSummary(quotation: RawAdminQuotationRow): AdminQuotationSummaryView {
+  return {
+    id: quotation.id,
+    reference: quotation.reference,
+    origin: quotation.origin as AdminQuotationSummaryView["origin"],
+    issuedAt: quotation.issuedAt,
+    expiresAt: quotation.expiresAt,
+    status: deriveEffectiveStatus(quotation.status, quotation.expiresAt),
+    total: quotation.total.toNumber(),
+    currency: quotation.currency,
+    itemCount: quotation.items.length,
+    customerName: quotation.customerProfile.displayName,
+    customerEmail: quotation.customerProfile.user.email,
+  };
 }
 
 /** Merges duplicate listingIds (defensive — the draft cookie is already upserted per-listing). */
@@ -222,18 +252,22 @@ export const quotationService = {
     };
   },
 
-  async listForCustomer(customerProfileId: string): Promise<QuotationSummaryView[]> {
-    const quotations = await quotationRepository.listForCustomer(customerProfileId);
-    return quotations.map((quotation) => ({
-      id: quotation.id,
-      reference: quotation.reference,
-      issuedAt: quotation.issuedAt,
-      expiresAt: quotation.expiresAt,
-      status: deriveEffectiveStatus(quotation.status, quotation.expiresAt),
-      total: quotation.total.toNumber(),
-      currency: quotation.currency,
-      itemCount: quotation.items.length,
-    }));
+  async listForCustomer(customerProfileId: string, page = 1): Promise<{ rows: QuotationSummaryView[]; total: number; pageSize: number }> {
+    const { rows, total } = await quotationRepository.listForCustomer(customerProfileId, page, DEFAULT_PAGE_SIZE);
+    return {
+      rows: rows.map((quotation) => ({
+        id: quotation.id,
+        reference: quotation.reference,
+        issuedAt: quotation.issuedAt,
+        expiresAt: quotation.expiresAt,
+        status: deriveEffectiveStatus(quotation.status, quotation.expiresAt),
+        total: quotation.total.toNumber(),
+        currency: quotation.currency,
+        itemCount: quotation.items.length,
+      })),
+      total,
+      pageSize: DEFAULT_PAGE_SIZE,
+    };
   },
 
   /** Feeds "Get Updated Quote" — a fresh draft seeded from an expired/old quote's lines, re-validated from scratch. */
@@ -297,19 +331,16 @@ export const quotationService = {
 
   async listForAdmin(status?: "ISSUED" | "ACCEPTED" | "EXPIRED"): Promise<AdminQuotationSummaryView[]> {
     const quotations = await quotationRepository.listForAdmin(status);
-    return quotations.map((quotation) => ({
-      id: quotation.id,
-      reference: quotation.reference,
-      origin: quotation.origin,
-      issuedAt: quotation.issuedAt,
-      expiresAt: quotation.expiresAt,
-      status: deriveEffectiveStatus(quotation.status, quotation.expiresAt),
-      total: quotation.total.toNumber(),
-      currency: quotation.currency,
-      itemCount: quotation.items.length,
-      customerName: quotation.customerProfile.displayName,
-      customerEmail: quotation.customerProfile.user.email,
-    }));
+    return quotations.map(toAdminQuotationSummary);
+  },
+
+  /** (M11.1) Paginated variant for the admin quotations queue page — see listForAdminPaginated on the repository. */
+  async listForAdminPaginated(
+    status: "ISSUED" | "ACCEPTED" | "EXPIRED" | undefined,
+    page: number,
+  ): Promise<{ rows: AdminQuotationSummaryView[]; total: number; pageSize: number }> {
+    const { rows, total } = await quotationRepository.listForAdminPaginated(status, page, DEFAULT_PAGE_SIZE);
+    return { rows: rows.map(toAdminQuotationSummary), total, pageSize: DEFAULT_PAGE_SIZE };
   },
 
   async getDetailForAdmin(id: string): Promise<AdminQuotationDetailView | null> {

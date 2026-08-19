@@ -2,13 +2,17 @@ import Link from "next/link";
 import { requireAdminSession } from "../../../../modules/administration/policy";
 import { vendorApplicationsService } from "../../../../modules/vendor-applications/service";
 import { SELLER_TYPES } from "../../../../modules/vendor-applications/types";
+import { parsePage } from "../../../../lib/pagination";
+import { Pagination } from "../../../../components/shared/Pagination";
 
 export const metadata = { title: "Vendor applications — Admin" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminVendorApplicationsPage() {
+export default async function AdminVendorApplicationsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   await requireAdminSession("/admin/vendor-applications");
-  const applications = await vendorApplicationsService.listForAdmin();
+  const { page } = await searchParams;
+  const currentPage = parsePage(page);
+  const { rows: applications, total, pageSize } = await vendorApplicationsService.listForAdminPaginated(undefined, currentPage);
 
   return (
     <div className="flex flex-col gap-6">
@@ -42,6 +46,8 @@ export default async function AdminVendorApplicationsPage() {
           ))}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/admin/vendor-applications" />
     </div>
   );
 }

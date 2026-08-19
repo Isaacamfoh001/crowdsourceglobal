@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/db";
+import { paginationSkip } from "../../lib/pagination";
 import type {
   ListingFilter,
   PublicCategory,
@@ -61,6 +62,24 @@ const listingDetailSelect = {
   },
 } as const;
 
+function listingWhere(filter: ListingFilter) {
+  return {
+    ...PUBLIC_LISTING_WHERE,
+    ...(filter.categoryIds && filter.categoryIds.length > 0
+      ? { categoryId: { in: filter.categoryIds } }
+      : {}),
+    ...(filter.vendorId ? { vendorId: filter.vendorId } : {}),
+    ...(filter.search
+      ? {
+          OR: [
+            { title: { contains: filter.search, mode: "insensitive" as const } },
+            { description: { contains: filter.search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
+}
+
 function parseImages(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.filter((item): item is string => typeof item === "string");
@@ -122,29 +141,45 @@ export const catalogueRepository = {
     return prisma.category.findUnique({ where: { id }, select: categorySelect });
   },
 
+  /**
+   * (M11.1) Paginated public listing grid — backs /shop, /shop/[category],
+   * and vendor storefronts. `total` comes from a matching count() so
+   * callers can render real page controls rather than a single hard-capped
+   * page. Deterministic tie-breaker on `id` alongside `createdAt` keeps
+   * page boundaries stable when multiple listings share a createdAt.
+   */
   async listListings(
     filter: ListingFilter,
-    pagination: { take?: number } = {},
-  ): Promise<PublicListingSummary[]> {
+    pagination: { page: number; pageSize: number },
+  ): Promise<{ rows: PublicListingSummary[]; total: number }> {
+    const where = listingWhere(filter);
+    const [rows, total] = await Promise.all([
+      prisma.vendorListing.findMany({
+        where,
+        select: listingSummarySelect,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(pagination.page, pagination.pageSize),
+        take: pagination.pageSize,
+      }),
+      prisma.vendorListing.count({ where }),
+    ]);
+
+    return { rows: rows.map(toSummary), total };
+  },
+
+  /**
+   * (M11.1) Deliberately NOT paginated — for callers that want a small,
+   * bounded slice of listings without page/skip semantics (a homepage
+   * carousel, an admin picker dropdown). Never use this for a public
+   * browsing surface a shopper needs to page through; use `listListings`
+   * for that.
+   */
+  async listListingsCapped(filter: ListingFilter, take: number): Promise<PublicListingSummary[]> {
     const rows = await prisma.vendorListing.findMany({
-      where: {
-        ...PUBLIC_LISTING_WHERE,
-        ...(filter.categoryIds && filter.categoryIds.length > 0
-          ? { categoryId: { in: filter.categoryIds } }
-          : {}),
-        ...(filter.vendorId ? { vendorId: filter.vendorId } : {}),
-        ...(filter.search
-          ? {
-              OR: [
-                { title: { contains: filter.search, mode: "insensitive" as const } },
-                { description: { contains: filter.search, mode: "insensitive" as const } },
-              ],
-            }
-          : {}),
-      },
+      where: listingWhere(filter),
       select: listingSummarySelect,
-      orderBy: { createdAt: "desc" },
-      take: pagination.take ?? 48,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take,
     });
 
     return rows.map(toSummary);

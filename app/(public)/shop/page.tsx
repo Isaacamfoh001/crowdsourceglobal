@@ -3,7 +3,9 @@ import { CategoryNav } from "../../../components/catalogue/CategoryNav";
 import { ListingCard } from "../../../components/catalogue/ListingCard";
 import { EmptyState } from "../../../components/catalogue/EmptyState";
 import { SearchForm } from "../../../components/catalogue/SearchForm";
-import { catalogueService } from "../../../modules/catalogue/service";
+import { Pagination } from "../../../components/shared/Pagination";
+import { parsePage } from "../../../lib/pagination";
+import { catalogueService, CATALOGUE_PAGE_SIZE } from "../../../modules/catalogue/service";
 
 export const metadata = {
   title: "Shop",
@@ -13,13 +15,14 @@ export const metadata = {
 export default async function ShopPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, page: pageRaw } = await searchParams;
+  const page = parsePage(pageRaw);
 
-  const [categories, listings] = await Promise.all([
+  const [categories, { rows: listings, total }] = await Promise.all([
     catalogueService.listCategories(),
-    catalogueService.listListings({ search: q }),
+    catalogueService.listListings({ search: q }, page, CATALOGUE_PAGE_SIZE),
   ]);
 
   return (
@@ -45,7 +48,7 @@ export default async function ShopPage({
           <div className="min-w-0">
             {q ? (
               <p className="mb-4 text-sm text-stone-500">
-                {listings.length} result{listings.length === 1 ? "" : "s"} for &ldquo;{q}&rdquo;
+                {total} result{total === 1 ? "" : "s"} for &ldquo;{q}&rdquo;
               </p>
             ) : null}
 
@@ -63,6 +66,16 @@ export default async function ShopPage({
                 ))}
               </div>
             )}
+
+            <div className="mt-6">
+              <Pagination
+                currentPage={page}
+                pageSize={CATALOGUE_PAGE_SIZE}
+                total={total}
+                basePath="/shop"
+                extraParams={{ q }}
+              />
+            </div>
           </div>
         </div>
       </Container>

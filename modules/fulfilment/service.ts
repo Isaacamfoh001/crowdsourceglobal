@@ -4,6 +4,7 @@ import { vendorsRepository } from "../vendors/repository";
 import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
 import { ok, err, type Result } from "../../lib/result";
+import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import type {
   AdminFulfilmentDetail,
   AdminFulfilmentSummary,
@@ -14,6 +15,40 @@ import type {
   VendorFulfilmentDetail,
   VendorFulfilmentSummary,
 } from "./types";
+
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
+
+type RawAdminFulfilmentRow = {
+  id: string;
+  status: string;
+  origin: string;
+  createdAt: Date;
+  updatedAt: Date;
+  vendor: { id: string; companyName: string; leadTimeDaysDefault: number | null };
+  order: { orderNumber: string };
+  items: { id: string }[];
+  issues: { id: string }[];
+  shipments: { status: string; shippedAt: Date | null; receivedAt: Date | null }[];
+};
+
+function toAdminFulfilmentSummary(row: RawAdminFulfilmentRow): AdminFulfilmentSummary {
+  return {
+    id: row.id,
+    status: row.status as AdminFulfilmentSummary["status"],
+    origin: row.origin as AdminFulfilmentSummary["origin"],
+    orderNumber: row.order.orderNumber,
+    vendorId: row.vendor.id,
+    vendorName: row.vendor.companyName,
+    vendorLeadTimeDays: row.vendor.leadTimeDaysDefault,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    itemCount: row.items.length,
+    hasOpenIssue: row.issues.length > 0,
+    shipmentStatus: (row.shipments[0]?.status as AdminFulfilmentSummary["shipmentStatus"]) ?? null,
+    shipmentShippedAt: row.shipments[0]?.shippedAt ?? null,
+    shipmentReceivedAt: row.shipments[0]?.receivedAt ?? null,
+  };
+}
 
 type RawItem = { id: string; quantity: number; orderItem: { description: string } };
 
@@ -60,6 +95,27 @@ function toShipmentView(raw: {
   };
 }
 
+function toVendorFulfilmentSummary(row: {
+  id: string;
+  status: string;
+  origin: string;
+  createdAt: Date;
+  order: { orderNumber: string };
+  items: { quantity: number }[];
+  issues: { id: string }[];
+}): VendorFulfilmentSummary {
+  return {
+    id: row.id,
+    status: row.status as VendorFulfilmentSummary["status"],
+    origin: row.origin as VendorFulfilmentSummary["origin"],
+    orderNumber: row.order.orderNumber,
+    createdAt: row.createdAt,
+    itemCount: row.items.length,
+    totalQuantity: row.items.reduce((sum, item) => sum + item.quantity, 0),
+    hasOpenIssue: row.issues.length > 0,
+  };
+}
+
 const ISSUE_REPORTABLE_STATUSES = ["PENDING", "PREPARING", "READY"];
 
 export const fulfilmentService = {
@@ -67,16 +123,13 @@ export const fulfilmentService = {
 
   async listForVendor(vendorId: string, status?: string): Promise<VendorFulfilmentSummary[]> {
     const rows = await fulfilmentRepository.findForVendor(vendorId, status);
-    return rows.map((row) => ({
-      id: row.id,
-      status: row.status as VendorFulfilmentSummary["status"],
-      origin: row.origin as VendorFulfilmentSummary["origin"],
-      orderNumber: row.order.orderNumber,
-      createdAt: row.createdAt,
-      itemCount: row.items.length,
-      totalQuantity: row.items.reduce((sum, item) => sum + item.quantity, 0),
-      hasOpenIssue: row.issues.length > 0,
-    }));
+    return rows.map(toVendorFulfilmentSummary);
+  },
+
+  /** (M11.1) Paginated variant backing the vendor portal orders list page. */
+  async listForVendorPaginated(vendorId: string, status: string | undefined, page = 1): Promise<{ rows: VendorFulfilmentSummary[]; total: number; pageSize: number }> {
+    const { rows, total } = await fulfilmentRepository.findForVendorPaginated(vendorId, status, page, PAGE_SIZE);
+    return { rows: rows.map(toVendorFulfilmentSummary), total, pageSize: PAGE_SIZE };
   },
 
   async getDetailForVendor(vendorId: string, fulfilmentId: string): Promise<VendorFulfilmentDetail | null> {
@@ -148,22 +201,16 @@ export const fulfilmentService = {
 
   async listForAdmin(filter: { status?: string; origin?: string }): Promise<AdminFulfilmentSummary[]> {
     const rows = await fulfilmentRepository.findForAdmin(filter);
-    return rows.map((row) => ({
-      id: row.id,
-      status: row.status as AdminFulfilmentSummary["status"],
-      origin: row.origin as AdminFulfilmentSummary["origin"],
-      orderNumber: row.order.orderNumber,
-      vendorId: row.vendor.id,
-      vendorName: row.vendor.companyName,
-      vendorLeadTimeDays: row.vendor.leadTimeDaysDefault,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      itemCount: row.items.length,
-      hasOpenIssue: row.issues.length > 0,
-      shipmentStatus: (row.shipments[0]?.status as AdminFulfilmentSummary["shipmentStatus"]) ?? null,
-      shipmentShippedAt: row.shipments[0]?.shippedAt ?? null,
-      shipmentReceivedAt: row.shipments[0]?.receivedAt ?? null,
-    }));
+    return rows.map(toAdminFulfilmentSummary);
+  },
+
+  /** (M11.1) Paginated variant for the admin Operations queue page — see findForAdminPaginated. */
+  async listForAdminPaginated(
+    filter: { status?: string; origin?: string },
+    page: number,
+  ): Promise<{ rows: AdminFulfilmentSummary[]; total: number; pageSize: number }> {
+    const { rows, total } = await fulfilmentRepository.findForAdminPaginated(filter, page, PAGE_SIZE);
+    return { rows: rows.map(toAdminFulfilmentSummary), total, pageSize: PAGE_SIZE };
   },
 
   async getDetailForAdmin(fulfilmentId: string): Promise<AdminFulfilmentDetail | null> {

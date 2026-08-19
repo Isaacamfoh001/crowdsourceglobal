@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { FulfilmentStatusBadge } from "../../../../components/fulfilment/FulfilmentStatusBadge";
+import { Pagination } from "../../../../components/shared/Pagination";
 import { requireVendorPortalContext } from "../../../../modules/vendors/policy";
 import { fulfilmentService } from "../../../../modules/fulfilment/service";
+import { parsePage } from "../../../../lib/pagination";
 
 export const metadata = { title: "Orders — Vendor Portal" };
 export const dynamic = "force-dynamic";
@@ -20,11 +22,12 @@ const FILTERS = [
 export default async function VendorOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
   const { vendorId } = await requireVendorPortalContext("/vendor/portal/orders");
-  const { status } = await searchParams;
-  const orders = await fulfilmentService.listForVendor(vendorId, status);
+  const { status, page } = await searchParams;
+  const currentPage = parsePage(page);
+  const { rows: orders, total, pageSize } = await fulfilmentService.listForVendorPaginated(vendorId, status, currentPage);
 
   return (
     <div className="flex flex-col gap-6">
@@ -77,6 +80,8 @@ export default async function VendorOrdersPage({
           ))}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/vendor/portal/orders" extraParams={{ status }} />
     </div>
   );
 }

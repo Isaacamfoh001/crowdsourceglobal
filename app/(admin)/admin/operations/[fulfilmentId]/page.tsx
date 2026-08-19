@@ -144,7 +144,7 @@ export default async function AdminFulfilmentDetailPage({ params }: { params: Pr
         {!awaitingHandoff && shipmentStatus !== "DELIVERED" && shipmentStatus !== "DELIVERY_FAILED" ? (
           <div className="mt-3 flex flex-col gap-3">
             <p className="text-sm text-stone-600">Current shipment status: {shipmentStatus.replace(/_/g, " ").toLowerCase()}</p>
-            <ProgressButtons fulfilmentId={fulfilment.id} />
+            <ProgressButtons fulfilmentId={fulfilment.id} shipmentStatus={shipmentStatus} />
             <ReportFailureForm fulfilmentId={fulfilment.id} />
           </div>
         ) : null}

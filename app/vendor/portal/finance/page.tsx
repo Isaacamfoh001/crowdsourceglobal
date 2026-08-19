@@ -7,7 +7,8 @@ export const metadata = { title: "Finance — Vendor Portal" };
 export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, string> = {
-  PENDING: "Pending",
+  PENDING: "Pending fulfilment",
+  WAITING_PERIOD: "Settlement waiting period",
   ON_HOLD: "On hold",
   ELIGIBLE: "Eligible",
   INCLUDED_IN_SETTLEMENT: "In settlement",
@@ -17,6 +18,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 const STATUS_TONE: Record<string, string> = {
   PENDING: "bg-amber-100 text-amber-700",
+  WAITING_PERIOD: "bg-amber-100 text-amber-700",
   ON_HOLD: "bg-red-100 text-red-700",
   ELIGIBLE: "bg-emerald-100 text-emerald-700",
   INCLUDED_IN_SETTLEMENT: "bg-sky-100 text-sky-700",
@@ -39,7 +41,7 @@ export default async function VendorFinancePage({ searchParams }: { searchParams
         <p className="mt-1 text-[15px] text-stone-500">Your earnings and settlements from CrownSourceGlobal.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <div className="rounded-2xl border border-stone-200 bg-white p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-stone-500">Available for settlement</p>
           <p className="mt-1.5 font-display text-xl font-medium text-emerald-700">{formatPrice(overview.availableForSettlement, overview.currency)}</p>
@@ -50,6 +52,10 @@ export default async function VendorFinancePage({ searchParams }: { searchParams
         <div className="rounded-2xl border border-stone-200 bg-white p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-stone-500">Pending</p>
           <p className="mt-1.5 font-display text-xl font-medium text-stone-900">{formatPrice(overview.pending, overview.currency)}</p>
+        </div>
+        <div className="rounded-2xl border border-stone-200 bg-white p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-stone-500">Waiting period</p>
+          <p className="mt-1.5 font-display text-xl font-medium text-amber-700">{formatPrice(overview.waitingPeriod, overview.currency)}</p>
         </div>
         <div className="rounded-2xl border border-stone-200 bg-white p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-stone-500">On hold</p>
@@ -63,7 +69,7 @@ export default async function VendorFinancePage({ searchParams }: { searchParams
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {[undefined, "PENDING", "ON_HOLD", "ELIGIBLE", "PAID"].map((value) => (
+          {[undefined, "PENDING", "WAITING_PERIOD", "ON_HOLD", "ELIGIBLE", "PAID"].map((value) => (
             <Link
               key={value ?? "all"}
               href={value ? `/vendor/portal/finance?status=${value}` : "/vendor/portal/finance"}

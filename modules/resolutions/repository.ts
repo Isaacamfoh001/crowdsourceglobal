@@ -3,6 +3,7 @@ import { Prisma } from "../../generated/prisma/client";
 import { CANCELLABLE_FULFILMENT_STATUSES } from "./policy";
 import { vendorFinanceRepository } from "../vendor-finance/repository";
 import { vendorFinanceService } from "../vendor-finance/service";
+import { paginationSkip } from "../../lib/pagination";
 
 const caseItemSelect = {
   id: true,
@@ -205,6 +206,28 @@ export const resolutionsRepository = {
     });
   },
 
+  /**
+   * (M11.1) Paginated variant for the account resolutions list page — a
+   * distinct name rather than changing listForCustomer's shape, since
+   * app/(customer)/account/orders/[id]/page.tsx still needs the full
+   * unbounded list (filtered client-side by orderId) and must not be
+   * silently broken by this.
+   */
+  async listForCustomerPaginated(customerProfileId: string, page: number, pageSize: number) {
+    const where = { customerProfileId };
+    const [rows, total] = await Promise.all([
+      prisma.resolutionCase.findMany({
+        where,
+        select: { id: true, caseNumber: true, status: true, issueType: true, orderId: true, order: { select: { orderNumber: true } }, createdAt: true },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.resolutionCase.count({ where }),
+    ]);
+    return { rows, total };
+  },
+
   findForCustomer(caseId: string, customerProfileId: string) {
     return prisma.resolutionCase.findFirst({ where: { id: caseId, customerProfileId }, select: customerDetailSelect });
   },
@@ -236,6 +259,22 @@ export const resolutionsRepository = {
     });
   },
 
+  /** (M11.1) Paginated variant for the vendor portal resolutions list page. */
+  async listForVendorPaginated(vendorId: string, page: number, pageSize: number) {
+    const where = { items: { some: { fulfilmentItem: { fulfilment: { vendorId } } } } };
+    const [rows, total] = await Promise.all([
+      prisma.resolutionCase.findMany({
+        where,
+        select: { id: true, caseNumber: true, status: true, issueType: true, fulfilmentId: true, order: { select: { orderNumber: true } }, createdAt: true },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.resolutionCase.count({ where }),
+    ]);
+    return { rows, total };
+  },
+
   findForVendor(caseId: string, vendorId: string) {
     return prisma.resolutionCase.findFirst({
       where: { id: caseId, items: { some: { fulfilmentItem: { fulfilment: { vendorId } } } } },
@@ -245,28 +284,35 @@ export const resolutionsRepository = {
 
   // --- Admin ------------------------------------------------------------
 
-  listForAdmin(filter: { status?: string; assignedStaffId?: string }) {
-    return prisma.resolutionCase.findMany({
-      where: {
-        status: filter.status ? (filter.status as never) : undefined,
-        assignedStaffId: filter.assignedStaffId,
-      },
-      select: {
-        id: true,
-        caseNumber: true,
-        status: true,
-        issueType: true,
-        orderId: true,
-        order: { select: { orderNumber: true } },
-        customerProfile: { select: { displayName: true, user: { select: { name: true } } } },
-        assignedStaffId: true,
-        assignedStaff: { select: { user: { select: { name: true } } } },
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    });
+  /** (M11.1) Paginated — this is the only caller of a resolution-case admin list, so it replaces the old hardcoded take: 200 with real skip/take pagination rather than adding a second function. */
+  async listForAdmin(filter: { status?: string; assignedStaffId?: string }, page: number, pageSize: number) {
+    const where = {
+      status: filter.status ? (filter.status as never) : undefined,
+      assignedStaffId: filter.assignedStaffId,
+    };
+    const [rows, total] = await Promise.all([
+      prisma.resolutionCase.findMany({
+        where,
+        select: {
+          id: true,
+          caseNumber: true,
+          status: true,
+          issueType: true,
+          orderId: true,
+          order: { select: { orderNumber: true } },
+          customerProfile: { select: { displayName: true, user: { select: { name: true } } } },
+          assignedStaffId: true,
+          assignedStaff: { select: { user: { select: { name: true } } } },
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.resolutionCase.count({ where }),
+    ]);
+    return { rows, total };
   },
 
   findForAdmin(caseId: string) {
@@ -325,6 +371,8 @@ export const resolutionsRepository = {
     returnNeeded: boolean;
     replacements: { originalOrderItemId: string; quantity: number }[];
     payoutHoldFulfilmentItemIds: string[];
+    /** (M11.1) Subset of payoutHoldFulfilmentItemIds whose earning should be CANCELLED outright rather than parked ON_HOLD — see policy.ts's isFullVendorClosure. */
+    fullClosureFulfilmentItemIds: string[];
     payoutHoldReason: string;
     cancelFulfilment: { fulfilmentId: string; orderId: string; orderItemIds: string[] } | null;
     actorUserId: string;
@@ -391,16 +439,27 @@ export const resolutionsRepository = {
           where: { id: { in: params.payoutHoldFulfilmentItemIds } },
           data: { payoutHold: true, payoutHoldReason: params.payoutHoldReason },
         });
-        // M11 — the same event also places the affected VendorEarnings
-        // ON_HOLD (released later by resolutionsService.resolveCase()).
-        await vendorFinanceRepository.applyResolutionHoldTx(
-          tx,
-          params.payoutHoldFulfilmentItemIds,
-          params.caseId,
-          vendorFinanceService.holdReasonSafeForResolutionCase(),
-          params.payoutHoldReason,
-          params.actorUserId,
-        );
+
+        const holdOnlyIds = params.payoutHoldFulfilmentItemIds.filter((id) => !params.fullClosureFulfilmentItemIds.includes(id));
+        if (holdOnlyIds.length > 0) {
+          // M11 — the same event also places the affected VendorEarnings
+          // ON_HOLD (released later by resolutionsService.resolveCase()).
+          await vendorFinanceRepository.applyResolutionHoldTx(
+            tx,
+            holdOnlyIds,
+            params.caseId,
+            vendorFinanceService.holdReasonSafeForResolutionCase(),
+            params.payoutHoldReason,
+            params.actorUserId,
+          );
+        }
+        if (params.fullClosureFulfilmentItemIds.length > 0) {
+          // M11.1 — a full Vendor-attributable refund/return with no
+          // remaining fulfilment obligation closes the earning permanently
+          // (CANCELLED), never parked ON_HOLD awaiting a release that would
+          // never legitimately restore it.
+          await vendorFinanceRepository.cancelEarningsForFulfilmentItemsTx(tx, params.fullClosureFulfilmentItemIds);
+        }
       }
 
       // M11 — a VENDOR-responsibility refund permanently reduces what's

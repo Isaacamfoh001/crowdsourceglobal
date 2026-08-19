@@ -3,6 +3,8 @@ import { requireAdminSession } from "../../../../modules/administration/policy";
 import { quotationService } from "../../../../modules/quotation/service";
 import { QuoteStatusBadge } from "../../../../components/quotation/QuoteStatusBadge";
 import { formatPrice } from "../../../../lib/format";
+import { parsePage } from "../../../../lib/pagination";
+import { Pagination } from "../../../../components/shared/Pagination";
 
 export const metadata = { title: "Quotations — Admin" };
 export const dynamic = "force-dynamic";
@@ -17,13 +19,14 @@ const STATUS_FILTERS = [
 export default async function AdminQuotationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
   await requireAdminSession("/admin/quotations");
-  const { status } = await searchParams;
+  const { status, page } = await searchParams;
   const activeStatus = status === "ISSUED" || status === "ACCEPTED" || status === "EXPIRED" ? status : undefined;
+  const currentPage = parsePage(page);
 
-  const quotes = await quotationService.listForAdmin(activeStatus);
+  const { rows: quotes, total, pageSize } = await quotationService.listForAdminPaginated(activeStatus, currentPage);
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,6 +79,8 @@ export default async function AdminQuotationsPage({
           ))}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/admin/quotations" extraParams={{ status: activeStatus }} />
     </div>
   );
 }

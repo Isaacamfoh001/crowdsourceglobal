@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/db";
+import { paginationSkip } from "../../lib/pagination";
 
 const draftListingSelect = {
   id: true,
@@ -96,21 +97,28 @@ export const quotationRepository = {
     });
   },
 
-  listForCustomer(customerProfileId: string) {
-    return prisma.quotation.findMany({
-      where: { customerProfileId },
-      select: {
-        id: true,
-        reference: true,
-        status: true,
-        total: true,
-        currency: true,
-        issuedAt: true,
-        expiresAt: true,
-        items: { select: { id: true } },
-      },
-      orderBy: { issuedAt: "desc" },
-    });
+  async listForCustomer(customerProfileId: string, page: number, pageSize: number) {
+    const where = { customerProfileId };
+    const [rows, total] = await Promise.all([
+      prisma.quotation.findMany({
+        where,
+        select: {
+          id: true,
+          reference: true,
+          status: true,
+          total: true,
+          currency: true,
+          issuedAt: true,
+          expiresAt: true,
+          items: { select: { id: true } },
+        },
+        orderBy: [{ issuedAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.quotation.count({ where }),
+    ]);
+    return { rows, total };
   },
 
   /** Ownership-scoped, used by ordersService.createOrderFromQuotation before/inside the acceptance transaction. */
@@ -178,6 +186,39 @@ export const quotationRepository = {
       orderBy: { issuedAt: "desc" },
       take: 200,
     });
+  },
+
+  /**
+   * (M11.1) Paginated variant of listForAdmin, for the admin quotations
+   * queue page. listForAdmin itself stays unbounded (capped at 200) — it's
+   * also used by admin-dashboard's quotationAttention(), which needs the
+   * full ISSUED set to scan for custom quotes nearing expiry, not one page
+   * of it.
+   */
+  async listForAdminPaginated(status: "ISSUED" | "ACCEPTED" | "EXPIRED" | undefined, page: number, pageSize: number) {
+    const where = status ? { status } : undefined;
+    const [rows, total] = await Promise.all([
+      prisma.quotation.findMany({
+        where,
+        select: {
+          id: true,
+          reference: true,
+          origin: true,
+          status: true,
+          total: true,
+          currency: true,
+          issuedAt: true,
+          expiresAt: true,
+          items: { select: { id: true } },
+          customerProfile: { select: { displayName: true, user: { select: { email: true } } } },
+        },
+        orderBy: [{ issuedAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.quotation.count({ where }),
+    ]);
+    return { rows, total };
   },
 
   findDetailForAdmin(id: string) {

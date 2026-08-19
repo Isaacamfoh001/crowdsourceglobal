@@ -71,7 +71,7 @@ describe("notificationsService", () => {
       eventKey: key,
     });
 
-    const list = await notificationsService.listForUser(userAId);
+    const { rows: list } = await notificationsService.listForUser(userAId);
     const found = list.find((n) => n.title === "Order confirmed");
     expect(found).toBeTruthy();
     expect(found?.readAt).toBeNull();
@@ -144,7 +144,7 @@ describe("notificationsService", () => {
       eventKey: vendorKey,
     });
 
-    const list = await notificationsService.listForUser(userAId);
+    const { rows: list } = await notificationsService.listForUser(userAId);
     expect(list.some((n) => n.title === "Your order is confirmed")).toBe(true);
     expect(list.some((n) => n.title === "New order for your store")).toBe(true);
 
@@ -278,7 +278,7 @@ describe("notificationsService", () => {
       eventKey: eventKey(),
     });
 
-    const listA = await notificationsService.listForUser(userAId);
+    const { rows: listA } = await notificationsService.listForUser(userAId);
     expect(listA.some((n) => n.title === "Only for B")).toBe(false);
   });
 

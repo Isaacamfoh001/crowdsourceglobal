@@ -256,7 +256,7 @@ describe("messagingService", () => {
     if (!created.ok) return;
 
     const staffList = await messagingService.listForAdmin();
-    expect(staffList.some((c) => c.id === created.value.conversationId)).toBe(true);
+    expect(staffList.rows.some((c) => c.id === created.value.conversationId)).toBe(true);
 
     const reply = await messagingService.replyAsStaff(staffUserId, created.value.conversationId, "Yes, 20 units in stock.");
     expect(reply.ok).toBe(true);
@@ -301,7 +301,7 @@ describe("messagingService", () => {
     // The vendor's own conversation list/detail queries never surface it —
     // structurally, participantType=CUSTOMER rows are invisible to
     // findVendorConversations/getForVendor regardless of context.
-    const vendorList = await messagingService.listForVendor(vendorId);
+    const { rows: vendorList } = await messagingService.listForVendor(vendorId);
     expect(vendorList.some((c) => c.id === created.value.conversationId)).toBe(false);
 
     const vendorDetail = await messagingService.getForVendor(vendorId, created.value.conversationId);
@@ -347,7 +347,7 @@ describe("messagingService", () => {
     expect(serialized).not.toContain("private-owner@example.com");
     expect(serialized).not.toContain("0244999999");
 
-    const summary = await messagingService.listForCustomer(customerAProfileId);
+    const { rows: summary } = await messagingService.listForCustomer(customerAProfileId);
     expect(JSON.stringify(summary)).not.toContain("private-owner@example.com");
   });
 

@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/db";
+import { paginationSkip } from "../../lib/pagination";
 import type { VendorApplicationView, AdminApplicationSummary } from "./types";
 
 const applicationSelect = {
@@ -98,5 +99,48 @@ export const vendorApplicationsRepository = {
       submittedAt: row.submittedAt,
       createdAt: row.createdAt,
     }));
+  },
+
+  /**
+   * (M11.1) Paginated variant of listForAdmin, for the admin vendor
+   * applications queue page. listForAdmin itself stays unbounded — it's
+   * also used by admin-dashboard for pending-application attention/summary
+   * counts, which need the full matching set, not one page of it.
+   */
+  async listForAdminPaginated(statuses: string[], page: number, pageSize: number) {
+    const where = { status: { in: statuses as never[] } };
+    const [rows, total] = await Promise.all([
+      prisma.vendorApplication.findMany({
+        where,
+        select: {
+          id: true,
+          status: true,
+          displayName: true,
+          sellerType: true,
+          submittedAt: true,
+          createdAt: true,
+          applicant: { select: { name: true, email: true } },
+        },
+        // Oldest-first — deliberate queue order so staff review the
+        // longest-waiting application first. Not a bug; do not flip to desc.
+        orderBy: [{ submittedAt: "asc" }, { createdAt: "asc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.vendorApplication.count({ where }),
+    ]);
+    return {
+      rows: rows.map((row) => ({
+        id: row.id,
+        status: row.status,
+        displayName: row.displayName,
+        sellerType: row.sellerType,
+        applicantName: row.applicant.name,
+        applicantEmail: row.applicant.email,
+        submittedAt: row.submittedAt,
+        createdAt: row.createdAt,
+      })),
+      total,
+    };
   },
 };

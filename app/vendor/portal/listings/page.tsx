@@ -1,16 +1,20 @@
 import Link from "next/link";
 import { Button } from "../../../../components/ui/Button";
 import { ListingStatusBadge } from "../../../../components/vendor-portal/ListingStatusBadge";
+import { Pagination } from "../../../../components/shared/Pagination";
 import { formatPrice } from "../../../../lib/format";
 import { requireVendorPortalContext } from "../../../../modules/vendors/policy";
 import { vendorListingsService } from "../../../../modules/vendor-listings/service";
+import { parsePage } from "../../../../lib/pagination";
 
 export const metadata = { title: "Listings — Vendor Portal" };
 export const dynamic = "force-dynamic";
 
-export default async function VendorListingsPage() {
+export default async function VendorListingsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const { vendorId } = await requireVendorPortalContext("/vendor/portal/listings");
-  const listings = await vendorListingsService.listForVendor(vendorId);
+  const { page } = await searchParams;
+  const currentPage = parsePage(page);
+  const { rows: listings, total, pageSize } = await vendorListingsService.listForVendorPaginated(vendorId, currentPage);
 
   return (
     <div className="flex flex-col gap-6">
@@ -50,6 +54,8 @@ export default async function VendorListingsPage() {
           ))}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/vendor/portal/listings" />
     </div>
   );
 }

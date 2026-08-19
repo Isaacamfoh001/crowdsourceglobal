@@ -3,6 +3,7 @@ import { generateSourcingRequestNumber } from "../../lib/sourcing-number";
 import { storageProvider, generateStorageKey } from "../../lib/storage";
 import { validateAttachment, sanitizeFilename, MAX_ATTACHMENTS_PER_REQUEST } from "../../lib/attachment-validation";
 import { ok, err, type Result } from "../../lib/result";
+import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
 import { administrationRepository } from "../administration/repository";
@@ -37,6 +38,41 @@ const STATUS_LABELS: Record<SourcingRequestStatus, string> = {
 };
 
 const CANCELLABLE_STATUSES: SourcingRequestStatus[] = ["SUBMITTED", "UNDER_REVIEW", "SOURCING", "AWAITING_CUSTOMER"];
+
+type RawAdminSourcingRow = {
+  id: string;
+  requestNumber: string;
+  title: string;
+  quantity: number;
+  quantityUnit: string | null;
+  status: SourcingRequestStatus;
+  submittedAt: Date;
+  updatedAt: Date;
+  requiredByDate: Date | null;
+  customerProfile: { displayName: string };
+  assignedStaffId: string | null;
+  assignedStaff: { user: { name: string } } | null;
+  quotations: { id: string }[];
+};
+
+function toAdminSourcingSummary(row: RawAdminSourcingRow): AdminSourcingRequestSummaryView {
+  return {
+    id: row.id,
+    requestNumber: row.requestNumber,
+    title: row.title,
+    quantity: row.quantity,
+    quantityUnit: row.quantityUnit,
+    status: row.status,
+    statusLabel: STATUS_LABELS[row.status],
+    submittedAt: row.submittedAt,
+    updatedAt: row.updatedAt,
+    requiredByDate: row.requiredByDate,
+    customerName: row.customerProfile.displayName,
+    assignedStaffId: row.assignedStaffId,
+    assignedStaffName: row.assignedStaff?.user.name ?? null,
+    hasQuotation: row.quotations.length > 0,
+  };
+}
 
 async function notifyStaffOfNewRequest(requestId: string, requestNumber: string, title: string): Promise<void> {
   const admins = await administrationRepository.listAllForNotification();
@@ -161,19 +197,23 @@ export const sourcingService = {
     return err("Something went wrong submitting your request. Please try again.");
   },
 
-  async listForCustomer(customerProfileId: string): Promise<SourcingRequestSummaryView[]> {
-    const rows = await sourcingRepository.findSummariesForCustomer(customerProfileId);
-    return rows.map((row) => ({
-      id: row.id,
-      requestNumber: row.requestNumber,
-      title: row.title,
-      quantity: row.quantity,
-      quantityUnit: row.quantityUnit,
-      status: row.status,
-      statusLabel: STATUS_LABELS[row.status],
-      submittedAt: row.submittedAt,
-      hasQuotation: row.quotations.length > 0,
-    }));
+  async listForCustomer(customerProfileId: string, page = 1): Promise<{ rows: SourcingRequestSummaryView[]; total: number; pageSize: number }> {
+    const { rows, total } = await sourcingRepository.findSummariesForCustomer(customerProfileId, page, DEFAULT_PAGE_SIZE);
+    return {
+      rows: rows.map((row) => ({
+        id: row.id,
+        requestNumber: row.requestNumber,
+        title: row.title,
+        quantity: row.quantity,
+        quantityUnit: row.quantityUnit,
+        status: row.status,
+        statusLabel: STATUS_LABELS[row.status],
+        submittedAt: row.submittedAt,
+        hasQuotation: row.quotations.length > 0,
+      })),
+      total,
+      pageSize: DEFAULT_PAGE_SIZE,
+    };
   },
 
   async getDetailForCustomer(id: string, customerProfileId: string): Promise<SourcingRequestDetailView | null> {
@@ -235,22 +275,16 @@ export const sourcingService = {
 
   async listForAdmin(filter: { status?: SourcingRequestStatus; assignedStaffId?: string }): Promise<AdminSourcingRequestSummaryView[]> {
     const rows = await sourcingRepository.listForAdmin(filter);
-    return rows.map((row) => ({
-      id: row.id,
-      requestNumber: row.requestNumber,
-      title: row.title,
-      quantity: row.quantity,
-      quantityUnit: row.quantityUnit,
-      status: row.status,
-      statusLabel: STATUS_LABELS[row.status],
-      submittedAt: row.submittedAt,
-      updatedAt: row.updatedAt,
-      requiredByDate: row.requiredByDate,
-      customerName: row.customerProfile.displayName,
-      assignedStaffId: row.assignedStaffId,
-      assignedStaffName: row.assignedStaff?.user.name ?? null,
-      hasQuotation: row.quotations.length > 0,
-    }));
+    return rows.map(toAdminSourcingSummary);
+  },
+
+  /** (M11.1) Paginated variant for the admin sourcing requests queue page — see listForAdminPaginated on the repository. */
+  async listForAdminPaginated(
+    filter: { status?: SourcingRequestStatus; assignedStaffId?: string },
+    page: number,
+  ): Promise<{ rows: AdminSourcingRequestSummaryView[]; total: number; pageSize: number }> {
+    const { rows, total } = await sourcingRepository.listForAdminPaginated(filter, page, DEFAULT_PAGE_SIZE);
+    return { rows: rows.map(toAdminSourcingSummary), total, pageSize: DEFAULT_PAGE_SIZE };
   },
 
   async listStaffOptions(): Promise<StaffOption[]> {
@@ -262,9 +296,15 @@ export const sourcingService = {
     return sourcingRepository.listApprovedVendorsForPicker();
   },
 
-  /** Reuses the public catalogue read path — no new listing query needed. */
+  /**
+   * Reuses the public catalogue read path — no new listing query needed.
+   * (M11.1) Uses the bounded/uncapped read, not the paginated one: this is
+   * an admin picker dropdown, not a page a user pages through. 48
+   * preserves the effective cap catalogueRepository.listListings used to
+   * hard-code before pagination was added.
+   */
   async listVendorListingOptions(): Promise<VendorListingOption[]> {
-    const listings = await catalogueService.listListings({});
+    const listings = await catalogueService.listListingsCapped({}, 48);
     return listings.map((listing) => ({
       id: listing.id,
       title: listing.title,

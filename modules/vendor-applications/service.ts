@@ -5,6 +5,7 @@ import { ok, err, type Result } from "../../lib/result";
 import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
 import { administrationRepository } from "../administration/repository";
+import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import { vendorApplicationsRepository } from "./repository";
 import {
   EDITABLE_STATUSES,
@@ -18,6 +19,7 @@ import {
 } from "./types";
 
 const REVIEWABLE_STATUSES = ["SUBMITTED", "UNDER_REVIEW"];
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 async function notifyStaffOfNewApplication(companyName: string, applicationId: string): Promise<void> {
   const admins = await administrationRepository.listAllForNotification();
@@ -157,6 +159,14 @@ export const vendorApplicationsService = {
 
   listForAdmin(statuses: string[] = REVIEWABLE_STATUSES): Promise<AdminApplicationSummary[]> {
     return vendorApplicationsRepository.listForAdmin(statuses);
+  },
+
+  async listForAdminPaginated(
+    statuses: string[] = REVIEWABLE_STATUSES,
+    page = 1,
+  ): Promise<{ rows: AdminApplicationSummary[]; total: number; pageSize: number }> {
+    const { rows, total } = await vendorApplicationsRepository.listForAdminPaginated(statuses, page, PAGE_SIZE);
+    return { rows, total, pageSize: PAGE_SIZE };
   },
 
   getForAdmin(applicationId: string) {

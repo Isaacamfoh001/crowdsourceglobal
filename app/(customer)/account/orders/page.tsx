@@ -47,7 +47,7 @@ export default async function OrdersPage() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <OrderStatusBadge status={order.status} />
+                <OrderStatusBadge status={order.displayStatus} label={order.displayStatusLabel} />
                 <span className="text-sm font-semibold text-stone-900">
                   {formatPrice(order.total, order.currency)}
                 </span>

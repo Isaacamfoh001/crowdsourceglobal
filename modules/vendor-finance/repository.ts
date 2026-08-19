@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/db";
 import { Prisma } from "../../generated/prisma/client";
+import { env } from "../../lib/env";
 import type { PayoutDestinationInput, PayoutDestinationSnapshot } from "./types";
 
 function toNum(value: { toNumber: () => number } | null | undefined): number {
@@ -47,16 +48,19 @@ function toEarningSummary(row: {
 }
 
 export const vendorFinanceRepository = {
-  // --- Eligibility sweep (M11) --------------------------------------------
+  // --- Eligibility sweep (M11, narrowed M11.1) ----------------------------
 
-  /** PENDING earnings whose Fulfilment has reached DELIVERED — candidates for the hold-window check. */
-  findPendingEligibilityCandidates(limit: number) {
+  /**
+   * WAITING_PERIOD earnings — candidates for the time-based hold-window
+   * check. `deliveredAt` is read directly off VendorEarning (set once,
+   * event-driven, when the Fulfilment first reached DELIVERED — see
+   * modules/fulfilment/repository.ts's progressShipment) rather than
+   * re-joining through Shipment history on every sweep tick.
+   */
+  findWaitingPeriodCandidates(limit: number) {
     return prisma.vendorEarning.findMany({
-      where: { status: "PENDING", fulfilment: { status: "DELIVERED" } },
-      select: {
-        id: true,
-        fulfilment: { select: { shipments: { orderBy: { deliveredAt: "desc" }, take: 1, select: { deliveredAt: true } } } },
-      },
+      where: { status: "WAITING_PERIOD" },
+      select: { id: true, deliveredAt: true },
       take: limit,
     });
   },
@@ -64,18 +68,33 @@ export const vendorFinanceRepository = {
   async markEligible(ids: string[]): Promise<number> {
     if (ids.length === 0) return 0;
     const result = await prisma.vendorEarning.updateMany({
-      where: { id: { in: ids }, status: "PENDING" },
+      where: { id: { in: ids }, status: "WAITING_PERIOD" },
       data: { status: "ELIGIBLE", eligibleAt: new Date() },
     });
     return result.count;
   },
 
+  /**
+   * Event-driven (M11.1) — called inline within the SAME transaction that
+   * flips the parent Fulfilment to DELIVERED (modules/fulfilment/repository.ts
+   * progressShipment). Only PENDING earnings move — an earning already
+   * ON_HOLD (e.g. a pre-delivery vendor-cannot-fulfil case) stays exactly
+   * where it is; delivery doesn't silently clear an active hold.
+   */
+  startWaitingPeriodForFulfilmentTx(tx: Prisma.TransactionClient, fulfilmentId: string, deliveredAt: Date) {
+    return tx.vendorEarning.updateMany({
+      where: { fulfilmentId, status: "PENDING" },
+      data: { status: "WAITING_PERIOD", deliveredAt },
+    });
+  },
+
   // --- Vendor-facing --------------------------------------------------------
 
   async getVendorTotals(vendorId: string) {
-    const [eligible, pending, onHold, paid, unappliedAdjustments] = await Promise.all([
+    const [eligible, pending, waitingPeriod, onHold, paid, unappliedAdjustments] = await Promise.all([
       prisma.vendorEarning.aggregate({ where: { vendorId, status: "ELIGIBLE" }, _sum: { originalPayableAmount: true } }),
       prisma.vendorEarning.aggregate({ where: { vendorId, status: "PENDING" }, _sum: { originalPayableAmount: true } }),
+      prisma.vendorEarning.aggregate({ where: { vendorId, status: "WAITING_PERIOD" }, _sum: { originalPayableAmount: true } }),
       prisma.vendorEarning.aggregate({ where: { vendorId, status: "ON_HOLD" }, _sum: { originalPayableAmount: true } }),
       prisma.vendorEarning.aggregate({ where: { vendorId, status: "PAID" }, _sum: { originalPayableAmount: true } }),
       prisma.vendorFinancialAdjustment.aggregate({ where: { vendorId, appliedToSettlementId: null }, _sum: { amount: true } }),
@@ -83,6 +102,7 @@ export const vendorFinanceRepository = {
     return {
       eligible: toNum(eligible._sum.originalPayableAmount),
       pending: toNum(pending._sum.originalPayableAmount),
+      waitingPeriod: toNum(waitingPeriod._sum.originalPayableAmount),
       onHold: toNum(onHold._sum.originalPayableAmount),
       paid: toNum(paid._sum.originalPayableAmount),
       unappliedAdjustmentTotal: toNum(unappliedAdjustments._sum.amount),
@@ -222,7 +242,7 @@ export const vendorFinanceRepository = {
 
   async listVendorFinanceSummaries(): Promise<{ vendorId: string; vendorName: string }[]> {
     const rows = await prisma.vendorEarning.findMany({
-      where: { status: { in: ["PENDING", "ON_HOLD", "ELIGIBLE"] } },
+      where: { status: { in: ["PENDING", "WAITING_PERIOD", "ON_HOLD", "ELIGIBLE"] } },
       distinct: ["vendorId"],
       select: { vendorId: true, vendor: { select: { companyName: true } } },
     });
@@ -437,11 +457,31 @@ export const vendorFinanceRepository = {
 
   // --- Hooks called from modules/resolutions (M9 -> M11 integration) -------
 
-  /** Applies an ON_HOLD state to the earnings for the given FulfilmentItems — called inline within resolutionsRepository's own approval transaction. */
+  /**
+   * Applies an ON_HOLD state to the earnings for the given FulfilmentItems —
+   * called inline within resolutionsRepository's own approval transaction.
+   * Covers every pre-settlement state a held item could actually be in
+   * (M11.1 adds WAITING_PERIOD alongside the original PENDING/ELIGIBLE).
+   */
   applyResolutionHoldTx(tx: Prisma.TransactionClient, fulfilmentItemIds: string[], caseId: string, holdReasonSafe: string, holdInternalNote: string, staffId: string) {
     return tx.vendorEarning.updateMany({
-      where: { fulfilmentItemId: { in: fulfilmentItemIds }, status: { in: ["PENDING", "ELIGIBLE"] } },
+      where: { fulfilmentItemId: { in: fulfilmentItemIds }, status: { in: ["PENDING", "WAITING_PERIOD", "ELIGIBLE"] } },
       data: { status: "ON_HOLD", holdReasonSafe, holdInternalNote, heldAt: new Date(), heldByUserId: staffId, heldForResolutionCaseId: caseId },
+    });
+  },
+
+  /**
+   * (M11.1) A full Vendor-attributable refund/return with no replacement
+   * path closes the earning permanently — CANCELLED, never left ON_HOLD
+   * waiting for a release that would never legitimately restore it. Distinct
+   * from applyResolutionHoldTx: this is a terminal transition, not a
+   * pause/resume one.
+   */
+  cancelEarningsForFulfilmentItemsTx(tx: Prisma.TransactionClient, fulfilmentItemIds: string[]) {
+    if (fulfilmentItemIds.length === 0) return Promise.resolve({ count: 0 });
+    return tx.vendorEarning.updateMany({
+      where: { fulfilmentItemId: { in: fulfilmentItemIds }, status: { in: ["PENDING", "WAITING_PERIOD", "ON_HOLD", "ELIGIBLE"] } },
+      data: { status: "CANCELLED" },
     });
   },
 
@@ -455,16 +495,53 @@ export const vendorFinanceRepository = {
 
   cancelEarningsForFulfilmentTx(tx: Prisma.TransactionClient, fulfilmentId: string) {
     return tx.vendorEarning.updateMany({
-      where: { fulfilmentId, status: { in: ["PENDING", "ON_HOLD", "ELIGIBLE"] } },
+      where: { fulfilmentId, status: { in: ["PENDING", "WAITING_PERIOD", "ON_HOLD", "ELIGIBLE"] } },
       data: { status: "CANCELLED" },
     });
   },
 
+  /**
+   * (M11.1) Release never blindly resets to PENDING — it restores each
+   * earning to where it would legitimately be had the hold never happened:
+   * PENDING if its Fulfilment never delivered; ELIGIBLE if delivery already
+   * happened long enough ago that the hold window would have already
+   * elapsed; otherwise WAITING_PERIOD (still within the window, picked up by
+   * the next sweep tick same as any other). Never PENDING for an
+   * already-delivered item — that would silently imply "vendor fulfilment
+   * work is still outstanding," which is false.
+   */
   async releaseHoldForResolutionCase(caseId: string) {
-    const result = await prisma.vendorEarning.updateMany({
+    const held = await prisma.vendorEarning.findMany({
       where: { heldForResolutionCaseId: caseId, status: "ON_HOLD" },
-      data: { status: "PENDING", holdReasonSafe: null, holdInternalNote: null, releasedAt: new Date(), heldForResolutionCaseId: null },
+      select: { id: true, deliveredAt: true },
     });
-    return result.count;
+    if (held.length === 0) return 0;
+
+    const holdMs = env.VENDOR_PAYOUT_HOLD_HOURS * 60 * 60 * 1000;
+    const now = Date.now();
+    const toPending: string[] = [];
+    const toEligible: string[] = [];
+    const toWaitingPeriod: string[] = [];
+    for (const earning of held) {
+      if (!earning.deliveredAt) toPending.push(earning.id);
+      else if (now - earning.deliveredAt.getTime() >= holdMs) toEligible.push(earning.id);
+      else toWaitingPeriod.push(earning.id);
+    }
+
+    const clearedHoldFields = { holdReasonSafe: null, holdInternalNote: null, releasedAt: new Date(), heldForResolutionCaseId: null } as const;
+    let count = 0;
+    if (toPending.length > 0) {
+      const r = await prisma.vendorEarning.updateMany({ where: { id: { in: toPending } }, data: { status: "PENDING", ...clearedHoldFields } });
+      count += r.count;
+    }
+    if (toWaitingPeriod.length > 0) {
+      const r = await prisma.vendorEarning.updateMany({ where: { id: { in: toWaitingPeriod } }, data: { status: "WAITING_PERIOD", ...clearedHoldFields } });
+      count += r.count;
+    }
+    if (toEligible.length > 0) {
+      const r = await prisma.vendorEarning.updateMany({ where: { id: { in: toEligible } }, data: { status: "ELIGIBLE", eligibleAt: new Date(), ...clearedHoldFields } });
+      count += r.count;
+    }
+    return count;
   },
 };

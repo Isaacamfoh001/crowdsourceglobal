@@ -1,4 +1,4 @@
-export type EarningStatus = "PENDING" | "ON_HOLD" | "ELIGIBLE" | "INCLUDED_IN_SETTLEMENT" | "PAID" | "CANCELLED";
+export type EarningStatus = "PENDING" | "WAITING_PERIOD" | "ON_HOLD" | "ELIGIBLE" | "INCLUDED_IN_SETTLEMENT" | "PAID" | "CANCELLED";
 
 export type AdjustmentCategory = "RESOLUTION_REFUND" | "MANUAL_CORRECTION" | "SETTLEMENT_REVERSAL";
 
@@ -41,7 +41,10 @@ export type VendorEarningDetailView = VendorEarningSummaryView & {
 export type VendorFinanceOverview = {
   currency: string;
   availableForSettlement: number;
+  /** Fulfilment work still outstanding — the Vendor hasn't delivered yet. */
   pending: number;
+  /** (M11.1) Delivered, but the post-delivery settlement window hasn't elapsed yet. */
+  waitingPeriod: number;
   onHold: number;
   paidToDate: number;
   /** Sum of unapplied adjustments not yet reflected in availableForSettlement's earnings (can be negative — an outstanding debit). */
@@ -114,6 +117,7 @@ export type AdminVendorFinanceSummaryView = {
   currency: string;
   eligible: number;
   pending: number;
+  waitingPeriod: number;
   onHold: number;
   unappliedAdjustmentTotal: number;
   paidToDate: number;

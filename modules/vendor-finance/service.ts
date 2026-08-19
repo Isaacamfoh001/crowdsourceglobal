@@ -39,21 +39,21 @@ export const vendorFinanceService = {
   // --- Background sweep (M11) — see scripts/sweep-earnings-eligibility.ts ---
 
   /**
-   * Time-based eligibility transition: PENDING -> ELIGIBLE once the
-   * configured VENDOR_PAYOUT_HOLD_HOURS have elapsed since the Fulfilment's
-   * most recent delivery. ON_HOLD earnings are never touched here — they
-   * only leave ON_HOLD via an explicit release (resolutionsService.resolveCase).
+   * Time-based eligibility transition ONLY: WAITING_PERIOD -> ELIGIBLE once
+   * the configured VENDOR_PAYOUT_HOLD_HOURS have elapsed since the earning's
+   * own `deliveredAt` (M11.1 — set event-driven when the Fulfilment first
+   * reached DELIVERED, see modules/fulfilment/repository.ts's
+   * progressShipment). This sweep is deliberately narrow: it is NEVER
+   * responsible for creating holds, cancelling fully-refunded earnings, or
+   * applying adjustments — those are all event-driven (resolutionsRepository)
+   * and would already have moved an earning out of WAITING_PERIOD before this
+   * ever runs. ON_HOLD earnings are never candidates here at all.
    */
   async sweepEligibleEarnings(limit = 200): Promise<{ madeEligible: number }> {
-    const candidates = await vendorFinanceRepository.findPendingEligibilityCandidates(limit);
+    const candidates = await vendorFinanceRepository.findWaitingPeriodCandidates(limit);
     const holdMs = env.VENDOR_PAYOUT_HOLD_HOURS * 60 * 60 * 1000;
     const now = Date.now();
-    const readyIds = candidates
-      .filter((c) => {
-        const deliveredAt = c.fulfilment.shipments[0]?.deliveredAt;
-        return deliveredAt ? now - deliveredAt.getTime() >= holdMs : false;
-      })
-      .map((c) => c.id);
+    const readyIds = candidates.filter((c) => c.deliveredAt && now - c.deliveredAt.getTime() >= holdMs).map((c) => c.id);
     const madeEligible = await vendorFinanceRepository.markEligible(readyIds);
     return { madeEligible };
   },
@@ -66,6 +66,7 @@ export const vendorFinanceService = {
       currency: "GHS",
       availableForSettlement: Math.max(0, totals.eligible + totals.unappliedAdjustmentTotal),
       pending: totals.pending,
+      waitingPeriod: totals.waitingPeriod,
       onHold: totals.onHold,
       paidToDate: totals.paid,
       unappliedAdjustmentTotal: totals.unappliedAdjustmentTotal,
@@ -151,6 +152,7 @@ export const vendorFinanceService = {
         currency: "GHS",
         eligible: totals.eligible,
         pending: totals.pending,
+        waitingPeriod: totals.waitingPeriod,
         onHold: totals.onHold,
         unappliedAdjustmentTotal: totals.unappliedAdjustmentTotal,
         paidToDate: totals.paid,
@@ -171,6 +173,7 @@ export const vendorFinanceService = {
       currency: "GHS",
       eligible: totals.eligible,
       pending: totals.pending,
+      waitingPeriod: totals.waitingPeriod,
       onHold: totals.onHold,
       unappliedAdjustmentTotal: totals.unappliedAdjustmentTotal,
       paidToDate: totals.paid,

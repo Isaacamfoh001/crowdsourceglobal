@@ -6,6 +6,7 @@ import {
   isRefundBearing,
   requiresReturn,
   isReplacement,
+  isFullVendorClosure,
   CANCELLABLE_FULFILMENT_STATUSES,
 } from "./policy";
 
@@ -85,6 +86,29 @@ describe("resolutions policy", () => {
       expect(isReplacement("REPLACEMENT")).toBe(true);
       expect(isReplacement("RETURN_AND_REPLACEMENT")).toBe(true);
       expect(isReplacement("FULL_REFUND")).toBe(false);
+    });
+  });
+
+  describe("isFullVendorClosure (M11.1) — decides whether an earning is CANCELLED outright rather than held", () => {
+    it("a FULL_REFUND covering the entire FulfilmentItem quantity is a full closure", () => {
+      expect(isFullVendorClosure("FULL_REFUND", 2, 2)).toBe(true);
+    });
+    it("a RETURN_AND_REFUND covering the entire quantity is also a full closure", () => {
+      expect(isFullVendorClosure("RETURN_AND_REFUND", 1, 1)).toBe(true);
+    });
+    it("a FULL_REFUND covering only PART of a multi-unit FulfilmentItem is NOT a full closure — the item still carries unaffected value", () => {
+      expect(isFullVendorClosure("FULL_REFUND", 1, 3)).toBe(false);
+    });
+    it("PARTIAL_REFUND never counts as a full closure regardless of quantity", () => {
+      expect(isFullVendorClosure("PARTIAL_REFUND", 3, 3)).toBe(false);
+    });
+    it("REPLACEMENT/RETURN_AND_REPLACEMENT never count as a full closure — the Vendor still has a fulfilment obligation", () => {
+      expect(isFullVendorClosure("REPLACEMENT", 2, 2)).toBe(false);
+      expect(isFullVendorClosure("RETURN_AND_REPLACEMENT", 2, 2)).toBe(false);
+    });
+    it("NO_ACTION and REDELIVERY never count as a full closure", () => {
+      expect(isFullVendorClosure("NO_ACTION", 2, 2)).toBe(false);
+      expect(isFullVendorClosure("REDELIVERY", 2, 2)).toBe(false);
     });
   });
 });

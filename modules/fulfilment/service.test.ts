@@ -306,6 +306,24 @@ describe("fulfilmentService", () => {
     expect(fulfilment?.status).toBe("DELIVERED");
   });
 
+  it("confirmDelivered event-drives the linked VendorEarning from PENDING to WAITING_PERIOD immediately (M11.1) — never waits for the sweep", async () => {
+    const { domesticFulfilment } = await placeMultiVendorOrder();
+    const earningBefore = await prisma.vendorEarning.findFirstOrThrow({ where: { fulfilmentId: domesticFulfilment.id } });
+    expect(earningBefore.status).toBe("PENDING");
+    expect(earningBefore.deliveredAt).toBeNull();
+
+    await fulfilmentService.startPreparing(domesticVendorId, domesticFulfilment.id);
+    await fulfilmentService.markReady(domesticVendorId, domesticFulfilment.id);
+    await fulfilmentService.confirmCollectedOrReceived(domesticFulfilment.id, "admin-user-id", null);
+    await fulfilmentService.progressToInTransit(domesticFulfilment.id);
+    await fulfilmentService.progressToOutForDelivery(domesticFulfilment.id);
+    await fulfilmentService.confirmDelivered(domesticFulfilment.id);
+
+    const earningAfter = await prisma.vendorEarning.findFirstOrThrow({ where: { fulfilmentId: domesticFulfilment.id } });
+    expect(earningAfter.status).toBe("WAITING_PERIOD"); // event-driven — never jumps straight to ELIGIBLE, that's the sweep's job alone
+    expect(earningAfter.deliveredAt).not.toBeNull();
+  });
+
   it("a failed delivery can be resumed", async () => {
     const { domesticFulfilment } = await placeMultiVendorOrder();
     await fulfilmentService.startPreparing(domesticVendorId, domesticFulfilment.id);
