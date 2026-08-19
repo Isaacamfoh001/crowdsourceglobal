@@ -10,6 +10,8 @@ export const notificationLinks = {
   vendorOrder: (fulfilmentId: string) => `/vendor/portal/orders/${fulfilmentId}`,
   vendorMessage: (conversationId: string) => `/vendor/portal/messages/${conversationId}`,
   vendorResolution: (caseId: string) => `/vendor/portal/resolutions/${caseId}`,
+  vendorFinance: () => "/vendor/portal/finance",
+  vendorSettlement: (settlementId: string) => `/vendor/portal/finance/settlements/${settlementId}`,
 
   customerOrder: (orderId: string) => `/account/orders/${orderId}`,
   customerQuote: (quotationId: string) => `/account/quotes/${quotationId}`,
@@ -22,4 +24,7 @@ export const notificationLinks = {
   adminMessage: (conversationId: string) => `/admin/messages/${conversationId}`,
   adminResolution: (caseId: string) => `/admin/resolutions/${caseId}`,
   adminPayment: (paymentId: string) => `/admin/payments/${paymentId}`,
+  adminFinance: () => "/admin/finance",
+  adminFinanceVendor: (vendorId: string) => `/admin/finance/vendors/${vendorId}`,
+  adminSettlement: (settlementId: string) => `/admin/finance/settlements/${settlementId}`,
 };

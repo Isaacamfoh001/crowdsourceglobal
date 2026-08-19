@@ -3,6 +3,7 @@ import { Prisma } from "../../generated/prisma/client";
 import { resolutionsRepository } from "./repository";
 import { ordersRepository } from "../orders/repository";
 import { vendorsRepository } from "../vendors/repository";
+import { vendorFinanceService } from "../vendor-finance/service";
 import { administrationRepository } from "../administration/repository";
 import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
@@ -554,12 +555,19 @@ export const resolutionsService = {
     }
 
     // payoutHold needs the raw fulfilmentItemId, which CaseItemView doesn't carry — resolve separately.
+    const heldVendorIds = new Set<string>();
     if (input.responsibility === "VENDOR") {
-      const rawItems = await prisma.resolutionCaseItem.findMany({ where: { id: { in: input.items.map((i) => i.caseItemId) } }, select: { id: true, fulfilmentItemId: true } });
+      const rawItems = await prisma.resolutionCaseItem.findMany({
+        where: { id: { in: input.items.map((i) => i.caseItemId) } },
+        select: { id: true, fulfilmentItemId: true, fulfilmentItem: { select: { fulfilment: { select: { vendorId: true } } } } },
+      });
       for (const decision of input.items) {
         if (!isRefundBearing(decision.approvedResolution) && !isReplacement(decision.approvedResolution)) continue;
         const raw = rawItems.find((r) => r.id === decision.caseItemId);
-        if (raw?.fulfilmentItemId) payoutHoldFulfilmentItemIds.push(raw.fulfilmentItemId);
+        if (raw?.fulfilmentItemId) {
+          payoutHoldFulfilmentItemIds.push(raw.fulfilmentItemId);
+          if (raw.fulfilmentItem?.fulfilment.vendorId) heldVendorIds.add(raw.fulfilmentItem.fulfilment.vendorId);
+        }
       }
     }
 
@@ -598,6 +606,27 @@ export const resolutionsService = {
       actorUserId: staffId,
     });
     if (!result) return err("This case is no longer ready for a decision.");
+
+    // M11 — tell only the Vendor(s) whose own earnings were actually held,
+    // never every vendor touched by a multi-vendor case.
+    for (const vendorId of heldVendorIds) {
+      const owner = await vendorsRepository.findOwnerUserIdAndEmail(vendorId);
+      if (!owner) continue;
+      await notificationsService.notify({
+        recipientUserId: owner.userId,
+        type: "VENDOR_EARNING_ON_HOLD",
+        title: "An earning has been placed on hold",
+        body: `An earning from order ${caseDetail.order.orderNumber} has been placed on hold: ${vendorFinanceService.holdReasonSafeForResolutionCase()}`,
+        targetUrl: notificationLinks.vendorFinance(),
+        eventKey: `earning-on-hold:${caseId}:${vendorId}`,
+        email: {
+          to: owner.email,
+          subject: "An earning has been placed on hold",
+          templateKey: "vendor-earning-on-hold",
+          templateData: { orderNumber: caseDetail.order.orderNumber, reasonSafe: vendorFinanceService.holdReasonSafeForResolutionCase() },
+        },
+      });
+    }
 
     const context = await resolutionsRepository.findCaseContextForNotification(caseId);
     if (context) {
@@ -655,6 +684,11 @@ export const resolutionsService = {
     const applied = await resolutionsRepository.updateStatus(caseId, ["RESOLUTION_APPROVED", "RESOLUTION_IN_PROGRESS"], "RESOLVED", { resolvedAt: new Date() });
     if (!applied) return err("This case isn't ready to be marked resolved.");
     await resolutionsRepository.createActivity(caseId, "case_resolved", staffId);
+    // M11 — the case is fully wrapped up; any VendorEarnings held for it
+    // return to PENDING, to be recomputed by the normal eligibility sweep
+    // (their original, adjustment-netted amount — never restored to a
+    // stale pre-adjustment figure, since adjustments are separate rows).
+    await vendorFinanceService.releaseHoldForResolutionCase(caseId);
 
     const context = await resolutionsRepository.findCaseContextForNotification(caseId);
     const caseRow = await resolutionsRepository.findStatusForUpdate(caseId);

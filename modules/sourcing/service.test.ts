@@ -110,6 +110,8 @@ describe("sourcingService", () => {
   afterAll(async () => {
     await prisma.message.deleteMany({ where: { conversation: { contextSourcingRequestId: { in: createdRequestIds } } } });
     await prisma.conversation.deleteMany({ where: { contextSourcingRequestId: { in: createdRequestIds } } });
+    await prisma.vendorFinancialAdjustment.deleteMany({ where: { vendorEarning: { orderId: { in: createdOrderIds } } } });
+    await prisma.vendorEarning.deleteMany({ where: { orderId: { in: createdOrderIds } } });
     await prisma.fulfilmentItem.deleteMany({ where: { fulfilment: { orderId: { in: createdOrderIds } } } });
     await prisma.fulfilment.deleteMany({ where: { orderId: { in: createdOrderIds } } });
     await prisma.inventoryReservation.deleteMany({ where: { orderId: { in: createdOrderIds } } });

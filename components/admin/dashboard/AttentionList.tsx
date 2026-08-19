@@ -11,6 +11,7 @@ const MODULE_LABELS: Record<AttentionItem["module"], string> = {
   QUOTATIONS: "Quotations",
   RESOLUTIONS: "Resolutions",
   PAYMENTS: "Payments",
+  FINANCE: "Finance",
 };
 
 export function AttentionList({ items, emptyMessage }: { items: AttentionItem[]; emptyMessage: string }) {

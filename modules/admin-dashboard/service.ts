@@ -376,6 +376,59 @@ async function paymentExceptionAttention(now: Date): Promise<AttentionItem[]> {
   }));
 }
 
+/** M11 — earnings that have sat ELIGIBLE for too long without being included in a settlement. */
+async function eligibleEarningsUnsettledAttention(now: Date): Promise<AttentionItem[]> {
+  const since = new Date(now.getTime() - THRESHOLDS.financeEligibleUnsettledWarningHours * 60 * 60 * 1000);
+  const rows = await adminDashboardRepository.findEligibleEarningsUnsettled(since);
+  return rows.map((row) => ({
+    type: "ELIGIBLE_EARNINGS_UNSETTLED_TOO_LONG" as const,
+    module: "FINANCE" as const,
+    severity: severityForAge(ageHours(row.eligibleAt!, now), THRESHOLDS.financeEligibleUnsettledWarningHours),
+    reference: row.vendor.companyName,
+    description: `An eligible earning for ${row.vendor.companyName} hasn't been settled yet`,
+    status: "Eligible, unsettled",
+    ageLabel: formatAge(row.eligibleAt!, now),
+    ageHours: ageHours(row.eligibleAt!, now),
+    assignedTo: null,
+    targetUrl: `/admin/finance/vendors/${row.vendorId}`,
+  }));
+}
+
+/** M11 — a Settlement approved but not yet paid out for too long. */
+async function settlementApprovedAwaitingPayoutAttention(now: Date): Promise<AttentionItem[]> {
+  const since = new Date(now.getTime() - THRESHOLDS.financeSettlementApprovedWarningHours * 60 * 60 * 1000);
+  const rows = await adminDashboardRepository.findApprovedSettlementsAwaitingPayout(since);
+  return rows.map((row) => ({
+    type: "SETTLEMENT_APPROVED_AWAITING_PAYOUT" as const,
+    module: "FINANCE" as const,
+    severity: severityForAge(ageHours(row.approvedAt!, now), THRESHOLDS.financeSettlementApprovedWarningHours),
+    reference: row.settlementNumber,
+    description: `Settlement ${row.settlementNumber} for ${row.vendor.companyName} is approved but not yet paid out`,
+    status: "Awaiting payout",
+    ageLabel: formatAge(row.approvedAt!, now),
+    ageHours: ageHours(row.approvedAt!, now),
+    assignedTo: null,
+    targetUrl: `/admin/finance/settlements/${row.id}`,
+  }));
+}
+
+/** M11 — a Vendor with a net-negative unapplied adjustment balance (a real recovery gap, not just informational) — always CRITICAL, same reasoning as PAYMENT_EXCEPTION. */
+async function vendorNegativeBalanceAttention(now: Date): Promise<AttentionItem[]> {
+  const rows = await adminDashboardRepository.findVendorsWithNegativeBalance();
+  return rows.map((row) => ({
+    type: "VENDOR_NEGATIVE_BALANCE" as const,
+    module: "FINANCE" as const,
+    severity: "CRITICAL" as const,
+    reference: row.vendorName,
+    description: `${row.vendorName} has an outstanding negative balance of GHS ${Math.abs(row.balance).toFixed(2)}`,
+    status: "Negative balance",
+    ageLabel: "—",
+    ageHours: 0,
+    assignedTo: null,
+    targetUrl: `/admin/finance/vendors/${row.vendorId}`,
+  }));
+}
+
 /** Fetches and normalizes every attention category the given role is permitted to see, severity-sorted, most-severe first. */
 async function collectAttentionItems(role: AdminRole, now: Date): Promise<AttentionItem[]> {
   const operationalAllowed = canAccessOperationalModules(role);
@@ -387,7 +440,9 @@ async function collectAttentionItems(role: AdminRole, now: Date): Promise<Attent
     ...(operationalAllowed
       ? [sourcingAttention(now), fulfilmentAttention(now), messageAttention(now), resolutionCaseAttention(now), returnInspectionAttention(now), refundFailedAttention(now)]
       : []),
-    ...(financeAllowed ? [paymentExceptionAttention(now)] : []),
+    ...(financeAllowed
+      ? [paymentExceptionAttention(now), eligibleEarningsUnsettledAttention(now), settlementApprovedAwaitingPayoutAttention(now), vendorNegativeBalanceAttention(now)]
+      : []),
   ];
   const results = await Promise.all(builders.map((p) => p.catch((error) => { console.error("[admin-dashboard] attention section failed:", error); return [] as AttentionItem[]; })));
   return results.flat().sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || b.ageHours - a.ageHours);
@@ -531,13 +586,14 @@ export const adminDashboardService = {
     const operationalAllowed = canAccessOperationalModules(role);
 
     const financeAllowed = canAccessFinance(role);
-    const [orders, quotations, sourcing, listings, customers, payments, ...operational] = await Promise.all([
+    const [orders, quotations, sourcing, listings, customers, payments, settlements, ...operational] = await Promise.all([
       adminDashboardRepository.searchOrders(q),
       adminDashboardRepository.searchQuotations(q),
       adminDashboardRepository.searchSourcingRequests(q),
       adminDashboardRepository.searchListings(q),
       adminDashboardRepository.searchCustomers(q),
       financeAllowed ? adminDashboardRepository.searchPayments(q) : Promise.resolve([]),
+      financeAllowed ? adminDashboardRepository.searchSettlements(q) : Promise.resolve([]),
       ...(operationalAllowed
         ? [adminDashboardRepository.searchVendors(q), adminDashboardRepository.searchShipments(q), adminDashboardRepository.searchResolutionCases(q)]
         : [Promise.resolve([]), Promise.resolve([]), Promise.resolve([])]),
@@ -613,6 +669,12 @@ export const adminDashboardService = {
         label: p.reference,
         sublabel: `Order ${p.order.orderNumber} · ${p.status}`,
         targetUrl: `/admin/payments/${p.id}`,
+      })),
+      ...settlements.map((s) => ({
+        type: "SETTLEMENT" as const,
+        label: s.settlementNumber,
+        sublabel: `${s.vendor.companyName} · ${s.status}`,
+        targetUrl: `/admin/finance/settlements/${s.id}`,
       })),
     ];
     return results;

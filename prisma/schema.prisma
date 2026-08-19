@@ -271,6 +271,12 @@ model Vendor {
   participantConversations Conversation[] @relation("VendorParticipantConversations")
   contextConversations     Conversation[] @relation("ConversationContextVendor")
 
+  /// Vendor Finance (M11) — see docs/decisions/0009-vendor-earnings-and-settlement.md.
+  vendorEarnings       VendorEarning[]
+  financialAdjustments VendorFinancialAdjustment[]
+  settlements          VendorSettlement[]
+  payoutDestination    VendorPayoutDestination?
+
   @@map("vendor")
 }
 
@@ -606,6 +612,7 @@ model Order {
   conversations   Conversation[]
   resolutionCases ResolutionCase[]
   refunds         Refund[]
+  vendorEarnings  VendorEarning[]
 
   @@index([customerProfileId])
   /// Backs the M8 admin-dashboard "Today" KPI queries (status + date range).
@@ -639,6 +646,7 @@ model OrderItem {
   vendor   Vendor? @relation(fields: [vendorId], references: [id])
 
   fulfilmentItems        FulfilmentItem[]
+  vendorEarnings         VendorEarning[]
   /// This item as the affected line in a post-purchase case (M9).
   resolutionCaseItems    ResolutionCaseItem[]
   /// This item as the ORIGINAL line a Replacement (M9) replaces — named
@@ -701,6 +709,7 @@ model Fulfilment {
   /// a case's detailed item/quantity breakdown lives on ResolutionCaseItem
   /// regardless; this is a convenience pointer, not the source of truth.
   resolutionCases ResolutionCase[]
+  vendorEarnings  VendorEarning[]
 
   @@index([orderId])
   @@index([vendorId])
@@ -743,25 +752,23 @@ model FulfilmentIssue {
   @@map("fulfilment_issue")
 }
 
-enum PayoutEligibility {
-  NOT_ELIGIBLE
-  ELIGIBLE
-  ON_HOLD
-  CLAIMED
-}
-
 /// Never independently authoritative — always copies its economics from
 /// the parent OrderItem at Fulfilment-creation time, no new pricing
-/// evaluation (docs/workflows/workflows.md).
+/// evaluation (docs/workflows/workflows.md). `payoutHold`/`payoutHoldReason`
+/// are set by resolutionsService.approveResolution() (M9) and read as one
+/// input to VendorEarning's own eligibility computation (M11) — the actual
+/// payable lifecycle lives on VendorEarning, not here (the never-populated
+/// `payoutEligibility` field this milestone removed was dead weight from
+/// the pre-implementation planning pass; VendorEarning.status supersedes
+/// it, see docs/decisions/0009-vendor-earnings-and-settlement.md).
 model FulfilmentItem {
-  id                 String            @id @default(cuid())
+  id                 String   @id @default(cuid())
   quantity           Int
-  unitPrice          Decimal           @db.Decimal(12, 2)
-  vendorPayableBasis Decimal           @db.Decimal(12, 2)
-  payoutEligibility  PayoutEligibility @default(NOT_ELIGIBLE)
-  payoutHold         Boolean           @default(false)
+  unitPrice          Decimal  @db.Decimal(12, 2)
+  vendorPayableBasis Decimal  @db.Decimal(12, 2)
+  payoutHold         Boolean  @default(false)
   payoutHoldReason   String?
-  createdAt          DateTime          @default(now())
+  createdAt          DateTime @default(now())
 
   fulfilmentId String
   fulfilment   Fulfilment @relation(fields: [fulfilmentId], references: [id], onDelete: Cascade)
@@ -770,6 +777,7 @@ model FulfilmentItem {
   orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
 
   resolutionCaseItems ResolutionCaseItem[]
+  vendorEarning       VendorEarning?
 
   @@index([fulfilmentId])
   @@index([orderItemId])
@@ -1152,13 +1160,15 @@ model ResolutionCase {
   assignedStaffId String?
   assignedStaff   AdminUser? @relation(fields: [assignedStaffId], references: [id])
 
-  items         ResolutionCaseItem[]
-  attachments   ResolutionCaseAttachment[]
-  activities    ResolutionCaseActivity[]
-  refunds       Refund[]
-  returns       Return[]
-  replacements  Replacement[]
-  conversations Conversation[]
+  items                ResolutionCaseItem[]
+  attachments          ResolutionCaseAttachment[]
+  activities           ResolutionCaseActivity[]
+  refunds              Refund[]
+  returns              Return[]
+  replacements         Replacement[]
+  conversations        Conversation[]
+  financialAdjustments VendorFinancialAdjustment[]
+  heldVendorEarnings   VendorEarning[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -1882,6 +1892,9 @@ enum NotificationType {
   ADMIN_REFUND_FAILED
   PAYMENT_FAILED
   ADMIN_PAYMENT_REQUIRES_ATTENTION
+  VENDOR_EARNING_ON_HOLD
+  VENDOR_SETTLEMENT_APPROVED
+  VENDOR_SETTLEMENT_PAID
 }
 
 /// A structured, typed in-app notification. `title`/`body` are plain text
@@ -1986,4 +1999,257 @@ model NotificationPreference {
   updatedAt DateTime @updatedAt
 
   @@map("notification_preference")
+}
+
+// ---------------------------------------------------------------------------
+// M11 — Vendor Finance, Earnings, Settlement & Payout Management
+//
+// The other half of the marketplace financial lifecycle (M9 covers customer-
+// side refunds/adjustments; M10A-B covers customer payment collection). This
+// section implements the mechanism ADR 0005 designed but never built:
+// VendorEarning is the actual, implemented per-line payable lifecycle
+// (superseding the never-populated FulfilmentItem.payoutEligibility, removed
+// this milestone); VendorFinancialAdjustment is ADR 0005's PayoutAdjustment,
+// additive-only, never rewriting an earning's original snapshot;
+// VendorSettlement/VendorSettlementItem are the manual-payout-mode batching
+// unit (one Vendor per Settlement). No automated disbursement API is called
+// anywhere in this section — see docs/decisions/0009-vendor-earnings-and-settlement.md.
+// ---------------------------------------------------------------------------
+
+enum EarningStatus {
+  PENDING
+  ON_HOLD
+  ELIGIBLE
+  INCLUDED_IN_SETTLEMENT
+  PAID
+  CANCELLED
+}
+
+/// The authoritative per-line financial obligation CrownSourceGlobal owes a
+/// Vendor — one row per FulfilmentItem (the smallest vendor-attributable,
+/// quantity-correct unit; deliberately NOT per-Order or per-OrderItem, so a
+/// multi-vendor Order produces independent, independently-holdable
+/// earnings, and a partial-quantity split across Fulfilments produces
+/// independent earnings too). Created transactionally at the same moment
+/// its FulfilmentItem is created (Order confirmation, or a resolution-case
+/// replacement fulfilment) — never reconstructed later from history.
+///
+/// `originalPayableAmount` is copied once, from FulfilmentItem.vendorPayableBasis,
+/// and is NEVER rewritten afterward (the financial snapshot rule). Every
+/// correction is an additive VendorFinancialAdjustment row instead.
+model VendorEarning {
+  id     String        @id @default(cuid())
+  status EarningStatus @default(PENDING)
+
+  currency              String  @default("GHS")
+  originalPayableAmount Decimal @db.Decimal(12, 2)
+
+  /// Vendor-facing copy only when set (e.g. "Order issue under review") —
+  /// never an internal note. See VendorFinance module policy for exact copy.
+  holdReasonSafe   String?
+  /// Admin-only — never surfaced to the Vendor.
+  holdInternalNote String?
+  heldAt           DateTime?
+  heldByUserId     String?
+  releasedAt       DateTime?
+  releasedByUserId String?
+
+  /// Set only when the current/most-recent hold originated from a
+  /// ResolutionCase (as opposed to a manual admin hold) — precisely targets
+  /// which earnings resolutionsService.resolveCase() should release,
+  /// without string-matching holdInternalNote. Cleared on release.
+  heldForResolutionCaseId String?
+  heldForResolutionCase   ResolutionCase? @relation(fields: [heldForResolutionCaseId], references: [id])
+
+  /// Set once every gating condition (Fulfilment DELIVERED, configured hold
+  /// window elapsed, no active hold) is first met.
+  eligibleAt DateTime?
+
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id])
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  fulfilmentId String
+  fulfilment   Fulfilment @relation(fields: [fulfilmentId], references: [id])
+
+  fulfilmentItemId String         @unique
+  fulfilmentItem   FulfilmentItem @relation(fields: [fulfilmentItemId], references: [id])
+
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+
+  adjustments    VendorFinancialAdjustment[]
+  settlementItem VendorSettlementItem?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId, status])
+  @@index([orderId])
+  @@index([status, eligibleAt])
+  @@map("vendor_earning")
+}
+
+enum AdjustmentCategory {
+  RESOLUTION_REFUND
+  MANUAL_CORRECTION
+  SETTLEMENT_REVERSAL
+}
+
+/// Additive-only financial correction (ADR 0005's PayoutAdjustment,
+/// implemented) — never a rewrite of VendorEarning.originalPayableAmount.
+/// May be created against an earning that hasn't been settled yet (nets in
+/// before its first Settlement) or one that's already PAID (nets into a
+/// FUTURE Settlement — see docs/workflows/workflows.md Workflow J,
+/// "post-settlement refund").
+model VendorFinancialAdjustment {
+  id       String             @id @default(cuid())
+  amount   Decimal            @db.Decimal(12, 2) // signed — negative reduces what's owed
+  category AdjustmentCategory
+  reason   String
+
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id])
+
+  vendorEarningId String
+  vendorEarning   VendorEarning @relation(fields: [vendorEarningId], references: [id])
+
+  resolutionCaseId String?
+  resolutionCase   ResolutionCase? @relation(fields: [resolutionCaseId], references: [id])
+
+  /// Null until swept into a Settlement (createSettlement sweeps every
+  /// unapplied adjustment for the vendor) — never appliable twice.
+  appliedToSettlementId String?
+  appliedToSettlement   VendorSettlement? @relation(fields: [appliedToSettlementId], references: [id])
+
+  /// Null for a system-triggered adjustment (a resolution-case refund);
+  /// set for an admin-authored manual correction or reversal.
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+
+  @@index([vendorId, appliedToSettlementId])
+  @@index([vendorEarningId])
+  @@map("vendor_financial_adjustment")
+}
+
+enum SettlementStatus {
+  DRAFT
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum PayoutMethod {
+  BANK_TRANSFER
+  MOBILE_MONEY
+  OTHER
+}
+
+/// One Vendor per Settlement (no multi-vendor batching in M11). Manual-
+/// payout mode only: DRAFT -> APPROVED -> (admin records an external
+/// payout) -> PAID; DRAFT/APPROVED -> CANCELLED releases its earnings back
+/// to ELIGIBLE. Never mutated after PAID except the additive
+/// reversedAt/reversalReason correction fields below — the originally
+/// recorded amount/reference always stays visible (no deletion of
+/// financial history).
+model VendorSettlement {
+  id               String           @id @default(cuid())
+  settlementNumber String           @unique
+  status           SettlementStatus @default(DRAFT)
+  currency         String           @default("GHS")
+
+  /// Sum of included earnings' originalPayableAmount at inclusion time.
+  grossPayable    Decimal @default(0) @db.Decimal(12, 2)
+  /// Sum of adjustments swept in at creation time (signed).
+  adjustmentTotal Decimal @default(0) @db.Decimal(12, 2)
+  /// grossPayable + adjustmentTotal — the actual amount to pay. Always > 0;
+  /// a settlement whose net would be <= 0 is never created.
+  netAmount       Decimal @default(0) @db.Decimal(12, 2)
+
+  approvedByUserId String?
+  approvedAt       DateTime?
+
+  /// Snapshot of VendorPayoutDestination taken at approval time — later
+  /// Vendor changes to their payout destination never alter this record.
+  destinationSnapshot Json?
+
+  payoutMethod            PayoutMethod?
+  payoutExternalReference String?
+  payoutNote              String?
+  payoutPaidAt            DateTime?
+  payoutRecordedByUserId  String?
+
+  /// Additive correction for a wrongly-recorded payout — never edits the
+  /// payout fields above. See docs/decisions/0009-vendor-earnings-and-settlement.md.
+  reversedAt       DateTime?
+  reversedByUserId String?
+  reversalReason   String?
+
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id])
+
+  items       VendorSettlementItem[]
+  adjustments VendorFinancialAdjustment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId, status])
+  @@index([status, createdAt])
+  @@map("vendor_settlement")
+}
+
+/// One row per included Earning — @unique on vendorEarningId is the DB-level
+/// "an earning can never enter two Settlements, ever" guarantee.
+model VendorSettlementItem {
+  id     String  @id @default(cuid())
+  amount Decimal @db.Decimal(12, 2) // snapshot of the earning's originalPayableAmount at inclusion
+
+  settlementId String
+  settlement   VendorSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+
+  vendorEarningId String        @unique
+  vendorEarning   VendorEarning @relation(fields: [vendorEarningId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([settlementId])
+  @@map("vendor_settlement_item")
+}
+
+enum PayoutDestinationType {
+  MOBILE_MONEY
+  BANK_TRANSFER
+}
+
+/// Vendor's own payout destination — financially sensitive, OWNER-only
+/// mutation (modules/vendor-finance/policy.ts), never derived from the
+/// private pickup/contact fields on Vendor. Only one active destination per
+/// Vendor for V1 — no destination history table; a Settlement's
+/// destinationSnapshot is the historical record once one has been used.
+model VendorPayoutDestination {
+  id   String                @id @default(cuid())
+  type PayoutDestinationType
+
+  /// Set only when type = MOBILE_MONEY.
+  momoAccountName String?
+  momoPhone       String?
+  momoNetwork     PaymentNetwork?
+
+  /// Set only when type = BANK_TRANSFER.
+  bankAccountName   String?
+  bankName          String?
+  bankAccountNumber String?
+
+  updatedByUserId String
+
+  vendorId String @unique
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("vendor_payout_destination")
 }

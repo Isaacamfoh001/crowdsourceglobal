@@ -414,6 +414,7 @@ export const ordersService = {
         select: {
           id: true,
           status: true,
+          currency: true,
           fulfilmentsCreatedAt: true,
           items: true,
           customerProfile: { select: { userId: true } },
@@ -470,6 +471,25 @@ export const ordersService = {
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             vendorPayableBasis: item.vendorPayableBasis,
+          })),
+        });
+        // M11 — the deterministic creation point for VendorEarning: the
+        // exact same moment its FulfilmentItem is created, status PENDING.
+        // createMany doesn't return rows, so the just-created FulfilmentItems
+        // are re-fetched by fulfilmentId to get their own ids for the 1:1 link.
+        const createdFulfilmentItems = await tx.fulfilmentItem.findMany({
+          where: { fulfilmentId: fulfilment.id },
+          select: { id: true, orderItemId: true, vendorPayableBasis: true },
+        });
+        await tx.vendorEarning.createMany({
+          data: createdFulfilmentItems.map((fi) => ({
+            vendorId,
+            orderId,
+            fulfilmentId: fulfilment.id,
+            fulfilmentItemId: fi.id,
+            orderItemId: fi.orderItemId,
+            currency: order.currency,
+            originalPayableAmount: fi.vendorPayableBasis,
           })),
         });
         await tx.shipment.create({

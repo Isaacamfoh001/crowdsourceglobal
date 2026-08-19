@@ -257,6 +257,25 @@ const registry: Record<string, (data: Record<string, unknown>) => TemplateConten
     ctaLabel: "Review payment",
     ctaPath: `/admin/payments/${d["paymentId"]}`,
   }),
+  "vendor-earning-on-hold": (d) => ({
+    title: "An earning has been placed on hold",
+    intro: `An earning from order ${d["orderNumber"]} has been placed on hold: ${d["reasonSafe"]}`,
+    bodyLines: ["It will resume once the related issue is resolved."],
+    ctaLabel: "View Finance",
+    ctaPath: "/vendor/portal/finance",
+  }),
+  "vendor-settlement-approved": (d) => ({
+    title: "Your settlement has been approved",
+    intro: `Settlement ${d["settlementNumber"]} of ${d["currency"]} ${Number(d["netAmount"]).toFixed(2)} has been approved and is being prepared for payout.`,
+    ctaLabel: "View settlement",
+    ctaPath: `/vendor/portal/finance/settlements/${d["settlementId"]}`,
+  }),
+  "vendor-settlement-paid": (d) => ({
+    title: "Your settlement has been paid",
+    intro: `Your CrownSourceGlobal settlement ${d["settlementNumber"]} of ${d["currency"]} ${Number(d["netAmount"]).toFixed(2)} has been paid.`,
+    ctaLabel: "View settlement",
+    ctaPath: `/vendor/portal/finance/settlements/${d["settlementId"]}`,
+  }),
 };
 
 /** Subject is NOT re-derived here — the caller (modules/notifications) sets and stores its own subject at enqueue time (EmailDeliveryJob.subject); this only renders the body. */

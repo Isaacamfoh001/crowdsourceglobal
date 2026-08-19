@@ -1,6 +1,8 @@
 import { prisma } from "../../lib/db";
 import { Prisma } from "../../generated/prisma/client";
 import { CANCELLABLE_FULFILMENT_STATUSES } from "./policy";
+import { vendorFinanceRepository } from "../vendor-finance/repository";
+import { vendorFinanceService } from "../vendor-finance/service";
 
 const caseItemSelect = {
   id: true,
@@ -389,6 +391,41 @@ export const resolutionsRepository = {
           where: { id: { in: params.payoutHoldFulfilmentItemIds } },
           data: { payoutHold: true, payoutHoldReason: params.payoutHoldReason },
         });
+        // M11 — the same event also places the affected VendorEarnings
+        // ON_HOLD (released later by resolutionsService.resolveCase()).
+        await vendorFinanceRepository.applyResolutionHoldTx(
+          tx,
+          params.payoutHoldFulfilmentItemIds,
+          params.caseId,
+          vendorFinanceService.holdReasonSafeForResolutionCase(),
+          params.payoutHoldReason,
+          params.actorUserId,
+        );
+      }
+
+      // M11 — a VENDOR-responsibility refund permanently reduces what's
+      // owed to that specific item's Vendor, via an additive adjustment
+      // (never a rewrite of the earning's original snapshot) — independent
+      // of whether that Vendor's earning has already been paid.
+      if (params.responsibility === "VENDOR") {
+        const refundBearingDecisions = params.itemDecisions.filter((d) => d.approvedRefundAmount !== null && d.approvedRefundAmount > 0);
+        if (refundBearingDecisions.length > 0) {
+          const rawItems = await tx.resolutionCaseItem.findMany({
+            where: { id: { in: refundBearingDecisions.map((d) => d.caseItemId) } },
+            select: { id: true, fulfilmentItemId: true, fulfilmentItem: { select: { fulfilment: { select: { vendorId: true } } } } },
+          });
+          for (const decision of refundBearingDecisions) {
+            const raw = rawItems.find((r) => r.id === decision.caseItemId);
+            if (!raw?.fulfilmentItemId || !raw.fulfilmentItem?.fulfilment.vendorId) continue;
+            await vendorFinanceRepository.createResolutionAdjustmentTx(tx, {
+              fulfilmentItemId: raw.fulfilmentItemId,
+              vendorId: raw.fulfilmentItem.fulfilment.vendorId,
+              amount: -decision.approvedRefundAmount!,
+              resolutionCaseId: params.caseId,
+              reason: `Vendor-attributable refund — case ${params.caseId}`,
+            });
+          }
+        }
       }
 
       let fulfilmentCancelled = false;
@@ -399,6 +436,9 @@ export const resolutionsRepository = {
         });
         fulfilmentCancelled = cancelled.count === 1;
         if (fulfilmentCancelled) {
+          // M11 — preserves earning history (never deleted); a cancelled
+          // Fulfilment's earnings never reach ELIGIBLE/PAID.
+          await vendorFinanceRepository.cancelEarningsForFulfilmentTx(tx, params.cancelFulfilment.fulfilmentId);
           for (const orderItemId of params.cancelFulfilment.orderItemIds) {
             const orderItem = await tx.orderItem.findUnique({ where: { id: orderItemId }, select: { listingId: true, quantity: true } });
             if (!orderItem?.listingId) continue;
@@ -572,8 +612,23 @@ export const resolutionsRepository = {
       });
 
       const fulfilment = await tx.fulfilment.create({ data: { orderId: params.orderId, vendorId: params.vendorId, origin: params.origin } });
-      await tx.fulfilmentItem.create({
+      const fulfilmentItem = await tx.fulfilmentItem.create({
         data: { fulfilmentId: fulfilment.id, orderItemId: orderItem.id, quantity: params.quantity, unitPrice: 0, vendorPayableBasis: 0 },
+      });
+      // M11 — a replacement's VendorEarning is always zero-value by default
+      // (never pays a Vendor twice); an admin who wants to authorize an
+      // additional payable for a replacement does so via an explicit manual
+      // adjustment afterward, never inferred here.
+      await tx.vendorEarning.create({
+        data: {
+          vendorId: params.vendorId,
+          orderId: params.orderId,
+          fulfilmentId: fulfilment.id,
+          fulfilmentItemId: fulfilmentItem.id,
+          orderItemId: orderItem.id,
+          currency: "GHS",
+          originalPayableAmount: 0,
+        },
       });
       await tx.shipment.create({
         data: {

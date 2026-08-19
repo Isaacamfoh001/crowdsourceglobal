@@ -62,6 +62,12 @@ const POLICY: Record<NotificationType, Policy> = {
   // reasoning as the other ADMIN_* rows above.
   PAYMENT_FAILED: { required: true },
   ADMIN_PAYMENT_REQUIRES_ATTENTION: { required: true },
+  // M11 — vendor finance. All three are financially significant to the
+  // vendor (their earnings/payout), same "commerce-critical" reasoning as
+  // REFUND_APPROVED/RESOLUTION_APPROVED above — never optional.
+  VENDOR_EARNING_ON_HOLD: { required: true },
+  VENDOR_SETTLEMENT_APPROVED: { required: true },
+  VENDOR_SETTLEMENT_PAID: { required: true },
 };
 
 const CATEGORY_FIELD: Record<NotificationCategory, keyof PreferencesView> = {

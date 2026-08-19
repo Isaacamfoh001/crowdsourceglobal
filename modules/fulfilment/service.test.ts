@@ -100,6 +100,8 @@ describe("fulfilmentService", () => {
     await prisma.conversation.deleteMany({ where: { id: { in: createdConversationIds } } });
     await prisma.fulfilmentIssue.deleteMany({ where: { fulfilment: { orderId: { in: createdOrderIds } } } });
     await prisma.shipment.deleteMany({ where: { fulfilment: { orderId: { in: createdOrderIds } } } });
+    await prisma.vendorFinancialAdjustment.deleteMany({ where: { vendorEarning: { orderId: { in: createdOrderIds } } } });
+    await prisma.vendorEarning.deleteMany({ where: { orderId: { in: createdOrderIds } } });
     await prisma.fulfilmentItem.deleteMany({ where: { fulfilment: { orderId: { in: createdOrderIds } } } });
     await prisma.fulfilment.deleteMany({ where: { orderId: { in: createdOrderIds } } });
     await prisma.payment.deleteMany({ where: { orderId: { in: createdOrderIds } } });

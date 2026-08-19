@@ -22,6 +22,8 @@ export const THRESHOLDS = {
   resolutionUnassignedWarningHours: env.OPS_RESOLUTION_UNASSIGNED_WARNING_HOURS,
   resolutionReviewWarningHours: env.OPS_RESOLUTION_REVIEW_WARNING_HOURS,
   returnInspectionWarningHours: env.OPS_RETURN_INSPECTION_WARNING_HOURS,
+  financeEligibleUnsettledWarningHours: env.OPS_FINANCE_ELIGIBLE_UNSETTLED_WARNING_HOURS,
+  financeSettlementApprovedWarningHours: env.OPS_FINANCE_SETTLEMENT_APPROVED_WARNING_HOURS,
 };
 
 export function ageHours(since: Date, now: Date = new Date()): number {

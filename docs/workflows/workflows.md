@@ -76,27 +76,61 @@ Fulfilment PENDING → ACCEPTED → PREPARING → READY → DISPATCHED (vendor-d
 
 ## I. Delivery Completion
 
-Last Shipment on a Fulfilment reaches DELIVERED → Fulfilment → COMPLETED → its FulfilmentItems → ELIGIBLE for payout → once all of an Order's Fulfilments are COMPLETED, Order → COMPLETED.
+Last Shipment on a Fulfilment reaches DELIVERED → Fulfilment → DELIVERED *(never COMPLETED — no code anywhere transitions a Fulfilment to COMPLETED; a pre-existing M4/M5 gap, out of scope for M11, that made DELIVERED the only observable eligibility trigger — see ADR 0009)*. Once all of an Order's Fulfilments are DELIVERED, Order → COMPLETED (not currently automated — see Known Limitations in ADR 0009).
 
-## J. Vendor Payout
+## J. Vendor Payout *(implemented M11 — VendorEarning/VendorSettlement, see ADR 0009; supersedes the PayoutRun/PayoutItem preview names below M9's implementation note)*
 
-Scheduled job claims ELIGIBLE, non-held FulfilmentItems per vendor → PayoutRun DRAFT → PROCESSING, PayoutItems created (unique per FulfilmentItem, ever) → any pending PayoutAdjustments are netted in → PROCESSING → PAID (manual bank transfer marked by admin in V1; a provider transfer API can replace this later without changing the model) → vendor notified.
+```
+Order confirmed → Fulfilments/FulfilmentItems created
+  → VendorEarning created per FulfilmentItem, status PENDING,
+    originalPayableAmount snapshotted from FulfilmentItem.vendorPayableBasis
+    (immutable from this point on)
+  → Fulfilment reaches DELIVERED
+  → scripts/sweep-earnings-eligibility.ts (scheduled, DB-backed, no message
+    broker — same architecture as sweep-abandoned-payments.ts): PENDING
+    earnings whose Fulfilment has been DELIVERED for at least
+    VENDOR_PAYOUT_HOLD_HOURS (configurable operational buffer, not a
+    contractual SLA) → ELIGIBLE, eligibleAt set
+  → Admin (Finance) selects some/all of a Vendor's ELIGIBLE earnings →
+    createSettlement:
+      - claims exactly the selected earnings (guarded, ELIGIBLE only) →
+        INCLUDED_IN_SETTLEMENT
+      - sweeps every currently-unapplied VendorFinancialAdjustment for that
+        Vendor (post-settlement refund corrections, manual corrections) →
+        appliedToSettlementId set
+      - netAmount = sum(selected earnings) + sum(swept adjustments) — a
+        settlement whose net would be <= 0 is refused, never created
+        (outstanding adjustments must be offset by future earnings first)
+  → Admin approves (DRAFT → APPROVED) — snapshots the Vendor's
+    VendorPayoutDestination at that moment (destinationSnapshot); later
+    Vendor changes never alter this record
+  → Admin sends the money externally (bank transfer / Mobile Money) OUTSIDE
+    CrownSourceGlobal, then records it: recordPayout (APPROVED → PAID,
+    guarded — a double-click can only ever record once) — this is
+    explicitly a record of an external payout, never a real disbursement
+    API call in M11
+  → included earnings → PAID; Vendor notified (VENDOR_SETTLEMENT_PAID)
+```
+
+Automated disbursement (Paystack/Hubtel/Moolre transfer APIs) is explicitly deferred to a future milestone — see ADR 0009.
 
 ## K. Cancellation / Refund
 
 | Case | Mechanism | Business policy needed? |
 |---|---|---|
-| Refund before fulfilment | Payment refunded; Order → CANCELLED; no FulfilmentItem ever reaches ELIGIBLE | No |
-| Refund after fulfilment, before payout | FulfilmentItem stays ELIGIBLE by default (vendor did the work). Admin may set `payoutHold = true` if the refund reason is vendor-fault, excluding it from the next PayoutRun | **Yes** — who decides "vendor fault"; the mechanism works either way |
-| Refund after vendor payout | A negative `PayoutAdjustment` is created against the Vendor + original FulfilmentItem, netted against that vendor's *next* PayoutRun. No reverse-transfer is attempted | Yes — recovery policy (net-off vs. direct reclaim) is a business call |
-| Partial refund | Ties to specific OrderItem quantities; reduces eligible amount pre-payout, or creates a proportional `PayoutAdjustment` post-payout | No — mechanical once the above policies exist |
-| Cancelled order | Inventory reservation released; no Fulfilment/Payout ever created | No |
-| Payout hold | `FulfilmentItem.payoutHold` + reason, admin-settable, excludes it from PayoutRun claiming until cleared | No |
-| Payout eligibility | ELIGIBLE when Fulfilment status = COMPLETED **and** no active hold **and** not already claimed | Partial — exact trigger (COMPLETED vs. DELIVERED) is an open business decision |
+| Refund before fulfilment | Payment refunded; Order → CANCELLED; no VendorEarning ever reaches ELIGIBLE (Fulfilment never exists) | No |
+| Refund after fulfilment, before settlement | `FulfilmentItem.payoutHold = true` (M9, unchanged) AND the linked `VendorEarning` → ON_HOLD (M11), when the refund reason is vendor-fault (`responsibility = VENDOR`) | Resolved — `approveResolution()`'s explicit `responsibility` field decides vendor-fault; admin judgment, matching ADR 0005's "until a firmer policy exists" default |
+| Refund after vendor settlement/payout | A negative `VendorFinancialAdjustment` (category `RESOLUTION_REFUND`) is created against the Vendor + earning, `appliedToSettlementId = null`, netted against that vendor's *next* Settlement. No reverse-transfer is attempted | Resolved — net-off-next-settlement, per ADR 0005's default |
+| Partial refund | Ties to the specific ResolutionCaseItem's own `approvedRefundAmount` — the adjustment is exactly that amount, never the whole case's total | No — mechanical |
+| Cancelled order | Inventory reservation released; no Fulfilment/VendorEarning ever created | No |
+| Cancelled Fulfilment (post-creation, e.g. as part of a case) | Its VendorEarnings → CANCELLED (never deleted — history preserved) | No |
+| Payout hold | `VendorEarning.holdReasonSafe`/`holdInternalNote`/`heldAt`/`heldByUserId`/`heldForResolutionCaseId`, released by `resolutionsService.resolveCase()` (→ PENDING, recomputed by the normal eligibility sweep) | No |
+| Payout eligibility | ELIGIBLE when Fulfilment status = DELIVERED **and** the configured hold window has elapsed **and** no active hold **and** not already settled | Resolved — DELIVERED (see Workflow I) |
+| Negative Vendor balance | Unapplied adjustments can exceed a Vendor's currently-eligible earnings — `createSettlement` refuses (never creates a negative-net Settlement); the balance is visible on both the Vendor and Admin Finance views and offsets automatically against future earnings | No |
 
-There is deliberately no full accounting ledger — `payoutHold` and `PayoutAdjustment` are the complete mechanism. See ADR 0005.
+There is deliberately no full accounting ledger — `payoutHold`/`VendorEarning.status` (prevention) and `VendorFinancialAdjustment` (correction) are the complete mechanism. See ADR 0005 (original design) and ADR 0009 (M11 implementation).
 
-**M9 implementation note:** this table described the mechanism during architecture planning, before any code existed. M9 is its first real implementation — `resolutionsService.approveResolution()` is what actually sets `payoutHold` (row 2, "vendor-fault" decided via the case's `responsibility` field), and inventory-reservation release (row 5) is Workflow U above. `PayoutAdjustment` (row 3) remains unbuilt — nothing has been paid out yet (no `PayoutRun` exists until M11), so there is nothing yet to net a correction against. Refund creation/approval/execution itself is Workflows T/V above, not this table.
+**M9/M11 implementation note:** this table described the mechanism during architecture planning, before any code existed. M9 built the prevention half (`payoutHold`, via `approveResolution()`'s `responsibility` field) and inventory-reservation release (Workflow U). M11 builds the rest: `VendorEarning` (the actual, implemented payable lifecycle — see state-machines.md), `VendorFinancialAdjustment` (ADR 0005's `PayoutAdjustment`, implemented, including the post-settlement case), and `VendorSettlement` (the manual-payout batching unit). Refund creation/approval/execution itself is still Workflows T/V above, not this table — M11 only adds what happens to the Vendor's own payable as a side effect of those same decisions.
 
 ## L. Buyer → CrownSource Messaging
 

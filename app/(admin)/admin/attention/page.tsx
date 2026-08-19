@@ -25,6 +25,9 @@ const TYPE_FILTERS: { value: AttentionType; label: string }[] = [
   { value: "RETURN_AWAITING_INSPECTION", label: "Return awaiting inspection" },
   { value: "REFUND_FAILED", label: "Refund failed" },
   { value: "PAYMENT_EXCEPTION", label: "Payment exception" },
+  { value: "ELIGIBLE_EARNINGS_UNSETTLED_TOO_LONG", label: "Eligible earnings unsettled" },
+  { value: "SETTLEMENT_APPROVED_AWAITING_PAYOUT", label: "Settlement awaiting payout" },
+  { value: "VENDOR_NEGATIVE_BALANCE", label: "Vendor negative balance" },
 ];
 
 const SEVERITY_FILTERS: { value: AttentionSeverity; label: string }[] = [
@@ -41,6 +44,7 @@ const MODULE_FILTERS: { value: AttentionModule; label: string }[] = [
   { value: "QUOTATIONS", label: "Quotations" },
   { value: "RESOLUTIONS", label: "Resolutions" },
   { value: "PAYMENTS", label: "Payments" },
+  { value: "FINANCE", label: "Finance" },
 ];
 
 type SearchParams = { type?: string; severity?: string; module?: string; assigned?: string; page?: string };

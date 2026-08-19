@@ -64,6 +64,8 @@ describe("paymentsService", () => {
   });
 
   afterAll(async () => {
+    await prisma.vendorFinancialAdjustment.deleteMany({ where: { vendorEarning: { orderId: { in: createdOrderIds } } } });
+    await prisma.vendorEarning.deleteMany({ where: { orderId: { in: createdOrderIds } } });
     await prisma.fulfilmentItem.deleteMany({ where: { fulfilment: { orderId: { in: createdOrderIds } } } });
     await prisma.fulfilment.deleteMany({ where: { orderId: { in: createdOrderIds } } });
     await prisma.inventoryReservation.deleteMany({ where: { orderId: { in: createdOrderIds } } });

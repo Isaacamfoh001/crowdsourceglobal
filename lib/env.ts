@@ -85,6 +85,22 @@ const envSchema = z.object({
   PAYSTACK_SECRET_KEY: z.string().optional(),
   /** Only needed if the chosen integration surface requires it client-side; the MoMo Charge API flow implemented here does not. */
   PAYSTACK_PUBLIC_KEY: z.string().optional(),
+  /**
+   * M11 Vendor Finance. How long after a Fulfilment reaches DELIVERED
+   * before its VendorEarning may become ELIGIBLE for settlement — an
+   * operational buffer for post-delivery issues to surface, NOT a
+   * contractual SLA (PROJECT.md does not mandate an exact figure; same
+   * "documented, configurable V1 default" reasoning as QUOTE_VALIDITY_DAYS/
+   * OPS_* above). Set to 0 to disable the hold window entirely (useful for
+   * manual acceptance testing).
+   */
+  VENDOR_PAYOUT_HOLD_HOURS: z.coerce.number().nonnegative().default(72),
+  /**
+   * M11 admin-dashboard attention thresholds — same "operational default,
+   * not a contractual SLA" reasoning as the OPS_* vars above.
+   */
+  OPS_FINANCE_ELIGIBLE_UNSETTLED_WARNING_HOURS: z.coerce.number().positive().default(168),
+  OPS_FINANCE_SETTLEMENT_APPROVED_WARNING_HOURS: z.coerce.number().positive().default(72),
 });
 
 function loadEnv() {
@@ -117,6 +133,9 @@ function loadEnv() {
     PAYSTACK_ENV: process.env["PAYSTACK_ENV"] || undefined,
     PAYSTACK_SECRET_KEY: process.env["PAYSTACK_SECRET_KEY"] || undefined,
     PAYSTACK_PUBLIC_KEY: process.env["PAYSTACK_PUBLIC_KEY"] || undefined,
+    VENDOR_PAYOUT_HOLD_HOURS: process.env["VENDOR_PAYOUT_HOLD_HOURS"] || undefined,
+    OPS_FINANCE_ELIGIBLE_UNSETTLED_WARNING_HOURS: process.env["OPS_FINANCE_ELIGIBLE_UNSETTLED_WARNING_HOURS"] || undefined,
+    OPS_FINANCE_SETTLEMENT_APPROVED_WARNING_HOURS: process.env["OPS_FINANCE_SETTLEMENT_APPROVED_WARNING_HOURS"] || undefined,
   });
 
   if (!parsed.success) {

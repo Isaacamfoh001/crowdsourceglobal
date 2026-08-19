@@ -197,6 +197,42 @@ export const adminDashboardRepository = {
     });
   },
 
+  // --- M11 Vendor Finance attention ---------------------------------------
+
+  findEligibleEarningsUnsettled(since: Date) {
+    return prisma.vendorEarning.findMany({
+      where: { status: "ELIGIBLE", eligibleAt: { lte: since } },
+      select: { id: true, eligibleAt: true, vendorId: true, vendor: { select: { companyName: true } } },
+    });
+  },
+
+  findApprovedSettlementsAwaitingPayout(since: Date) {
+    return prisma.vendorSettlement.findMany({
+      where: { status: "APPROVED", approvedAt: { lte: since } },
+      select: { id: true, settlementNumber: true, approvedAt: true, vendor: { select: { companyName: true } } },
+    });
+  },
+
+  async findVendorsWithNegativeBalance() {
+    const grouped = await prisma.vendorFinancialAdjustment.groupBy({
+      by: ["vendorId"],
+      where: { appliedToSettlementId: null },
+      _sum: { amount: true },
+    });
+    const negative = grouped.filter((g) => (g._sum.amount?.toNumber() ?? 0) < 0);
+    if (negative.length === 0) return [];
+    const vendors = await prisma.vendor.findMany({ where: { id: { in: negative.map((n) => n.vendorId) } }, select: { id: true, companyName: true } });
+    return negative.map((n) => ({ vendorId: n.vendorId, vendorName: vendors.find((v) => v.id === n.vendorId)?.companyName ?? "Unknown vendor", balance: n._sum.amount!.toNumber() }));
+  },
+
+  searchSettlements(q: string) {
+    return prisma.vendorSettlement.findMany({
+      where: { OR: [{ settlementNumber: { contains: q, mode: "insensitive" } }, { payoutExternalReference: { contains: q, mode: "insensitive" } }] },
+      select: { id: true, settlementNumber: true, status: true, vendor: { select: { companyName: true } } },
+      take: SEARCH_TAKE,
+    });
+  },
+
   searchSourcingRequests(q: string) {
     return prisma.customSourcingRequest.findMany({
       where: { OR: [{ requestNumber: { contains: q, mode: "insensitive" } }, { title: { contains: q, mode: "insensitive" } }] },

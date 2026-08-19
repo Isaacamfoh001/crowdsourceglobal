@@ -19,7 +19,7 @@ Authoritative summary of the approved V1 architecture. See `/docs/domain/entitie
 | Logistics | ReceivingLocation reference data for CrownSource-designated international inbound destinations — `modules/logistics` (implemented M4) |
 | Payments | Collects money from the customer, provider-agnostic |
 | Post-Purchase Resolution | "What happens when an order can't complete normally" — cancellations, returns, replacements, refund decisions, at line/quantity granularity — `modules/resolutions` + `modules/refunds` (implemented M9) |
-| Vendor Payouts | Pays vendors, computed from historical Fulfilment economics |
+| Vendor Finance | Vendor earnings, payout holds/adjustments, manual-mode settlement batching and payout recording, computed from historical Fulfilment economics — `modules/vendor-finance` (implemented M11, see ADR 0009). No automated disbursement (Paystack/Hubtel transfer APIs) yet — a future milestone |
 | Documents | Thin layer generating artifacts from immutable snapshots |
 | Messaging | Contextual two-way conversation, two shapes only (Customer↔CSG, CSG↔Vendor) |
 | Notifications | Domain event → in-app record → (optionally) queued email, decoupled from every other domain — `modules/notifications` (implemented M7) |
@@ -222,7 +222,7 @@ This is not a new RBAC framework — it is simply `requireAdminSession`'s existi
 
 **Financial corrections are additive, never rewrites.** No `OrderItem`/`FulfilmentItem` snapshot is ever mutated by a resolution. A refund is a new `Refund` row; historical pricing stays exactly as it was captured at order-confirmation time (see `/docs/workflows/workflows.md`'s Commercial Snapshot Timing). This is the same principle ADR 0005 already established for payout corrections, applied here to the customer-refund side.
 
-**Payout hold, not payout adjustment.** When `approveResolution()`'s `responsibility` is `VENDOR` and the decision is refund-bearing or a replacement, the affected `FulfilmentItem.payoutHold`/`payoutHoldReason` are set — the exact mechanism ADR 0005 built in M4 and left unused until now. `PayoutAdjustment` is deliberately *not* used here: nothing has ever been paid out yet (no `PayoutRun` exists until M11), so there is nothing to net a correction against — only something to prevent from being paid out prematurely.
+**Payout hold, and — as of M11 — a real payout adjustment.** When `approveResolution()`'s `responsibility` is `VENDOR` and the decision is refund-bearing or a replacement, the affected `FulfilmentItem.payoutHold`/`payoutHoldReason` are set (M9, unchanged) — the exact mechanism ADR 0005 built in M4. As of M11, the same transaction also moves the linked `VendorEarning`(s) to `ON_HOLD` and, when a refund amount was approved, creates a negative `VendorFinancialAdjustment` — ADR 0005's `PayoutAdjustment`, now actually implemented (`modules/vendor-finance`, ADR 0009), correctly netting whether or not that earning has already been paid out.
 
 **Inventory restock is never automatic.** Cancelling a `PENDING`/`PREPARING`/`READY` Fulfilment (via `approveResolution()`'s `cancelFulfilmentId`) releases that Order's `InventoryReservation` and increments `VendorListing.availableQuantity` back — but a damaged-item refund with no cancellation touches inventory not at all (the goods are gone, not returned). For a `RETURN_AND_REFUND`/`RETURN_AND_REPLACEMENT` decision, restocking only happens after an explicit `RESELLABLE` inspection outcome (`resolutionsService.inspectReturn()`), guarded by `Return.restockedAt` so a return can never be restocked twice.
 

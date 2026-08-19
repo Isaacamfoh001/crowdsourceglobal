@@ -18,7 +18,8 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "admin:grant": "tsx scripts/grant-admin.ts",
     "jobs:email": "tsx scripts/process-email-jobs.ts",
-    "jobs:sweep-payments": "tsx scripts/sweep-abandoned-payments.ts"
+    "jobs:sweep-payments": "tsx scripts/sweep-abandoned-payments.ts",
+    "jobs:sweep-earnings": "tsx scripts/sweep-earnings-eligibility.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.9.1",

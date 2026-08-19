@@ -73,6 +73,8 @@ describe("resolutionsService", () => {
     await prisma.return.deleteMany({ where: { resolutionCase: { orderId: { in: createdIds.orders } } } });
     await prisma.replacement.deleteMany({ where: { resolutionCase: { orderId: { in: createdIds.orders } } } });
     await prisma.resolutionCase.deleteMany({ where: { orderId: { in: createdIds.orders } } });
+    await prisma.vendorFinancialAdjustment.deleteMany({ where: { vendorEarning: { orderId: { in: createdIds.orders } } } });
+    await prisma.vendorEarning.deleteMany({ where: { orderId: { in: createdIds.orders } } });
     await prisma.fulfilmentItem.deleteMany({ where: { fulfilment: { orderId: { in: createdIds.orders } } } });
     await prisma.shipment.deleteMany({ where: { fulfilment: { orderId: { in: createdIds.orders } } } });
     await prisma.fulfilment.deleteMany({ where: { orderId: { in: createdIds.orders } } });
