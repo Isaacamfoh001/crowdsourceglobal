@@ -110,32 +110,28 @@ export async function assignReceivingLocationAction(
 const collectionSchema = z.object({
   carrier: z.string().trim().optional(),
   trackingReference: z.string().trim().optional(),
-  scheduledAt: z.string().optional(),
   notes: z.string().trim().optional(),
 });
 
-export async function scheduleCollectionAction(
-  _prevState: Result<null> | null,
-  formData: FormData,
-): Promise<Result<null>> {
-  await requireAdminSession("/admin/operations", [...ADMIN_OPS_ROLES]);
+/** (M11.1) Replaces the old two-step "Save collection details" + separate "Confirm collected" — one action, atomic. */
+export async function confirmCollectionAction(_prevState: Result<null> | null, formData: FormData): Promise<Result<null>> {
+  const { session } = await requireAdminSession("/admin/operations", [...ADMIN_OPS_ROLES]);
   const fulfilmentId = String(formData.get("fulfilmentId") ?? "");
   const parsed = collectionSchema.safeParse({
     carrier: formData.get("carrier") || undefined,
     trackingReference: formData.get("trackingReference") || undefined,
-    scheduledAt: formData.get("scheduledAt") || undefined,
     notes: formData.get("notes") || undefined,
   });
   if (!parsed.success) return err("Check the collection details.");
 
-  const result = await fulfilmentService.scheduleCollection(fulfilmentId, {
+  const result = await fulfilmentService.confirmCollection(fulfilmentId, session.user.id, {
     carrier: parsed.data.carrier,
     trackingReference: parsed.data.trackingReference,
-    scheduledAt: parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : undefined,
     notes: parsed.data.notes,
   });
   if (!result.ok) return result;
   revalidatePath(`/admin/operations/${fulfilmentId}`);
+  revalidatePath("/admin/operations");
   return ok(null);
 }
 

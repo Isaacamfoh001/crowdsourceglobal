@@ -555,6 +555,8 @@ export const resolutionsService = {
 
   /** The core M9 decision engine — see modules/resolutions/repository.ts's approveResolutionTransactional for the full side-effect list. */
   async approveResolution(staffId: string, caseId: string, input: ApproveResolutionInput): Promise<Result<null>> {
+    const VALID_RESPONSIBILITIES = ["VENDOR", "CROWNSOURCE", "LOGISTICS", "CUSTOMER", "EXTERNAL_SUPPLIER", "SHARED_OTHER"];
+    if (!VALID_RESPONSIBILITIES.includes(input.responsibility)) return err("Select who is responsible for this outcome.");
     if (input.customerSafeDecisionReason.trim().length < 3) return err("Explain the decision for the customer.");
     if (input.items.length === 0) return err("Decide an outcome for at least one item.");
 

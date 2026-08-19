@@ -78,7 +78,7 @@ export default async function AdminVendorFinanceDetailPage({ params }: { params:
           <h2 className="font-display text-base font-medium text-stone-900">Create settlement</h2>
           <p className="mt-1 text-sm text-stone-500">Select the eligible earnings to include. Outstanding adjustments are applied automatically.</p>
           <div className="mt-4">
-            <CreateSettlementForm vendorId={id} earnings={eligibleEarnings} />
+            <CreateSettlementForm vendorId={id} earnings={eligibleEarnings} unappliedAdjustmentTotal={detail.unappliedAdjustmentTotal} />
           </div>
         </div>
       ) : null}

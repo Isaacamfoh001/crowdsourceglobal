@@ -144,4 +144,44 @@ describe("computeOrderDisplayStatus", () => {
     const result = computeOrderDisplayStatus("CONFIRMED", [vendorA, vendorB], noCases());
     expect(result.overall).toBe("PREPARING");
   });
+
+  // --- M11.1 corrective pass: root cause of issue #1 ------------------------
+  //
+  // A refund can end FAILED (e.g. no automated refund API for the payment
+  // provider, or a provider-side error) without the case itself ever
+  // reaching a terminal status change to reflect that. If the admin later
+  // marks the case Resolved anyway, the case-driven branch of
+  // computePackageStatus must never silently fall through to the raw
+  // fulfilment/shipment fallback below it — that used to surface the
+  // reported bug (a resolution-affected package still showing "Delivered").
+
+  it("a FAILED refund shows REFUND_PROCESSING (still needs attention), never falls through to DELIVERED", () => {
+    const f = fulfilment({ id: "f1", orderItemIds: ["oi1"], status: "DELIVERED" });
+    const cases: DisplayStatusCase[] = [
+      { status: "RESOLUTION_APPROVED", items: [{ orderItemId: "oi1", approvedResolution: "FULL_REFUND", refundStatus: "FAILED" }], returnStatuses: [], replacements: [] },
+    ];
+    const result = computeOrderDisplayStatus("CONFIRMED", [f], cases);
+    expect(result.overall).toBe("REFUND_PROCESSING");
+  });
+
+  it("root-cause regression: a FAILED refund on an already-RESOLVED case must still show REFUND_PROCESSING, not the stale pre-issue DELIVERED status", () => {
+    const f = fulfilment({ id: "f1", orderItemIds: ["oi1"], status: "DELIVERED" });
+    // Mirrors the real sequence that reproduced the bug: admin approves a
+    // refund, it fails to process (no linked payment / no refund API for
+    // the provider), and the admin marks the case Resolved anyway believing
+    // the refund went through.
+    const cases: DisplayStatusCase[] = [
+      { status: "RESOLVED", items: [{ orderItemId: "oi1", approvedResolution: "FULL_REFUND", refundStatus: "FAILED" }], returnStatuses: [], replacements: [] },
+    ];
+    const result = computeOrderDisplayStatus("CONFIRMED", [f], cases);
+    expect(result.overall).not.toBe("DELIVERED");
+    expect(result.overall).toBe("REFUND_PROCESSING");
+  });
+
+  it("a case fully closed with NO_ACTION (no refund ever created) correctly falls through to the raw fulfilment status once RESOLVED — the fallback itself is still correct for genuinely-closed-with-no-effect cases", () => {
+    const f = fulfilment({ id: "f1", orderItemIds: ["oi1"], status: "DELIVERED" });
+    const cases: DisplayStatusCase[] = [{ status: "RESOLVED", items: [{ orderItemId: "oi1", approvedResolution: "NO_ACTION", refundStatus: null }], returnStatuses: [], replacements: [] }];
+    const result = computeOrderDisplayStatus("CONFIRMED", [f], cases);
+    expect(result.overall).toBe("DELIVERED");
+  });
 });

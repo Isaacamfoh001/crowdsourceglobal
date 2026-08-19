@@ -226,7 +226,13 @@ export function ApproveResolutionForm({
 
       <div>
         <label className="text-sm font-medium text-stone-900">Responsibility (internal only)</label>
-        <select name="responsibility" defaultValue="CROWNSOURCE" disabled={isPending} className="mt-1 block rounded-lg border border-stone-300 px-3 py-2 text-sm">
+        <p className="mt-0.5 text-xs text-stone-500">
+          Choosing &quot;vendor&quot; affects that vendor&apos;s earning (hold or cancellation) — this has real financial consequences, so it is never pre-selected.
+        </p>
+        <select name="responsibility" defaultValue="" required disabled={isPending} className="mt-1 block rounded-lg border border-stone-300 px-3 py-2 text-sm">
+          <option value="" disabled>
+            Select responsibility…
+          </option>
           {RESPONSIBILITY_OPTIONS.map((r) => (
             <option key={r} value={r}>
               {r.replace(/_/g, " ").toLowerCase()}

@@ -242,17 +242,16 @@ describe("fulfilmentService", () => {
 
   // --- Domestic collection --------------------------------------------
 
-  it("domestic: admin schedules and confirms collection, moving Fulfilment to DISPATCHED", async () => {
+  it("(M11.1) domestic: admin confirms collection in ONE action — persists details, transitions to COLLECTED, and moves Fulfilment to DISPATCHED atomically", async () => {
     const { domesticFulfilment } = await placeMultiVendorOrder();
     await fulfilmentService.startPreparing(domesticVendorId, domesticFulfilment.id);
     await fulfilmentService.markReady(domesticVendorId, domesticFulfilment.id);
 
-    const schedule = await fulfilmentService.scheduleCollection(domesticFulfilment.id, {
-      carrier: "Speedy Couriers", trackingReference: "SC-001", scheduledAt: new Date(), notes: "Call before arrival.",
+    const confirm = await fulfilmentService.confirmCollection(domesticFulfilment.id, "admin-user-id", {
+      carrier: "Speedy Couriers",
+      trackingReference: "SC-001",
+      notes: "Call before arrival.",
     });
-    expect(schedule.ok).toBe(true);
-
-    const confirm = await fulfilmentService.confirmCollectedOrReceived(domesticFulfilment.id, "admin-user-id", null);
     expect(confirm.ok).toBe(true);
 
     const fulfilment = await prisma.fulfilment.findUnique({ where: { id: domesticFulfilment.id } });
@@ -260,6 +259,20 @@ describe("fulfilmentService", () => {
     const shipment = await prisma.shipment.findFirst({ where: { fulfilmentId: domesticFulfilment.id } });
     expect(shipment?.status).toBe("COLLECTED");
     expect(shipment?.collectedAt).not.toBeNull();
+    expect(shipment?.carrier).toBe("Speedy Couriers");
+    expect(shipment?.trackingReference).toBe("SC-001");
+    expect(shipment?.collectionNotes).toBe("Call before arrival.");
+  });
+
+  it("(M11.1) domestic: confirming collection twice is rejected the second time — a Fulfilment can't be 'confirmed collected' from an already-COLLECTED shipment", async () => {
+    const { domesticFulfilment } = await placeMultiVendorOrder();
+    await fulfilmentService.startPreparing(domesticVendorId, domesticFulfilment.id);
+    await fulfilmentService.markReady(domesticVendorId, domesticFulfilment.id);
+
+    const first = await fulfilmentService.confirmCollection(domesticFulfilment.id, "admin-user-id", {});
+    expect(first.ok).toBe(true);
+    const second = await fulfilmentService.confirmCollection(domesticFulfilment.id, "admin-user-id", {});
+    expect(second.ok).toBe(false);
   });
 
   it("domestic: a vendor cannot confirm their own collection (no vendor-facing path reaches DISPATCHED for domestic)", async () => {

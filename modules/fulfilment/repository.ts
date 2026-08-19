@@ -218,9 +218,11 @@ export const fulfilmentRepository = {
             select: { status: true, shippedAt: true, receivedAt: true },
           },
         },
-        // Oldest-first — deliberate Operations queue order (staff work the
-        // oldest fulfilment first). Not a bug; do not flip to desc.
-        orderBy: { createdAt: "asc" },
+        // Newest-first (M11.1 corrective pass) — a newly created fulfilment
+        // must appear on page 1, not buried on the last page. `id: "desc"`
+        // is a tie-breaker for rows created in the same millisecond, so
+        // page boundaries stay stable/deterministic across requests.
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: paginationSkip(page, pageSize),
         take: pageSize,
       }),
@@ -260,20 +262,43 @@ export const fulfilmentRepository = {
     return true;
   },
 
-  async scheduleCollection(
+  /**
+   * (M11.1) Domestic-collection single-action confirm — replaces the old
+   * two-step "Save collection details" then separate "Confirm collected."
+   * Records the carrier/tracking/notes AND performs the CREATED -> COLLECTED
+   * (-> Fulfilment DISPATCHED) transition atomically, exactly like
+   * confirmCollectedOrReceived's guard (only from shipment status CREATED),
+   * so an admin can never end up in a state where details were "saved" but
+   * the order wasn't actually marked collected, or vice versa.
+   */
+  async confirmCollectionTransactional(
     fulfilmentId: string,
-    data: { carrier?: string; trackingReference?: string; scheduledAt?: Date; notes?: string },
+    actorUserId: string,
+    data: { carrier?: string; trackingReference?: string; notes?: string },
   ) {
-    const shipment = await prisma.shipment.findFirst({ where: { fulfilmentId }, orderBy: { createdAt: "desc" } });
-    if (!shipment) return false;
-    await prisma.shipment.update({
-      where: { id: shipment.id },
-      data: {
-        carrier: data.carrier,
-        trackingReference: data.trackingReference,
-        collectionScheduledAt: data.scheduledAt,
-        collectionNotes: data.notes,
-      },
+    const fulfilment = await prisma.fulfilment.findUnique({
+      where: { id: fulfilmentId },
+      include: { shipments: { orderBy: { createdAt: "desc" }, take: 1 } },
+    });
+    const shipment = fulfilment?.shipments[0];
+    if (!fulfilment || !shipment || shipment.status !== "CREATED") return false;
+
+    const now = new Date();
+    await prisma.$transaction(async (tx) => {
+      await tx.shipment.update({
+        where: { id: shipment.id },
+        data: {
+          carrier: data.carrier,
+          trackingReference: data.trackingReference,
+          collectionNotes: data.notes,
+          status: "COLLECTED",
+          collectedAt: now,
+          collectedByUserId: actorUserId,
+        },
+      });
+      if (fulfilment.origin === "DOMESTIC_COLLECTION") {
+        await tx.fulfilment.update({ where: { id: fulfilmentId }, data: { status: "DISPATCHED" } });
+      }
     });
     return true;
   },

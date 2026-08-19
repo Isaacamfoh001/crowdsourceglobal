@@ -96,8 +96,16 @@ function computePackageStatus(fulfilment: DisplayStatusFulfilment, cases: Displa
     );
     if (hasActiveReturn) return "RETURN_IN_PROGRESS";
 
-    // 3. Refund approved/executing but not yet confirmed complete.
-    const hasProcessingRefund = relevant.some((r) => r.item.refundStatus === "APPROVED" || r.item.refundStatus === "PROCESSING");
+    // 3. Refund approved/executing but not yet confirmed complete — this
+    //    also covers FAILED (M11.1 fix): a refund that failed to process
+    //    (e.g. no automated refund API for the payment provider, or a
+    //    provider-side error) still needs CrownSource follow-up. It must
+    //    never silently fall through to the raw fulfilment/shipment status
+    //    below once the case itself is later marked Resolved/Closed — that
+    //    would show a stale "Delivered" while a refund is actually stuck.
+    const hasProcessingRefund = relevant.some(
+      (r) => r.item.refundStatus === "APPROVED" || r.item.refundStatus === "PROCESSING" || r.item.refundStatus === "FAILED",
+    );
     if (hasProcessingRefund) return "REFUND_PROCESSING";
 
     // 4. A replacement is owed and hasn't been delivered yet.

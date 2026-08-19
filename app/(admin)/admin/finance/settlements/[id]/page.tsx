@@ -19,10 +19,18 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function destinationLabel(destination: { type: string; momoAccountName?: string | null; momoPhone?: string | null; momoNetwork?: string | null; bankAccountName?: string | null; bankName?: string | null; bankAccountNumber?: string | null } | null): string {
-  if (!destination) return "Not set";
-  if (destination.type === "MOBILE_MONEY") return `${destination.momoNetwork ?? "Mobile Money"} — ${destination.momoAccountName} — ${destination.momoPhone}`;
-  return `${destination.bankName} — ${destination.bankAccountName} — ${destination.bankAccountNumber}`;
+function destinationLabel(
+  destination: { type: string; momoAccountName?: string | null; momoPhone?: string | null; momoNetwork?: string | null; bankAccountName?: string | null; bankName?: string | null; bankAccountNumber?: string | null } | null,
+  isSnapshot: boolean,
+): string {
+  if (!destination) return "Not set — this vendor has no payout destination configured yet.";
+  const label =
+    destination.type === "MOBILE_MONEY"
+      ? `${destination.momoNetwork ?? "Mobile Money"} — ${destination.momoAccountName} — ${destination.momoPhone}`
+      : `${destination.bankName} — ${destination.bankAccountName} — ${destination.bankAccountNumber}`;
+  // (M11.1) Not yet approved — this is the vendor's CURRENT destination,
+  // shown as a preview, never the locked value actually paid out to.
+  return isSnapshot ? label : `${label} (current — locked in when this settlement is approved)`;
 }
 
 export default async function AdminSettlementDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -58,7 +66,7 @@ export default async function AdminSettlementDetailPage({ params }: { params: Pr
         <Field label="Gross" value={formatPrice(settlement.grossPayable, settlement.currency)} />
         {settlement.adjustmentTotal !== 0 ? <Field label="Adjustments" value={formatPrice(settlement.adjustmentTotal, settlement.currency)} /> : null}
         <Field label="Net amount" value={formatPrice(settlement.netAmount, settlement.currency)} />
-        <Field label="Payout destination" value={destinationLabel(settlement.destination)} />
+        <Field label="Payout destination" value={destinationLabel(settlement.destination, settlement.destinationIsSnapshot)} />
         {settlement.payoutMethod ? <Field label="Payout method" value={settlement.payoutMethod} /> : null}
         {settlement.payoutExternalReference ? <Field label="External reference" value={settlement.payoutExternalReference} /> : null}
         {settlement.payoutPaidAt ? <Field label="Paid on" value={settlement.payoutPaidAt.toLocaleDateString()} /> : null}

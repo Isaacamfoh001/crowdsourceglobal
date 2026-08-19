@@ -312,7 +312,32 @@ export const vendorFinanceService = {
   async getSettlementDetailForAdmin(settlementId: string): Promise<Result<AdminSettlementDetailView>> {
     const row = await vendorFinanceRepository.getSettlementDetail(settlementId);
     if (!row) return err("Settlement not found.");
-    return ok(row as AdminSettlementDetailView);
+
+    let destination = row.destination;
+    const destinationIsSnapshot = destination !== null;
+    if (!destination) {
+      // (M11.1) No locked snapshot exists yet — this settlement hasn't been
+      // approved. Falls back to the Vendor's CURRENT payout configuration so
+      // the admin isn't misled into thinking nothing is set (the previous
+      // "Not set" here was the exact reported bug); this is never persisted
+      // and never treated as the settlement's own authoritative destination
+      // — approveSettlementTransactional still captures the real, immutable
+      // snapshot at approval time, independent of this preview.
+      const current = await vendorFinanceRepository.findPayoutDestination(row.vendorId);
+      if (current) {
+        destination = {
+          type: current.type as never,
+          momoAccountName: current.momoAccountName,
+          momoPhone: current.momoPhone,
+          momoNetwork: current.momoNetwork,
+          bankAccountName: current.bankAccountName,
+          bankName: current.bankName,
+          bankAccountNumber: current.bankAccountNumber,
+        };
+      }
+    }
+
+    return ok({ ...row, destination, destinationIsSnapshot } as AdminSettlementDetailView);
   },
 
   searchSettlements(query: string) {

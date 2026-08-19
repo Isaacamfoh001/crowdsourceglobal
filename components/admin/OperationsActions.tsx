@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { Button } from "../ui/Button";
 import { FormMessage } from "../ui/FormMessage";
 import {
-  scheduleCollectionAction,
+  confirmCollectionAction,
   confirmCollectedAction,
   progressToInTransitAction,
   progressToOutForDeliveryAction,
@@ -57,8 +57,15 @@ export function AssignReceivingLocationForm({
   );
 }
 
-export function ScheduleCollectionForm({ fulfilmentId }: { fulfilmentId: string }) {
-  const [state, formAction, isPending] = useActionState(scheduleCollectionAction, null);
+/**
+ * (M11.1) One primary action — replaces the old "Save collection details"
+ * then separately "Confirm collected" two-step, which risked an admin
+ * believing the operation was done after just saving. This validates,
+ * persists, and transitions to COLLECTED atomically (see
+ * modules/fulfilment/repository.ts's confirmCollectionTransactional).
+ */
+export function ConfirmCollectionForm({ fulfilmentId }: { fulfilmentId: string }) {
+  const [state, formAction, isPending] = useActionState(confirmCollectionAction, null);
   return (
     <form action={formAction} className="flex flex-col gap-3">
       <input type="hidden" name="fulfilmentId" value={fulfilmentId} />
@@ -81,18 +88,6 @@ export function ScheduleCollectionForm({ fulfilmentId }: { fulfilmentId: string 
             className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
           />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="scheduledAt" className="text-sm font-medium text-stone-700">
-            Scheduled pickup
-          </label>
-          <input
-            id="scheduledAt"
-            name="scheduledAt"
-            type="datetime-local"
-            disabled={isPending}
-            className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
-          />
-        </div>
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="notes" className="text-sm font-medium text-stone-700">
@@ -101,7 +96,7 @@ export function ScheduleCollectionForm({ fulfilmentId }: { fulfilmentId: string 
         <textarea id="notes" name="notes" rows={2} disabled={isPending} className="rounded-lg border border-stone-300 px-3 py-2 text-sm" />
       </div>
       <Button type="submit" size="sm" disabled={isPending} className="w-fit">
-        {isPending ? "Saving…" : "Save collection details"}
+        {isPending ? "Confirming…" : "Confirm collection"}
       </Button>
     </form>
   );

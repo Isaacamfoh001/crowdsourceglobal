@@ -256,6 +256,108 @@ describe("resolutionsService — Vendor Finance integration (M11)", () => {
     expect(earning.status).toBe("CANCELLED");
   });
 
+  // --- M11.1 corrective pass: the real-world scenario is an earning that's
+  // already ELIGIBLE (or WAITING_PERIOD) by the time the issue is reported
+  // — not one still PENDING. These prove cancelEarningsForFulfilmentItemsTx's
+  // fromStatuses guard genuinely covers both, via the real admin path
+  // (resolutionsService.approveResolution end-to-end, not a direct repository call).
+
+  it("(M11.1) ELIGIBLE -> CANCELLED: a full VENDOR-responsibility refund on an already-ELIGIBLE earning cancels it, and it never re-enters eligibility afterward", async () => {
+    await setup();
+    const vendorId = await createVendor("eligible-closure");
+    const { orderId, items } = await createConfirmedOrder([{ vendorId, unitPrice: 120 }]);
+    const item = items[0]!;
+    await prisma.vendorEarning.updateMany({ where: { fulfilmentItemId: item.fulfilmentItemId }, data: { status: "ELIGIBLE", deliveredAt: new Date(), eligibleAt: new Date() } });
+
+    const submitted = await resolutionsService.submitCase(customerProfileId, customerUserId, {
+      orderId,
+      issueType: "ITEM_DAMAGED",
+      description: "Discovered damaged after delivery, already eligible for payout.",
+      items: [{ orderItemId: item.orderItemId, quantity: 1 }],
+    });
+    if (!submitted.ok) throw new Error("setup failed");
+    await resolutionsService.moveToUnderReview("staff-1", submitted.value.caseId);
+    const detail = await resolutionsService.getDetailForAdmin(submitted.value.caseId);
+
+    const approved = await resolutionsService.approveResolution("staff-1", submitted.value.caseId, {
+      items: [{ caseItemId: detail!.items[0]!.id, approvedResolution: "FULL_REFUND", approvedRefundAmount: 120 }],
+      responsibility: "VENDOR",
+      customerSafeDecisionReason: "Approved — full refund, no replacement.",
+    });
+    expect(approved.ok).toBe(true);
+
+    let earning = await prisma.vendorEarning.findFirstOrThrow({ where: { fulfilmentItemId: item.fulfilmentItemId } });
+    expect(earning.status).toBe("CANCELLED");
+
+    // Sweep must never restore a CANCELLED earning back to ELIGIBLE.
+    const { vendorFinanceService: vfs } = await import("../vendor-finance/service");
+    await vfs.sweepEligibleEarnings();
+    earning = await prisma.vendorEarning.findFirstOrThrow({ where: { fulfilmentItemId: item.fulfilmentItemId } });
+    expect(earning.status).toBe("CANCELLED");
+
+    // resolveCase's release logic must never restore it either.
+    await resolutionsService.resolveCase("staff-1", submitted.value.caseId);
+    earning = await prisma.vendorEarning.findFirstOrThrow({ where: { fulfilmentItemId: item.fulfilmentItemId } });
+    expect(earning.status).toBe("CANCELLED");
+  });
+
+  it("(M11.1) WAITING_PERIOD -> CANCELLED: a full VENDOR-responsibility refund on an earning still inside its payout hold window cancels it outright", async () => {
+    await setup();
+    const vendorId = await createVendor("waiting-closure");
+    const { orderId, items } = await createConfirmedOrder([{ vendorId, unitPrice: 90 }]);
+    const item = items[0]!;
+    await prisma.vendorEarning.updateMany({ where: { fulfilmentItemId: item.fulfilmentItemId }, data: { status: "WAITING_PERIOD", deliveredAt: new Date() } });
+
+    const submitted = await resolutionsService.submitCase(customerProfileId, customerUserId, {
+      orderId,
+      issueType: "ITEM_DAMAGED",
+      description: "Damaged, discovered shortly after delivery.",
+      items: [{ orderItemId: item.orderItemId, quantity: 1 }],
+    });
+    if (!submitted.ok) throw new Error("setup failed");
+    await resolutionsService.moveToUnderReview("staff-1", submitted.value.caseId);
+    const detail = await resolutionsService.getDetailForAdmin(submitted.value.caseId);
+
+    const approved = await resolutionsService.approveResolution("staff-1", submitted.value.caseId, {
+      items: [{ caseItemId: detail!.items[0]!.id, approvedResolution: "FULL_REFUND", approvedRefundAmount: 90 }],
+      responsibility: "VENDOR",
+      customerSafeDecisionReason: "Approved — full refund, no replacement.",
+    });
+    expect(approved.ok).toBe(true);
+
+    const earning = await prisma.vendorEarning.findFirstOrThrow({ where: { fulfilmentItemId: item.fulfilmentItemId } });
+    expect(earning.status).toBe("CANCELLED");
+  });
+
+  it("(M11.1) root cause of the reported 'earning stays ELIGIBLE' bug: approveResolution now rejects a missing/invalid responsibility instead of silently defaulting to no financial impact", async () => {
+    await setup();
+    const vendorId = await createVendor("no-responsibility");
+    const { orderId, items } = await createConfirmedOrder([{ vendorId, unitPrice: 60 }]);
+    const item = items[0]!;
+    await prisma.vendorEarning.updateMany({ where: { fulfilmentItemId: item.fulfilmentItemId }, data: { status: "ELIGIBLE" } });
+
+    const submitted = await resolutionsService.submitCase(customerProfileId, customerUserId, {
+      orderId,
+      issueType: "ITEM_DAMAGED",
+      description: "Damaged.",
+      items: [{ orderItemId: item.orderItemId, quantity: 1 }],
+    });
+    if (!submitted.ok) throw new Error("setup failed");
+    await resolutionsService.moveToUnderReview("staff-1", submitted.value.caseId);
+    const detail = await resolutionsService.getDetailForAdmin(submitted.value.caseId);
+
+    const approved = await resolutionsService.approveResolution("staff-1", submitted.value.caseId, {
+      items: [{ caseItemId: detail!.items[0]!.id, approvedResolution: "FULL_REFUND", approvedRefundAmount: 60 }],
+      responsibility: "" as never,
+      customerSafeDecisionReason: "Approved.",
+    });
+    expect(approved.ok).toBe(false);
+
+    // Nothing was persisted — the earning is exactly where it started, not silently left ELIGIBLE by a defaulted-to-CROWNSOURCE decision.
+    const earning = await prisma.vendorEarning.findFirstOrThrow({ where: { fulfilmentItemId: item.fulfilmentItemId } });
+    expect(earning.status).toBe("ELIGIBLE");
+  });
+
   it("a CROWNSOURCE-responsibility refund never holds or adjusts the vendor's earning (no-fault refund)", async () => {
     await setup();
     const vendorId = await createVendor("crownsource");

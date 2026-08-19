@@ -149,4 +149,12 @@ export type AdminSettlementDetailView = VendorSettlementDetailView & {
   vendorName: string;
   approvedByUserId: string | null;
   payoutRecordedByUserId: string | null;
+  /**
+   * (M11.1) false when `destination` is a live fallback to the Vendor's
+   * CURRENT payout configuration (no locked snapshot exists yet — this
+   * settlement hasn't been approved). true once the settlement's own
+   * immutable destinationSnapshot exists. Never conflate the two: only the
+   * snapshot is what actually gets/got paid.
+   */
+  destinationIsSnapshot: boolean;
 };

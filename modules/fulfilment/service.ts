@@ -261,34 +261,30 @@ export const fulfilmentService = {
     return applied ? ok(null) : err("Fulfilment not found.");
   },
 
-  async scheduleCollection(
+  /** (M11.1) Single-action domestic collection confirm — see fulfilmentRepository.confirmCollectionTransactional. */
+  async confirmCollection(
     fulfilmentId: string,
-    data: { carrier?: string; trackingReference?: string; scheduledAt?: Date; notes?: string },
+    actorUserId: string,
+    data: { carrier?: string; trackingReference?: string; notes?: string },
   ): Promise<Result<null>> {
-    const applied = await fulfilmentRepository.scheduleCollection(fulfilmentId, data);
-    if (!applied) return err("Fulfilment not found.");
-    if (data.scheduledAt) {
-      const context = await fulfilmentRepository.findNotificationContext(fulfilmentId);
-      if (context) {
-        const owner = await vendorsRepository.findOwnerUserIdAndEmail(context.vendorId);
-        if (owner) {
-          const scheduledAtText = data.scheduledAt.toLocaleString("en-GB");
-          await notificationsService.notify({
-            recipientUserId: owner.userId,
-            type: "COLLECTION_SCHEDULED",
-            title: "Collection scheduled",
-            body: `Collection for order ${context.orderNumber} has been scheduled: ${scheduledAtText}.`,
-            targetUrl: notificationLinks.vendorOrder(fulfilmentId),
-            eventKey: `collection-scheduled:${fulfilmentId}:${data.scheduledAt.getTime()}`,
-            email: {
-              to: owner.email,
-              subject: "Collection scheduled",
-              templateKey: "collection-scheduled",
-              templateData: { orderNumber: context.orderNumber, scheduledAt: scheduledAtText, fulfilmentId },
-            },
-          });
-        }
-      }
+    const applied = await fulfilmentRepository.confirmCollectionTransactional(fulfilmentId, actorUserId, data);
+    if (!applied) return err("This order isn't awaiting collection right now.");
+    const context = await fulfilmentRepository.findNotificationContext(fulfilmentId);
+    if (context) {
+      await notificationsService.notify({
+        recipientUserId: context.customerUserId,
+        type: "PACKAGE_COLLECTED",
+        title: "Your order is on its way",
+        body: `Your order ${context.orderNumber} has been collected and is on its way.`,
+        targetUrl: notificationLinks.customerOrder(context.orderId),
+        eventKey: `package-collected:${fulfilmentId}`,
+        email: {
+          to: context.customerEmail,
+          subject: "Your order is on its way",
+          templateKey: "package-collected",
+          templateData: { orderNumber: context.orderNumber, orderId: context.orderId },
+        },
+      });
     }
     return ok(null);
   },

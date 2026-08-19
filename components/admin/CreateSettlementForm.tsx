@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/Button";
 import { FormMessage } from "../ui/FormMessage";
@@ -9,16 +9,36 @@ import { formatPrice } from "../../lib/format";
 
 type EligibleEarning = { id: string; currency: string; originalPayableAmount: number; orderNumber: string };
 
-export function CreateSettlementForm({ vendorId, earnings }: { vendorId: string; earnings: EligibleEarning[] }) {
+export function CreateSettlementForm({
+  vendorId,
+  earnings,
+  unappliedAdjustmentTotal,
+}: {
+  vendorId: string;
+  earnings: EligibleEarning[];
+  /** (M11.1) Vendor-wide, swept in full into any new settlement regardless of which earnings are selected — see createSettlementTransactional. */
+  unappliedAdjustmentTotal: number;
+}) {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(createSettlementAction, null);
   const [selected, setSelected] = useState<Set<string>>(new Set(earnings.map((e) => e.id)));
 
-  if (state?.ok) {
-    router.push(`/admin/finance/settlements/${state.value.settlementId}`);
-  }
+  // (M11.1) Navigation must never happen directly in the render body — that
+  // triggers "Cannot update a component (Router) while rendering a
+  // different component." Only fire once, when the action actually
+  // succeeds, and only for that specific result (not on every re-render).
+  useEffect(() => {
+    if (state?.ok) {
+      router.push(`/admin/finance/settlements/${state.value.settlementId}`);
+    }
+  }, [state, router]);
 
-  const total = earnings.filter((e) => selected.has(e.id)).reduce((sum, e) => sum + e.originalPayableAmount, 0);
+  const grossSelected = earnings.filter((e) => selected.has(e.id)).reduce((sum, e) => sum + e.originalPayableAmount, 0);
+  // (M11.1) Preview only — the server independently recomputes and enforces
+  // this exact formula in createSettlementTransactional; the client total
+  // is never trusted for the actual settlement amount.
+  const netTotal = grossSelected + unappliedAdjustmentTotal;
+  const currency = earnings[0]?.currency ?? "GHS";
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -50,12 +70,27 @@ export function CreateSettlementForm({ vendorId, earnings }: { vendorId: string;
         ))}
       </div>
 
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-stone-500">Selected total</span>
-        <span className="font-display text-lg font-medium text-stone-900">{formatPrice(total, earnings[0]?.currency ?? "GHS")}</span>
+      <div className="flex flex-col gap-1 rounded-xl border border-stone-200 bg-stone-50 p-3">
+        <div className="flex items-center justify-between text-sm text-stone-500">
+          <span>Selected earnings</span>
+          <span>{formatPrice(grossSelected, currency)}</span>
+        </div>
+        {unappliedAdjustmentTotal !== 0 ? (
+          <div className="flex items-center justify-between text-sm text-stone-500">
+            <span>Outstanding adjustments</span>
+            <span className={unappliedAdjustmentTotal < 0 ? "text-red-700" : "text-emerald-700"}>{formatPrice(unappliedAdjustmentTotal, currency)}</span>
+          </div>
+        ) : null}
+        <div className="mt-1 flex items-center justify-between border-t border-stone-200 pt-1.5">
+          <span className="text-sm font-medium text-stone-700">Net payable</span>
+          <span className={`font-display text-lg font-medium ${netTotal <= 0 ? "text-red-700" : "text-stone-900"}`}>{formatPrice(netTotal, currency)}</span>
+        </div>
       </div>
+      {netTotal <= 0 ? (
+        <p className="text-xs text-red-600">Outstanding adjustments exceed the selected earnings — select more earnings, or wait for future earnings to offset the balance.</p>
+      ) : null}
 
-      <Button type="submit" disabled={isPending || selected.size === 0}>
+      <Button type="submit" disabled={isPending || selected.size === 0 || netTotal <= 0}>
         {isPending ? "Creating…" : "Create settlement"}
       </Button>
     </form>

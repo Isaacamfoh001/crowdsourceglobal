@@ -382,4 +382,103 @@ describe("vendorFinanceService — M11 Vendor Finance", () => {
     const destination = await prisma.vendorPayoutDestination.findUnique({ where: { vendorId } });
     expect(destination).toBeNull();
   });
+
+  // --- M11.1 corrective pass: issue #7 — settlement total must reflect current net payable ---
+
+  it("(M11.1) server-authoritative net payable: earning 500, adjustment -100, settlement amount is 400, never 500", async () => {
+    await setupCustomer();
+    const vendorId = await createVendor("net-500-100-400");
+    const orderId = await createConfirmedOrder([vendorId], 500);
+    await markDelivered(orderId, vendorId, 48);
+    await vendorFinanceService.sweepEligibleEarnings();
+
+    const eligible = await vendorFinanceService.listEligibleEarningsForAdmin(vendorId);
+    expect(eligible[0]!.originalPayableAmount).toBe(500);
+    await vendorFinanceService.createManualAdjustment({ vendorId, vendorEarningId: eligible[0]!.id, amount: -100, reason: "test correction", actorUserId: "admin-1" });
+
+    const result = await vendorFinanceService.createSettlement(vendorId, [eligible[0]!.id]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const settlement = await prisma.vendorSettlement.findUniqueOrThrow({ where: { id: result.value.settlementId } });
+    expect(settlement.grossPayable.toNumber()).toBe(500);
+    expect(settlement.adjustmentTotal.toNumber()).toBe(-100);
+    expect(settlement.netAmount.toNumber()).toBe(400); // never 500 — the client-displayed total must match this
+  });
+
+  // --- M11.1 corrective pass: issue #5 — payout destination "Not set" on a freshly-created (not yet approved) settlement ---
+
+  it("(M11.1) a freshly-created settlement (not yet approved) shows the Vendor's CURRENT payout destination, not 'Not set' — destinationIsSnapshot is false until approval", async () => {
+    await setupCustomer();
+    const vendorId = await createVendor("destination-preview");
+    await vendorFinanceService.upsertPayoutDestinationForVendor(vendorId, "OWNER", "actor-1", {
+      type: "MOBILE_MONEY",
+      momoAccountName: "Preview Test",
+      momoPhone: "0244555555",
+      momoNetwork: "MTN",
+    });
+    const orderId = await createConfirmedOrder([vendorId], 80);
+    await markDelivered(orderId, vendorId, 48);
+    await vendorFinanceService.sweepEligibleEarnings();
+    const eligible = await vendorFinanceService.listEligibleEarningsForAdmin(vendorId);
+
+    const created = await vendorFinanceService.createSettlement(vendorId, eligible.map((e) => e.id));
+    if (!created.ok) throw new Error("setup failed");
+
+    const detail = await vendorFinanceService.getSettlementDetailForAdmin(created.value.settlementId);
+    expect(detail.ok).toBe(true);
+    if (!detail.ok) return;
+    expect(detail.value.destination).not.toBeNull(); // the exact reported bug: this used to be null ("Not set") pre-approval
+    expect(detail.value.destination?.momoAccountName).toBe("Preview Test");
+    expect(detail.value.destinationIsSnapshot).toBe(false); // clearly distinguished from the locked value
+  });
+
+  it("(M11.1) once a settlement is approved, its destination becomes the locked, immutable snapshot — destinationIsSnapshot is true", async () => {
+    await setupCustomer();
+    const vendorId = await createVendor("destination-locked");
+    await vendorFinanceService.upsertPayoutDestinationForVendor(vendorId, "OWNER", "actor-1", {
+      type: "MOBILE_MONEY",
+      momoAccountName: "Locked Test",
+      momoPhone: "0244555555",
+      momoNetwork: "MTN",
+    });
+    const orderId = await createConfirmedOrder([vendorId], 80);
+    await markDelivered(orderId, vendorId, 48);
+    await vendorFinanceService.sweepEligibleEarnings();
+    const eligible = await vendorFinanceService.listEligibleEarningsForAdmin(vendorId);
+    const created = await vendorFinanceService.createSettlement(vendorId, eligible.map((e) => e.id));
+    if (!created.ok) throw new Error("setup failed");
+
+    await vendorFinanceService.approveSettlement(created.value.settlementId, "admin-1");
+
+    // Changing the Vendor's CURRENT destination afterward must not rewrite the already-approved settlement's snapshot.
+    await vendorFinanceService.upsertPayoutDestinationForVendor(vendorId, "OWNER", "actor-1", {
+      type: "MOBILE_MONEY",
+      momoAccountName: "Changed After Approval",
+      momoPhone: "0244000000",
+      momoNetwork: "MTN",
+    });
+
+    const detail = await vendorFinanceService.getSettlementDetailForAdmin(created.value.settlementId);
+    expect(detail.ok).toBe(true);
+    if (!detail.ok) return;
+    expect(detail.value.destinationIsSnapshot).toBe(true);
+    expect(detail.value.destination?.momoAccountName).toBe("Locked Test"); // unchanged by the later edit
+  });
+
+  it("(M11.1) a settlement created before any payout destination was ever saved shows genuinely 'not set', not a fabricated value", async () => {
+    await setupCustomer();
+    const vendorId = await createVendor("no-destination");
+    const orderId = await createConfirmedOrder([vendorId], 60);
+    await markDelivered(orderId, vendorId, 48);
+    await vendorFinanceService.sweepEligibleEarnings();
+    const eligible = await vendorFinanceService.listEligibleEarningsForAdmin(vendorId);
+    const created = await vendorFinanceService.createSettlement(vendorId, eligible.map((e) => e.id));
+    if (!created.ok) throw new Error("setup failed");
+
+    const detail = await vendorFinanceService.getSettlementDetailForAdmin(created.value.settlementId);
+    expect(detail.ok).toBe(true);
+    if (!detail.ok) return;
+    expect(detail.value.destination).toBeNull();
+    expect(detail.value.destinationIsSnapshot).toBe(false);
+  });
 });

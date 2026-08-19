@@ -3,7 +3,7 @@ import { FulfilmentStatusBadge } from "../../../../../components/fulfilment/Fulf
 import { FormMessage } from "../../../../../components/ui/FormMessage";
 import {
   AssignReceivingLocationForm,
-  ScheduleCollectionForm,
+  ConfirmCollectionForm,
   ConfirmCollectedButton,
   ProgressButtons,
   ReportFailureForm,
@@ -130,10 +130,7 @@ export default async function AdminFulfilmentDetailPage({ params }: { params: Pr
 
         {!international && awaitingHandoff && fulfilment.status === "READY" ? (
           <div className="mt-3 flex flex-col gap-4">
-            <ScheduleCollectionForm fulfilmentId={fulfilment.id} />
-            {fulfilment.shipment?.collectionScheduledAt ? (
-              <ConfirmCollectedButton fulfilmentId={fulfilment.id} label="Confirm collected" />
-            ) : null}
+            <ConfirmCollectionForm fulfilmentId={fulfilment.id} />
           </div>
         ) : null}
 

@@ -202,8 +202,11 @@ export async function processResolutionRefundAction(_prevState: Result<null> | n
   const refundId = String(formData.get("refundId") ?? "");
   const outcome = String(formData.get("outcome") ?? "succeed") === "fail" ? "fail" : "succeed";
   const result = await resolutionsService.processRefund(session.user.id, refundId, outcome);
-  if (!result.ok) return result;
+  // Always revalidate — even a FAILED outcome persisted a real status
+  // change (refund.status/failureReason) that the page must reflect, not
+  // just the ok(null) happy path.
   revalidatePath(`/admin/resolutions/${caseId}`);
+  if (!result.ok) return result;
   return ok(null);
 }
 
