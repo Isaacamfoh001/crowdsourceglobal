@@ -10,13 +10,14 @@ export const RATE_LIMIT_MESSAGE = "Too many attempts. Please try again shortly."
  * Fixed-window, Postgres-backed rate limiter for server actions Better
  * Auth's own database-backed limiter (lib/auth.ts) doesn't cover — payment/
  * OTP initiation, checkout order creation. Deliberately not in-memory: a
- * single Render web-service process restarting (deploys, crashes) would
+ * single always-on web-service process restarting (deploys, crashes) would
  * otherwise silently reset every limit to zero, which is exactly the
  * "misleading protection" the M13 brief asked to avoid. No Redis — one
  * Postgres table (ActionRateLimit), the same guarded-write idiom this
  * codebase already uses for EmailDeliveryJob claiming
  * (modules/notifications/repository.ts). See
- * docs/decisions/0011-production-infrastructure-m13.md.
+ * docs/decisions/0011-production-infrastructure-m13.md (mechanism) and
+ * docs/decisions/0012-railway-deployment-m13-2.md (deployment target).
  *
  * Concurrency: each branch below is a single guarded UPDATE/INSERT: a
  * losing concurrent caller never observes a stale read, it just falls

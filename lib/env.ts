@@ -116,8 +116,9 @@ const envSchema = z.object({
   /** Required only when STORAGE_PROVIDER=r2. The private bucket sourcing/resolution attachments are written to. */
   R2_BUCKET_NAME: z.string().optional(),
   /**
-   * M13. Bounds the Postgres connection pool `@prisma/adapter-pg` opens
-   * (lib/db.ts). This is a single Render web-service process, not a
+   * M13 (deployment target adapted to Railway in M13.2 — see ADR 0012).
+   * Bounds the Postgres connection pool `@prisma/adapter-pg` opens
+   * (lib/db.ts). This is a single always-on web-service process, not a
    * per-request serverless function, so one bounded pool for the process's
    * lifetime is sufficient — not a per-request or per-instance concern.
    * Keep this comfortably under the managed Postgres plan's max connection

@@ -1,5 +1,7 @@
 # ADR 0011: Production Infrastructure Foundations (M13)
 
+> **Superseded on deployment-target specifics by [ADR 0012](0012-railway-deployment-m13-2.md) (M13.2).** The deployment host changed from Render (described below) to Railway before any deployment happened. The storage/rate-limiting/jobs *mechanisms* documented here are unchanged and still accurate; the "Client-IP Trust Question" section below is Render-specific analysis that no longer reflects the active deployment target — see ADR 0012 for the Railway-specific replacement.
+
 ## Context
 
 The M13 production-readiness audit found three concrete gaps between "correct commerce logic" and "safe to expose to real users": local-disk file storage that would silently lose sourcing/resolution attachments on any redeploy, no scheduling for the three existing background jobs, and no rate limiting anywhere, including login and password reset. This ADR records the three decisions made to close them, plus the residual client-IP trust question that fell out of the rate-limiting work.

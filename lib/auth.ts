@@ -90,14 +90,21 @@ export const auth = betterAuth({
    * user. What DOES need explicit configuration:
    * - storage: "database" — the default is in-memory, which silently
    *   resets every limit to zero on every restart/redeploy of this
-   *   single-process Render web service (misleading protection, exactly
-   *   what the M13 audit brief warned against). Uses the RateLimit table
+   *   single-process web service (misleading protection, exactly what the
+   *   M13 audit brief warned against). Uses the RateLimit table
    *   (prisma/schema.prisma) via the same Prisma adapter already
    *   configured above — no new infrastructure.
-   * - advanced.ipAddress.ipAddressHeaders — see lib/request-ip.ts's
-   *   comment and docs/decisions/0011-production-infrastructure-m13.md for
-   *   why cf-connecting-ip is preferred and the residual x-forwarded-for
-   *   trust caveat behind Render/Cloudflare.
+   * - advanced.ipAddress.ipAddressHeaders (M13.2 — re-verified for Railway,
+   *   see lib/request-ip.ts's comment and
+   *   docs/decisions/0012-railway-deployment-m13-2.md): Railway's own edge
+   *   proxy is reported to strip/replace any client-supplied
+   *   X-Forwarded-For rather than merely appending to it (unlike Render,
+   *   M13's original target — see ADR 0011's now-superseded analysis), so
+   *   its leftmost entry is trustworthy on Railway without a
+   *   trustedProxies CIDR list. x-real-ip (Railway's own single-value
+   *   header) and cf-connecting-ip (relevant only if a custom domain is
+   *   later proxied through Cloudflare) are checked first regardless,
+   *   since both are strictly safer when present and a no-op when absent.
    */
   rateLimit: {
     enabled: true,
@@ -105,7 +112,7 @@ export const auth = betterAuth({
   },
   advanced: {
     ipAddress: {
-      ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"],
+      ipAddressHeaders: ["cf-connecting-ip", "x-real-ip", "x-forwarded-for"],
     },
   },
 

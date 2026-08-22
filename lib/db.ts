@@ -11,9 +11,10 @@ import { env } from "./env";
  * datasource-URL connection), hence @prisma/adapter-pg here.
  *
  * `max` bounds the underlying `pg.Pool` (M13) — this runs as a single
- * Render web-service process, not a per-request serverless function, so one
- * bounded pool for the process's lifetime is the right unit to size, not
- * per-request/per-instance. See DATABASE_POOL_MAX in lib/env.ts.
+ * always-on web-service process (Railway, per M13.2/ADR 0012), not a
+ * per-request serverless function, so one bounded pool for the process's
+ * lifetime is the right unit to size, not per-request/per-instance. See
+ * DATABASE_POOL_MAX in lib/env.ts.
  */
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
