@@ -42,10 +42,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        value:
-          fromDatabase:
-            name: crownsourceglobal-db
-            property: connectionString
+        fromDatabase:
+          name: crownsourceglobal-db
+          property: connectionString
       - key: DATABASE_POOL_MAX
         value: "10"
       - key: BETTER_AUTH_URL
