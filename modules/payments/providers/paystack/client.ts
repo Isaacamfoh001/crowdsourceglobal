@@ -1,5 +1,14 @@
 import { env } from "../../../../lib/env";
-import type { PaystackChargeResponse, PaystackInitializeResponse, PaystackRefundResponse, PaystackVerifyResponse } from "./types";
+import type {
+  PaystackBankListResponse,
+  PaystackChargeResponse,
+  PaystackInitializeResponse,
+  PaystackRecipientType,
+  PaystackRefundResponse,
+  PaystackTransferResponse,
+  PaystackTransferRecipientResponse,
+  PaystackVerifyResponse,
+} from "./types";
 
 const BASE_URL = "https://api.paystack.co";
 const TIMEOUT_MS = 15_000;
@@ -84,5 +93,27 @@ export const paystackClient = {
   },
   fetchRefund(reference: string) {
     return paystackRequest<PaystackRefundResponse>(`/refund/${encodeURIComponent(reference)}`, "GET");
+  },
+
+  /**
+   * Vendor payouts (M12). GET /bank resolves the bank_code a Transfer
+   * Recipient needs — this is a DIFFERENT code space from the Charge API's
+   * mobile_money.provider strings (mtn/atl/vod) used for customer payments;
+   * never conflate the two. `type` narrows to Ghana mobile money wallets vs
+   * GhIPSS bank accounts.
+   */
+  listBanks(params: { country: "ghana"; currency: "GHS"; type?: PaystackRecipientType }) {
+    const qs = new URLSearchParams({ country: params.country, currency: params.currency });
+    if (params.type) qs.set("type", params.type);
+    return paystackRequest<PaystackBankListResponse>(`/bank?${qs.toString()}`, "GET");
+  },
+  createTransferRecipient(body: { type: PaystackRecipientType; name: string; account_number: string; bank_code: string; currency: "GHS" }) {
+    return paystackRequest<PaystackTransferRecipientResponse>("/transferrecipient", "POST", body);
+  },
+  initiateTransfer(body: { source: "balance"; amount: number; recipient: string; reason: string; currency: "GHS"; reference: string }) {
+    return paystackRequest<PaystackTransferResponse>("/transfer", "POST", body);
+  },
+  verifyTransfer(reference: string) {
+    return paystackRequest<PaystackTransferResponse>(`/transfer/verify/${encodeURIComponent(reference)}`, "GET");
   },
 };

@@ -83,6 +83,43 @@ export type PaystackWebhookPayload = {
 };
 
 /**
+ * Transfers (M12 — Vendor payouts). Sourced from Paystack's documented
+ * Transfer Recipient and Transfer APIs — see
+ * docs/decisions/0010-paystack-vendor-payouts.md for exactly what was
+ * confirmed and how. Confined to this provider directory, same discipline
+ * as the payment/refund shapes above.
+ */
+
+/** GET /bank — used to resolve the bank_code a Transfer Recipient needs for Ghana mobile_money/ghipss (NOT the same codes as the Charge API's mobile_money.provider field). */
+export type PaystackBankListItem = { name: string; code: string; type?: string; currency?: string };
+export type PaystackBankListResponse = PaystackEnvelope<PaystackBankListItem[]>;
+
+export type PaystackRecipientType = "mobile_money" | "ghipss";
+
+export type PaystackTransferRecipientData = {
+  recipient_code: string;
+  type: string;
+  name: string;
+  active?: boolean;
+  details?: { account_number?: string; bank_code?: string; bank_name?: string };
+};
+export type PaystackTransferRecipientResponse = PaystackEnvelope<PaystackTransferRecipientData>;
+
+/** POST /transfer & GET /transfer/verify/:reference response `data.status` values actually documented. */
+export type PaystackTransferStatus = "otp" | "pending" | "queued" | "success" | "failed" | "reversed" | string;
+
+export type PaystackTransferData = {
+  id: number;
+  transfer_code: string;
+  reference?: string;
+  amount: number;
+  currency: string;
+  status: PaystackTransferStatus;
+  reason?: string;
+};
+export type PaystackTransferResponse = PaystackEnvelope<PaystackTransferData>;
+
+/**
  * Ghana Mobile Money provider codes Paystack's Charge API documents for
  * the mobile_money.provider field. Confirmed directly against Paystack's
  * current official Payment Channels documentation by Isaac (2026-08-18) —

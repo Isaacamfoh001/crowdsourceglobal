@@ -6,17 +6,27 @@ import { formatPrice } from "../../../../../lib/format";
 export const metadata = { title: "Settlement history — Vendor Portal" };
 export const dynamic = "force-dynamic";
 
+/**
+ * Vendor-facing labels are deliberately simpler than the internal
+ * SettlementStatus enum — FAILED never appears here (it means "CrownSource
+ * is still working this out", not something the Vendor needs to act on or
+ * worry about); it reads the same as DRAFT/APPROVED, "Awaiting payout".
+ */
 const STATUS_LABEL: Record<string, string> = {
-  DRAFT: "Draft",
-  APPROVED: "Approved — awaiting payout",
+  DRAFT: "Awaiting payout",
+  APPROVED: "Awaiting payout",
+  PROCESSING: "Payout processing",
   PAID: "Paid",
+  FAILED: "Awaiting payout",
   CANCELLED: "Cancelled",
 };
 
 const STATUS_TONE: Record<string, string> = {
   DRAFT: "bg-stone-200 text-stone-600",
   APPROVED: "bg-amber-100 text-amber-700",
+  PROCESSING: "bg-amber-100 text-amber-700",
   PAID: "bg-emerald-100 text-emerald-700",
+  FAILED: "bg-stone-200 text-stone-600",
   CANCELLED: "bg-stone-200 text-stone-500",
 };
 

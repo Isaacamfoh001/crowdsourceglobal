@@ -2,7 +2,7 @@ export type EarningStatus = "PENDING" | "WAITING_PERIOD" | "ON_HOLD" | "ELIGIBLE
 
 export type AdjustmentCategory = "RESOLUTION_REFUND" | "MANUAL_CORRECTION" | "SETTLEMENT_REVERSAL";
 
-export type SettlementStatus = "DRAFT" | "APPROVED" | "PAID" | "CANCELLED";
+export type SettlementStatus = "DRAFT" | "APPROVED" | "PROCESSING" | "PAID" | "FAILED" | "CANCELLED";
 
 export type PayoutMethod = "BANK_TRANSFER" | "MOBILE_MONEY" | "OTHER";
 
@@ -85,6 +85,12 @@ export type VendorSettlementDetailView = VendorSettlementSummaryView & {
   payoutMethod: PayoutMethod | null;
   payoutExternalReference: string | null;
   payoutNote: string | null;
+  /** (M12) "PAYSTACK" for an automated payout; null for a manually-recorded one. */
+  payoutProvider: string | null;
+  payoutProviderReference: string | null;
+  payoutProviderTransferCode: string | null;
+  /** (M12) Admin-facing only — set when status = FAILED. Never shown to the Vendor. */
+  payoutFailureReasonSafe: string | null;
   reversedAt: Date | null;
   reversalReason: string | null;
   /** Masked for Vendor display — see toMaskedDestination. */

@@ -61,6 +61,26 @@ export async function recordSettlementPayoutAction(_prevState: Result<null> | nu
   return result;
 }
 
+export async function sendSettlementPayoutAction(_prevState: Result<null> | null, formData: FormData): Promise<Result<null>> {
+  const { session } = await requireAdminFinanceMutation("/admin/finance");
+  const settlementId = String(formData.get("settlementId") ?? "");
+
+  const result = await vendorFinanceService.initiatePayout(settlementId, session.user.id);
+
+  revalidatePath(`/admin/finance/settlements/${settlementId}`);
+  return result;
+}
+
+export async function checkSettlementPayoutStatusAction(_prevState: Result<null> | null, formData: FormData): Promise<Result<null>> {
+  await requireAdminFinanceMutation("/admin/finance");
+  const settlementId = String(formData.get("settlementId") ?? "");
+
+  const result = await vendorFinanceService.checkPayoutStatus(settlementId);
+
+  revalidatePath(`/admin/finance/settlements/${settlementId}`);
+  return result;
+}
+
 export async function reverseSettlementAction(_prevState: Result<null> | null, formData: FormData): Promise<Result<null>> {
   const { session } = await requireAdminFinanceMutation("/admin/finance");
   const settlementId = String(formData.get("settlementId") ?? "");

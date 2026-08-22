@@ -10,9 +10,20 @@ const STATUS_FILTERS = [
   { value: undefined, label: "All" },
   { value: "DRAFT", label: "Draft" },
   { value: "APPROVED", label: "Approved" },
+  { value: "PROCESSING", label: "Processing" },
   { value: "PAID", label: "Paid" },
+  { value: "FAILED", label: "Failed" },
   { value: "CANCELLED", label: "Cancelled" },
 ] as const;
+
+const STATUS_TONE: Record<string, string> = {
+  DRAFT: "bg-stone-200 text-stone-600",
+  APPROVED: "bg-amber-100 text-amber-700",
+  PROCESSING: "bg-amber-100 text-amber-700",
+  PAID: "bg-emerald-100 text-emerald-700",
+  FAILED: "bg-red-100 text-red-700",
+  CANCELLED: "bg-stone-200 text-stone-500",
+};
 
 export default async function AdminSettlementsPage({ searchParams }: { searchParams: Promise<{ status?: string; page?: string }> }) {
   await requireAdminFinanceView("/admin/finance");
@@ -58,13 +69,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-stone-900">{formatPrice(s.netAmount, s.currency)}</span>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                    s.status === "PAID" ? "bg-emerald-100 text-emerald-700" : s.status === "APPROVED" ? "bg-amber-100 text-amber-700" : "bg-stone-200 text-stone-600"
-                  }`}
-                >
-                  {s.status}
-                </span>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_TONE[s.status] ?? "bg-stone-200 text-stone-600"}`}>{s.status}</span>
               </div>
             </Link>
           ))}

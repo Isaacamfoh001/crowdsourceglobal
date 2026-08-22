@@ -3,7 +3,14 @@
 import { useActionState, useState } from "react";
 import { Button } from "../ui/Button";
 import { FormMessage } from "../ui/FormMessage";
-import { approveSettlementAction, cancelSettlementAction, recordSettlementPayoutAction, reverseSettlementAction } from "../../lib/actions/admin-finance";
+import {
+  approveSettlementAction,
+  cancelSettlementAction,
+  checkSettlementPayoutStatusAction,
+  recordSettlementPayoutAction,
+  reverseSettlementAction,
+  sendSettlementPayoutAction,
+} from "../../lib/actions/admin-finance";
 
 const PAYOUT_METHODS = [
   { value: "MOBILE_MONEY", label: "Mobile Money" },
@@ -37,6 +44,34 @@ function CancelForm({ settlementId }: { settlementId: string }) {
   );
 }
 
+/** One button for both "Send Payout" (from APPROVED) and "Retry Payout" (from FAILED) — same action, same server-side guard, just a different label. */
+function SendPayoutForm({ settlementId, label }: { settlementId: string; label: string }) {
+  const [state, formAction, isPending] = useActionState(sendSettlementPayoutAction, null);
+  return (
+    <form action={formAction} className="flex flex-col gap-2">
+      <input type="hidden" name="settlementId" value={settlementId} />
+      {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
+      <Button type="submit" disabled={isPending}>
+        {isPending ? "Sending…" : label}
+      </Button>
+    </form>
+  );
+}
+
+/** Safe, on-demand re-check while PROCESSING — never a second "Send Payout". */
+function CheckStatusForm({ settlementId }: { settlementId: string }) {
+  const [state, formAction, isPending] = useActionState(checkSettlementPayoutStatusAction, null);
+  return (
+    <form action={formAction} className="flex flex-col gap-2">
+      <input type="hidden" name="settlementId" value={settlementId} />
+      {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
+      <Button type="submit" variant="outline" size="sm" disabled={isPending}>
+        {isPending ? "Checking…" : "Check status"}
+      </Button>
+    </form>
+  );
+}
+
 function RecordPayoutForm({ settlementId }: { settlementId: string }) {
   const [state, formAction, isPending] = useActionState(recordSettlementPayoutAction, null);
   return (
@@ -44,7 +79,7 @@ function RecordPayoutForm({ settlementId }: { settlementId: string }) {
       <input type="hidden" name="settlementId" value={settlementId} />
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
       <p className="text-sm text-stone-600">
-        Only record a payout <strong>after</strong> you&apos;ve already sent the money externally (bank transfer or Mobile Money). This does not move any money itself.
+        Only record a payout <strong>after</strong> you&apos;ve already sent the money externally (bank transfer or Mobile Money, outside Paystack). This does not move any money itself.
       </p>
       <label className="flex flex-col gap-1.5 text-sm font-medium text-stone-700" htmlFor="method">
         Payout method used
@@ -72,6 +107,23 @@ function RecordPayoutForm({ settlementId }: { settlementId: string }) {
         {isPending ? "Recording…" : "Record external payout"}
       </Button>
     </form>
+  );
+}
+
+/** Collapsed by default whenever the automated path is available — Send Payout is the one obvious primary action; this stays a clearly secondary fallback. */
+function ManualPayoutFallback({ settlementId }: { settlementId: string }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!expanded) {
+    return (
+      <button type="button" onClick={() => setExpanded(true)} className="text-left text-sm text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-700">
+        Paid this vendor outside Paystack? Record external payout instead.
+      </button>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+      <RecordPayoutForm settlementId={settlementId} />
+    </div>
   );
 }
 
@@ -105,7 +157,7 @@ function ReverseForm({ settlementId }: { settlementId: string }) {
   );
 }
 
-export function SettlementActions({ settlementId, status }: { settlementId: string; status: string }) {
+export function SettlementActions({ settlementId, status, automatedPayoutsEnabled }: { settlementId: string; status: string; automatedPayoutsEnabled: boolean }) {
   if (status === "DRAFT") {
     return (
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -115,9 +167,35 @@ export function SettlementActions({ settlementId, status }: { settlementId: stri
     );
   }
   if (status === "APPROVED") {
+    if (!automatedPayoutsEnabled) {
+      return (
+        <div className="flex flex-col gap-4">
+          <RecordPayoutForm settlementId={settlementId} />
+          <CancelForm settlementId={settlementId} />
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col gap-4">
-        <RecordPayoutForm settlementId={settlementId} />
+        <SendPayoutForm settlementId={settlementId} label="Send payout" />
+        <ManualPayoutFallback settlementId={settlementId} />
+        <CancelForm settlementId={settlementId} />
+      </div>
+    );
+  }
+  if (status === "PROCESSING") {
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-sm text-stone-600">CrownSourceGlobal is waiting for Paystack to confirm this transfer. This can take from a few seconds up to a few minutes.</p>
+        <CheckStatusForm settlementId={settlementId} />
+      </div>
+    );
+  }
+  if (status === "FAILED") {
+    return (
+      <div className="flex flex-col gap-4">
+        <SendPayoutForm settlementId={settlementId} label="Retry payout" />
+        <ManualPayoutFallback settlementId={settlementId} />
         <CancelForm settlementId={settlementId} />
       </div>
     );

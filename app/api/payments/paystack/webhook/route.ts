@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { paymentsService } from "../../../../../modules/payments/service";
 import { verifyPaystackSignature } from "../../../../../modules/payments/providers/paystack/adapter";
+import { vendorFinanceService } from "../../../../../modules/vendor-finance/service";
 
 /**
  * Public, provider-facing callback endpoint — never authenticated via
@@ -39,6 +40,11 @@ export async function POST(request: Request): Promise<NextResponse> {
       await paymentsService.handlePaystackWebhook(parsed, sourceIp);
     } else if (event.startsWith("refund.")) {
       await paymentsService.handlePaystackRefundWebhook(parsed);
+    } else if (event.startsWith("transfer.")) {
+      // Vendor payouts (M12) — same discipline as refund.*: the webhook
+      // body's `reference` is only ever a lookup key, never trusted for
+      // status. See vendorFinanceService.handlePaystackTransferWebhook.
+      await vendorFinanceService.handlePaystackTransferWebhook(parsed);
     }
   } catch (error) {
     console.error("Paystack webhook processing failed:", error);

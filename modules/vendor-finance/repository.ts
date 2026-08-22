@@ -184,6 +184,10 @@ export const vendorFinanceRepository = {
         payoutNote: true,
         payoutPaidAt: true,
         payoutRecordedByUserId: true,
+        payoutProvider: true,
+        payoutProviderReference: true,
+        payoutProviderTransferCode: true,
+        payoutFailureReasonSafe: true,
         reversedAt: true,
         reversalReason: true,
         destinationSnapshot: true,
@@ -208,6 +212,10 @@ export const vendorFinanceRepository = {
       payoutExternalReference: row.payoutExternalReference,
       payoutNote: row.payoutNote,
       payoutPaidAt: row.payoutPaidAt,
+      payoutProvider: row.payoutProvider,
+      payoutProviderReference: row.payoutProviderReference,
+      payoutProviderTransferCode: row.payoutProviderTransferCode,
+      payoutFailureReasonSafe: row.payoutFailureReasonSafe,
       reversedAt: row.reversedAt,
       reversalReason: row.reversalReason,
       destination: (row.destinationSnapshot as unknown as PayoutDestinationSnapshot) ?? null,
@@ -325,7 +333,10 @@ export const vendorFinanceRepository = {
   async cancelSettlementTransactional(settlementId: string) {
     return prisma.$transaction(async (tx) => {
       const claim = await tx.vendorSettlement.updateMany({
-        where: { id: settlementId, status: { in: ["DRAFT", "APPROVED"] } },
+        // FAILED included (M12) — a permanently-failed automated payout must
+        // not leave its earnings stuck INCLUDED_IN_SETTLEMENT forever; Admin
+        // can cancel and fall back to a fresh settlement/manual payout.
+        where: { id: settlementId, status: { in: ["DRAFT", "APPROVED", "FAILED"] } },
         data: { status: "CANCELLED" },
       });
       if (claim.count !== 1) return false;
@@ -343,6 +354,15 @@ export const vendorFinanceRepository = {
     });
   },
 
+  /** Shared by the manual and automated (M12) payout-completion paths — every included earning moves INCLUDED_IN_SETTLEMENT -> PAID in the same transaction as the settlement's own status flip. */
+  async markSettlementEarningsPaidTx(tx: Prisma.TransactionClient, settlementId: string) {
+    const items = await tx.vendorSettlementItem.findMany({ where: { settlementId }, select: { vendorEarningId: true } });
+    await tx.vendorEarning.updateMany({
+      where: { id: { in: items.map((i) => i.vendorEarningId) }, status: "INCLUDED_IN_SETTLEMENT" },
+      data: { status: "PAID" },
+    });
+  },
+
   async recordPayoutTransactional(
     settlementId: string,
     input: { method: string; externalReference: string; paidAt: Date; note: string | null },
@@ -350,6 +370,10 @@ export const vendorFinanceRepository = {
   ) {
     return prisma.$transaction(async (tx) => {
       const claim = await tx.vendorSettlement.updateMany({
+        // Manual recording only ever applies from APPROVED — an automated
+        // (M12) payout in PROCESSING/PAID/FAILED is a different path and
+        // must never be double-recorded here (see cancelSettlementTransactional's
+        // comment and docs/decisions/0010 for the full "no conflict" rule).
         where: { id: settlementId, status: "APPROVED" },
         data: {
           status: "PAID",
@@ -362,13 +386,100 @@ export const vendorFinanceRepository = {
       });
       if (claim.count !== 1) return false;
 
-      const items = await tx.vendorSettlementItem.findMany({ where: { settlementId }, select: { vendorEarningId: true } });
-      await tx.vendorEarning.updateMany({
-        where: { id: { in: items.map((i) => i.vendorEarningId) }, status: "INCLUDED_IN_SETTLEMENT" },
-        data: { status: "PAID" },
-      });
+      await vendorFinanceRepository.markSettlementEarningsPaidTx(tx, settlementId);
       return true;
     });
+  },
+
+  // --- Automated Paystack payout (M12) ---------------------------------
+
+  /**
+   * The row-level double-click/concurrency guard: a settlement can only
+   * ever be claimed for payout from APPROVED (first send) or FAILED (an
+   * explicit retry) — never from PROCESSING/PAID/CANCELLED/DRAFT. Two
+   * concurrent "Send Payout" clicks race this single guarded `updateMany`;
+   * exactly one can ever see `count === 1`. `payoutProviderReference` is
+   * regenerated on every claim (including retries) so it's always fresh
+   * and always unique.
+   */
+  async claimSettlementForPayout(settlementId: string, actorUserId: string, reference: string): Promise<boolean> {
+    const claim = await prisma.vendorSettlement.updateMany({
+      where: { id: settlementId, status: { in: ["APPROVED", "FAILED"] } },
+      data: {
+        status: "PROCESSING",
+        payoutProvider: "PAYSTACK",
+        payoutProviderReference: reference,
+        payoutProviderTransferCode: null,
+        payoutInitiatedAt: new Date(),
+        payoutInitiatedByUserId: actorUserId,
+        payoutFailureReasonSafe: null,
+      },
+    });
+    return claim.count === 1;
+  },
+
+  findSettlementForPayout(settlementId: string) {
+    return prisma.vendorSettlement.findUnique({
+      where: { id: settlementId },
+      select: {
+        id: true,
+        status: true,
+        settlementNumber: true,
+        currency: true,
+        netAmount: true,
+        vendorId: true,
+        vendor: { select: { companyName: true } },
+        destinationSnapshot: true,
+        payoutProviderReference: true,
+        payoutProviderRecipientCode: true,
+      },
+    });
+  },
+
+  findSettlementByPayoutReference(reference: string) {
+    return prisma.vendorSettlement.findUnique({ where: { payoutProviderReference: reference }, select: { id: true, status: true } });
+  },
+
+  setRecipientCode(settlementId: string, recipientCode: string) {
+    return prisma.vendorSettlement.update({ where: { id: settlementId }, data: { payoutProviderRecipientCode: recipientCode } });
+  },
+
+  setTransferCode(settlementId: string, transferCode: string) {
+    return prisma.vendorSettlement.updateMany({ where: { id: settlementId, status: "PROCESSING" }, data: { payoutProviderTransferCode: transferCode } });
+  },
+
+  /**
+   * PROCESSING -> PAID, guarded — a duplicate webhook/poll racing this can
+   * only ever win once. `payoutProviderReference` (CrownSourceGlobal's own
+   * reference, sent to Paystack as `reference`) was already stored at claim
+   * time and never changes here; only Paystack's own `transferCode` is new
+   * information at this point.
+   */
+  async markPayoutPaidTransactional(settlementId: string, input: { transferCode: string | null; payoutMethod: "MOBILE_MONEY" | "BANK_TRANSFER" }) {
+    return prisma.$transaction(async (tx) => {
+      const claim = await tx.vendorSettlement.updateMany({
+        where: { id: settlementId, status: "PROCESSING" },
+        data: {
+          status: "PAID",
+          payoutMethod: input.payoutMethod,
+          payoutProviderTransferCode: input.transferCode,
+          payoutPaidAt: new Date(),
+        },
+      });
+      if (claim.count !== 1) return false;
+
+      await vendorFinanceRepository.markSettlementEarningsPaidTx(tx, settlementId);
+      return true;
+    });
+  },
+
+  /** PROCESSING -> FAILED, guarded. Earnings are deliberately left INCLUDED_IN_SETTLEMENT — never silently reverted; Admin retries or explicitly cancels. */
+  async markPayoutFailedTransactional(settlementId: string, reasonSafe: string): Promise<boolean> {
+    const claim = await prisma.vendorSettlement.updateMany({
+      where: { id: settlementId, status: "PROCESSING" },
+      data: { status: "FAILED", payoutFailureReasonSafe: reasonSafe },
+    });
+    return claim.count === 1;
   },
 
   /**

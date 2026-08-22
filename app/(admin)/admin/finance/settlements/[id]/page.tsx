@@ -4,6 +4,7 @@ import { requireAdminFinanceView } from "../../../../../../modules/vendor-financ
 import { vendorFinanceService } from "../../../../../../modules/vendor-finance/service";
 import { formatPrice } from "../../../../../../lib/format";
 import { SettlementActions } from "../../../../../../components/admin/SettlementActions";
+import { env } from "../../../../../../lib/env";
 
 export const metadata = { title: "Settlement — Admin" };
 export const dynamic = "force-dynamic";
@@ -61,14 +62,30 @@ export default async function AdminSettlementDetailPage({ params }: { params: Pr
         </div>
       ) : null}
 
+      {settlement.status === "PROCESSING" ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <p className="font-medium">Payout processing</p>
+          <p className="mt-1">CrownSourceGlobal sent this transfer to Paystack and is waiting for confirmation.</p>
+        </div>
+      ) : null}
+
+      {settlement.status === "FAILED" ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p className="font-medium">Payout failed</p>
+          {settlement.payoutFailureReasonSafe ? <p className="mt-1">{settlement.payoutFailureReasonSafe}</p> : null}
+        </div>
+      ) : null}
+
       <div className="rounded-2xl border border-stone-200 bg-white p-6">
         <Field label="Status" value={settlement.status} />
         <Field label="Gross" value={formatPrice(settlement.grossPayable, settlement.currency)} />
         {settlement.adjustmentTotal !== 0 ? <Field label="Adjustments" value={formatPrice(settlement.adjustmentTotal, settlement.currency)} /> : null}
         <Field label="Net amount" value={formatPrice(settlement.netAmount, settlement.currency)} />
         <Field label="Payout destination" value={destinationLabel(settlement.destination, settlement.destinationIsSnapshot)} />
-        {settlement.payoutMethod ? <Field label="Payout method" value={settlement.payoutMethod} /> : null}
-        {settlement.payoutExternalReference ? <Field label="External reference" value={settlement.payoutExternalReference} /> : null}
+        {settlement.payoutProvider ? <Field label="Payout method" value="Paystack (automated)" /> : settlement.payoutMethod ? <Field label="Payout method" value={settlement.payoutMethod} /> : null}
+        {settlement.payoutProviderReference ? <Field label="Paystack reference" value={settlement.payoutProviderReference} /> : null}
+        {settlement.payoutProviderTransferCode ? <Field label="Paystack transfer code" value={settlement.payoutProviderTransferCode} /> : null}
+        {!settlement.payoutProvider && settlement.payoutExternalReference ? <Field label="External reference" value={settlement.payoutExternalReference} /> : null}
         {settlement.payoutPaidAt ? <Field label="Paid on" value={settlement.payoutPaidAt.toLocaleDateString()} /> : null}
         {settlement.payoutNote ? <Field label="Note" value={settlement.payoutNote} /> : null}
       </div>
@@ -97,7 +114,7 @@ export default async function AdminSettlementDetailPage({ params }: { params: Pr
 
       {canMutate ? (
         <div className="rounded-2xl border border-stone-200 bg-white p-6">
-          <SettlementActions settlementId={settlement.id} status={settlement.status} />
+          <SettlementActions settlementId={settlement.id} status={settlement.status} automatedPayoutsEnabled={env.PAYMENT_PROVIDER === "paystack"} />
         </div>
       ) : null}
     </div>

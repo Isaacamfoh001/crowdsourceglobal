@@ -2150,7 +2150,16 @@ model VendorFinancialAdjustment {
 enum SettlementStatus {
   DRAFT
   APPROVED
+  /// (M12) An automated Paystack payout has been initiated and Paystack has
+  /// not yet confirmed a terminal outcome. Never entered by a manual
+  /// "Record External Payout" — that goes straight APPROVED -> PAID.
+  PROCESSING
   PAID
+  /// (M12) Paystack confirmed the transfer did not succeed. Distinct from
+  /// PROCESSING's "uncertain" — FAILED means the provider gave a definitive
+  /// negative answer, so retry is safe. Earnings stay INCLUDED_IN_SETTLEMENT
+  /// (never silently reverted) — Admin retries or cancels explicitly.
+  FAILED
   CANCELLED
 }
 
@@ -2160,10 +2169,15 @@ enum PayoutMethod {
   OTHER
 }
 
-/// One Vendor per Settlement (no multi-vendor batching in M11). Manual-
-/// payout mode only: DRAFT -> APPROVED -> (admin records an external
-/// payout) -> PAID; DRAFT/APPROVED -> CANCELLED releases its earnings back
-/// to ELIGIBLE. Never mutated after PAID except the additive
+/// One Vendor per Settlement (no multi-vendor batching). Two payout paths,
+/// mutually exclusive by construction (both key off the same guarded status
+/// transition, so only one can ever apply):
+///   - Manual: APPROVED -> PAID directly via recordPayout (admin already
+///     sent money externally and is only recording it).
+///   - Automated (M12): APPROVED/FAILED -> PROCESSING -> PAID/FAILED via a
+///     real Paystack Transfer, see modules/vendor-finance/payout-provider.ts.
+/// DRAFT/APPROVED/FAILED -> CANCELLED releases its earnings back to
+/// ELIGIBLE. Never mutated after PAID except the additive
 /// reversedAt/reversalReason correction fields below — the originally
 /// recorded amount/reference always stays visible (no deletion of
 /// financial history).
@@ -2193,6 +2207,41 @@ model VendorSettlement {
   payoutNote              String?
   payoutPaidAt            DateTime?
   payoutRecordedByUserId  String?
+
+  /// (M12) Set only for the automated path — "PAYSTACK" once a real
+  /// transfer has been initiated. Null for a manually-recorded payout. This
+  /// is the field the UI/admin uses to tell the two paths apart; the status
+  /// transitions themselves are what actually prevents them conflicting.
+  payoutProvider String?
+
+  /// (M12) CrownSourceGlobal's own reference for this payout attempt —
+  /// generated once when "Send Payout"/"Retry Payout" is first clicked,
+  /// sent to Paystack as `reference`, and the key used to independently
+  /// re-verify status later (poll, webhook, or admin "Check status") —
+  /// never trusting a webhook body alone. Regenerated on each retry, since
+  /// a FAILED attempt is a known dead end and Paystack references must be
+  /// unique. This is also the row-level guard against a double-click: the
+  /// claim that sets this is a guarded updateMany keyed on the settlement's
+  /// OWN status, so two concurrent clicks can only ever have one winner.
+  payoutProviderReference String? @unique
+
+  /// (M12) Paystack's transfer_code for the current/most recent attempt —
+  /// used to look up the transfer in the Paystack dashboard for diagnostics.
+  payoutProviderTransferCode String?
+
+  /// (M12) Paystack's recipient_code, resolved once from this settlement's
+  /// own destinationSnapshot and reused on retry (never recreated) — one
+  /// recipient per settlement, matching the settlement's own immutable
+  /// destination snapshot rather than the vendor's possibly-since-changed
+  /// current destination.
+  payoutProviderRecipientCode String?
+
+  payoutInitiatedAt       DateTime?
+  payoutInitiatedByUserId String?
+
+  /// (M12) Admin-facing reason set only when status = FAILED — cleared on
+  /// retry. Never shown to the Vendor (see toVendorPayoutStatus).
+  payoutFailureReasonSafe String?
 
   /// Additive correction for a wrongly-recorded payout — never edits the
   /// payout fields above. See docs/decisions/0009-vendor-earnings-and-settlement.md.

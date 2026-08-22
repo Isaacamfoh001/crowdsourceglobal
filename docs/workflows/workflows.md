@@ -78,7 +78,7 @@ Fulfilment PENDING → ACCEPTED → PREPARING → READY → DISPATCHED (vendor-d
 
 Last Shipment on a Fulfilment reaches DELIVERED → Fulfilment → DELIVERED *(never COMPLETED — no code anywhere transitions a Fulfilment to COMPLETED; a pre-existing M4/M5 gap, out of scope for M11, that made DELIVERED the only observable eligibility trigger — see ADR 0009)*, and, in the SAME transaction *(M11.1)*, every PENDING `VendorEarning` on that Fulfilment moves to WAITING_PERIOD with `deliveredAt` stamped — the earning's payable clock starts here, event-driven, never waiting for a later sweep pass to notice. Once all of an Order's Fulfilments are DELIVERED, Order → COMPLETED (not currently automated — see Known Limitations in ADR 0009).
 
-## J. Vendor Payout *(implemented M11 — VendorEarning/VendorSettlement, see ADR 0009; supersedes the PayoutRun/PayoutItem preview names below M9's implementation note)*
+## J. Vendor Payout *(implemented M11 — VendorEarning/VendorSettlement, see ADR 0009; automated Paystack Transfer added M12, see ADR 0010; supersedes the PayoutRun/PayoutItem preview names below M9's implementation note)*
 
 ```
 Order confirmed → Fulfilments/FulfilmentItems created
@@ -106,15 +106,27 @@ Order confirmed → Fulfilments/FulfilmentItems created
   → Admin approves (DRAFT → APPROVED) — snapshots the Vendor's
     VendorPayoutDestination at that moment (destinationSnapshot); later
     Vendor changes never alter this record
-  → Admin sends the money externally (bank transfer / Mobile Money) OUTSIDE
-    CrownSourceGlobal, then records it: recordPayout (APPROVED → PAID,
-    guarded — a double-click can only ever record once) — this is
-    explicitly a record of an external payout, never a real disbursement
-    API call in M11
+  → Admin sends the money EITHER:
+      (a) manually — externally (bank transfer / Mobile Money) OUTSIDE
+          CrownSourceGlobal, then records it: recordPayout (APPROVED → PAID,
+          guarded — a double-click can only ever record once); OR
+      (b) automatically (M12) — clicks "Send Payout": initiatePayout claims
+          the settlement (APPROVED/FAILED → PROCESSING, guarded, a fresh
+          payoutProviderReference generated), resolves a Paystack transfer
+          recipient from the settlement's OWN destinationSnapshot (cached,
+          reused on retry), then calls Paystack's real Transfer API for the
+          settlement's authoritative netAmount. A provider-confirmed
+          success → PAID; pending/queued/network-timeout → stays
+          PROCESSING (resolved later via admin "Check status" or a
+          transfer.* webhook, both independently re-verifying rather than
+          trusting a webhook body); a definitive failure → FAILED, safely
+          retryable (fresh reference). The two paths cannot both apply to
+          the same settlement — see state-machines.md's VendorSettlement
+          row and ADR 0010.
   → included earnings → PAID; Vendor notified (VENDOR_SETTLEMENT_PAID)
 ```
 
-Automated disbursement (Paystack/Hubtel/Moolre transfer APIs) is explicitly deferred to a future milestone — see ADR 0009.
+Automated disbursement via Paystack Transfers is implemented as of M12 (ADR 0010) for Ghana Mobile Money and bank (GhIPSS) destinations. Hubtel/Moolre payout adapters, scheduled batch payout runs, and a reconciliation dashboard remain explicitly deferred.
 
 ## K. Cancellation / Refund
 

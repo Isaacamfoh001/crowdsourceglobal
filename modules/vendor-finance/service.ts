@@ -2,10 +2,13 @@ import { prisma } from "../../lib/db";
 import { env } from "../../lib/env";
 import { vendorFinanceRepository } from "./repository";
 import { generateSettlementNumber } from "../../lib/settlement-number";
+import { generatePayoutReference } from "../../lib/payout-number";
 import { normalizeGhanaPhone, maskGhanaPhone } from "../../lib/phone";
 import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
 import { vendorsRepository } from "../vendors/repository";
+import { paystackPayoutProvider } from "./paystack-payout-provider";
+import type { PayoutStatusOutcome } from "./payout-provider";
 import { ok, err, type Result } from "../../lib/result";
 import type {
   AdminSettlementDetailView,
@@ -33,6 +36,60 @@ function toMaskedDestination(destination: PayoutDestinationSnapshot | null): Pay
     return { ...destination, momoPhone: destination.momoPhone ? maskGhanaPhone(destination.momoPhone) : null };
   }
   return { ...destination, bankAccountNumber: destination.bankAccountNumber ? maskAccountNumber(destination.bankAccountNumber) : null };
+}
+
+/** Shared by manual recordPayout and the automated (M12) payout paths — the one place a Vendor learns their settlement was paid. */
+async function notifySettlementPaid(settlementId: string): Promise<void> {
+  const settlement = await prisma.vendorSettlement.findUnique({ where: { id: settlementId }, select: { vendorId: true, settlementNumber: true, currency: true, netAmount: true } });
+  if (!settlement) return;
+  const owner = await vendorsRepository.findOwnerUserIdAndEmail(settlement.vendorId);
+  if (!owner) return;
+  await notificationsService.notify({
+    recipientUserId: owner.userId,
+    type: "VENDOR_SETTLEMENT_PAID",
+    title: "Your settlement has been paid",
+    body: `Your settlement ${settlement.settlementNumber} of ${settlement.currency} ${settlement.netAmount.toString()} has been paid.`,
+    targetUrl: notificationLinks.vendorSettlement(settlementId),
+    eventKey: `settlement-paid:${settlementId}`,
+    email: {
+      to: owner.email,
+      subject: "Your settlement has been paid",
+      templateKey: "vendor-settlement-paid",
+      templateData: { settlementNumber: settlement.settlementNumber, currency: settlement.currency, netAmount: settlement.netAmount.toString(), settlementId },
+    },
+  });
+}
+
+/**
+ * The one funnel every automated-payout outcome (initiate, admin "Check
+ * status", webhook reconciliation) passes through before touching
+ * VendorEarning/VendorSettlement state — mirrors
+ * modules/payments/service.ts's `applyVerifyOutcome`. Every transition is
+ * the repository's own guarded `updateMany` (status: "PROCESSING" in the
+ * WHERE clause), so a duplicate webhook or a racing poll can only ever
+ * apply an outcome once.
+ */
+async function applyPayoutOutcome(settlementId: string, destinationType: "MOBILE_MONEY" | "BANK_TRANSFER", outcome: PayoutStatusOutcome): Promise<Result<null>> {
+  if (outcome.status === "PAID") {
+    const applied = await vendorFinanceRepository.markPayoutPaidTransactional(settlementId, {
+      transferCode: outcome.transferCode,
+      payoutMethod: destinationType,
+    });
+    if (applied) await notifySettlementPaid(settlementId);
+    return ok(null);
+  }
+  if (outcome.status === "PROCESSING") {
+    if (outcome.transferCode) await vendorFinanceRepository.setTransferCode(settlementId, outcome.transferCode);
+    return ok(null);
+  }
+  if (outcome.status === "FAILED") {
+    await vendorFinanceRepository.markPayoutFailedTransactional(settlementId, outcome.reasonSafe);
+    return err(outcome.reasonSafe);
+  }
+  // UNKNOWN — network/timeout uncertainty. Stays PROCESSING; never guessed
+  // at here. Resolved later via checkPayoutStatus (admin) or a webhook,
+  // both of which land back on this same function.
+  return ok(null);
 }
 
 export const vendorFinanceService = {
@@ -269,24 +326,96 @@ export const vendorFinanceService = {
     );
     if (!applied) return err("This settlement isn't approved yet, or has already been paid.");
 
-    const owner = await vendorsRepository.findOwnerUserIdAndEmail(settlement.vendorId);
-    if (owner) {
-      await notificationsService.notify({
-        recipientUserId: owner.userId,
-        type: "VENDOR_SETTLEMENT_PAID",
-        title: "Your settlement has been paid",
-        body: `Your settlement ${settlement.settlementNumber} of ${settlement.currency} ${settlement.netAmount.toString()} has been paid.`,
-        targetUrl: notificationLinks.vendorSettlement(settlementId),
-        eventKey: `settlement-paid:${settlementId}`,
-        email: {
-          to: owner.email,
-          subject: "Your settlement has been paid",
-          templateKey: "vendor-settlement-paid",
-          templateData: { settlementNumber: settlement.settlementNumber, currency: settlement.currency, netAmount: settlement.netAmount.toString(), settlementId },
-        },
-      });
-    }
+    await notifySettlementPaid(settlementId);
     return ok(null);
+  },
+
+  // --- Automated Paystack payout (M12) ---------------------------------
+
+  /**
+   * "Send Payout" / "Retry Payout" — the single admin action for the
+   * automated path. Claims the settlement (guarded — see
+   * repository.claimSettlementForPayout for the double-click/concurrency
+   * protection), resolves a Paystack recipient from the settlement's OWN
+   * destinationSnapshot (never the Vendor's possibly-since-changed current
+   * destination, and never re-created on retry), then initiates a real
+   * transfer for the settlement's authoritative netAmount — never a
+   * client-supplied amount.
+   */
+  async initiatePayout(settlementId: string, actorUserId: string): Promise<Result<null>> {
+    if (env.PAYMENT_PROVIDER !== "paystack") return err("Automated payouts are only available when Paystack is the active payment provider.");
+
+    const reference = generatePayoutReference();
+    const claimed = await vendorFinanceRepository.claimSettlementForPayout(settlementId, actorUserId, reference);
+    if (!claimed) return err("This settlement isn't ready to pay, or a payout is already in progress.");
+
+    const settlement = await vendorFinanceRepository.findSettlementForPayout(settlementId);
+    const destination = (settlement?.destinationSnapshot as unknown as PayoutDestinationSnapshot | null) ?? null;
+    if (!settlement || !destination) {
+      await vendorFinanceRepository.markPayoutFailedTransactional(settlementId, "No payout destination is recorded for this settlement.");
+      return err("No payout destination is recorded for this settlement.");
+    }
+
+    let recipientCode = settlement.payoutProviderRecipientCode;
+    if (!recipientCode) {
+      const recipientResult = await paystackPayoutProvider.resolveRecipient({ destination, vendorName: settlement.vendor.companyName });
+      if (!recipientResult.ok) {
+        await vendorFinanceRepository.markPayoutFailedTransactional(settlementId, recipientResult.error);
+        return err(recipientResult.error);
+      }
+      recipientCode = recipientResult.value;
+      await vendorFinanceRepository.setRecipientCode(settlementId, recipientCode);
+    }
+
+    const outcome = await paystackPayoutProvider.initiate({
+      reference,
+      amount: settlement.netAmount.toNumber(),
+      currency: settlement.currency as "GHS",
+      recipientCode,
+      reason: `CrownSourceGlobal settlement ${settlement.settlementNumber}`,
+    });
+
+    return applyPayoutOutcome(settlementId, destination.type, outcome);
+  },
+
+  /**
+   * Safe, on-demand re-check for a PROCESSING settlement — independently
+   * re-verifies with Paystack by CrownSourceGlobal's own reference, never
+   * trusting a stale local guess. A no-op for any settlement that isn't
+   * currently PROCESSING (already resolved, or never started).
+   */
+  async checkPayoutStatus(settlementId: string): Promise<Result<null>> {
+    const settlement = await vendorFinanceRepository.findSettlementForPayout(settlementId);
+    if (!settlement) return err("Settlement not found.");
+    if (settlement.status !== "PROCESSING") return ok(null);
+    if (!settlement.payoutProviderReference) return err("No payout reference recorded yet — please try again shortly.");
+
+    const destination = (settlement.destinationSnapshot as unknown as PayoutDestinationSnapshot | null) ?? null;
+    const outcome = await paystackPayoutProvider.verify(settlement.payoutProviderReference);
+    return applyPayoutOutcome(settlementId, destination?.type ?? "MOBILE_MONEY", outcome);
+  },
+
+  /**
+   * Paystack sends transfer.* events to the same webhook URL as charge.*
+   * and refund.* events — routed here by
+   * app/api/payments/paystack/webhook's existing event-prefix dispatch.
+   * The webhook body itself is never
+   * trusted for status; only its `reference` is used, purely as a lookup
+   * key, before falling straight back into checkPayoutStatus's own
+   * independent re-verification. An unknown reference or a settlement no
+   * longer PROCESSING is a silent, safe no-op — never mutates an unrelated
+   * settlement.
+   */
+  async handlePaystackTransferWebhook(body: unknown): Promise<void> {
+    if (typeof body !== "object" || body === null || !("data" in body)) return;
+    const data = (body as { data: unknown }).data;
+    if (typeof data !== "object" || data === null || !("reference" in data)) return;
+    const reference = (data as { reference?: unknown }).reference;
+    if (typeof reference !== "string") return;
+
+    const settlement = await vendorFinanceRepository.findSettlementByPayoutReference(reference);
+    if (!settlement) return;
+    await vendorFinanceService.checkPayoutStatus(settlement.id);
   },
 
   async reverseSettlement(settlementId: string, reason: string, actorUserId: string): Promise<Result<null>> {

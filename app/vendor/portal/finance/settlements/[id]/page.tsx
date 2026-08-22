@@ -22,6 +22,14 @@ function destinationLabel(destination: { type: string; momoPhoneMasked?: string 
   return `${destination.bankName ?? "Bank"} — ${destination.bankAccountNumber ?? "—"}`;
 }
 
+/** FAILED never appears to the Vendor as "failed" — CrownSource is still resolving it (retry or manual fallback), so it reads the same as "still awaiting payout." */
+function vendorStatusLabel(status: string): string {
+  if (status === "PAID") return "Paid";
+  if (status === "PROCESSING") return "Payout processing";
+  if (status === "CANCELLED") return "Cancelled";
+  return "Awaiting payout";
+}
+
 export default async function VendorSettlementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { vendorId } = await requireVendorFinanceContext("/vendor/portal/finance/settlements");
   const { id } = await params;
@@ -40,7 +48,7 @@ export default async function VendorSettlementDetailPage({ params }: { params: P
       </div>
 
       <div className="rounded-2xl border border-stone-200 bg-white p-6">
-        <Field label="Status" value={settlement.status === "PAID" ? "Paid" : settlement.status === "APPROVED" ? "Approved — awaiting payout" : settlement.status === "CANCELLED" ? "Cancelled" : "Draft"} />
+        <Field label="Status" value={vendorStatusLabel(settlement.status)} />
         <Field label="Gross" value={formatPrice(settlement.grossPayable, settlement.currency)} />
         {settlement.adjustmentTotal !== 0 ? <Field label="Adjustments" value={formatPrice(settlement.adjustmentTotal, settlement.currency)} /> : null}
         <Field label="Net amount" value={formatPrice(settlement.netAmount, settlement.currency)} />
