@@ -28,7 +28,9 @@ const envSchema = z.object({
    * safe for dev/test with zero configuration. "resend" requires
    * RESEND_API_KEY and EMAIL_FROM; lib/email-provider.ts fails fast at
    * import time if selected without them, rather than surfacing a
-   * confusing failure deep inside a background job later.
+   * confusing failure deep inside a background job later. Production must
+   * never be able to fall back to "console" — see the fail-closed check
+   * below.
    */
   EMAIL_PROVIDER: z.enum(["console", "resend"]).default("console"),
   EMAIL_FROM: z.string().optional(),
@@ -230,6 +232,25 @@ if (
   env.STORAGE_PROVIDER === "local"
 ) {
   throw new Error("STORAGE_PROVIDER=local is not permitted when NODE_ENV=production. Set STORAGE_PROVIDER=r2 with valid R2 credentials.");
+}
+
+/**
+ * Fail closed: a running production server must never silently fall back to
+ * logging verification/password-reset emails to its own stdout instead of
+ * actually delivering them (staging-bootstrap audit finding — this is
+ * exactly how EMAIL_PROVIDER's default was found to have masked a real
+ * delivery failure with no error visible to the signing-up user). Same
+ * pattern as the PAYMENT_PROVIDER/STORAGE_PROVIDER guards above; skipped
+ * during `next build` for the same reason.
+ */
+if (
+  process.env["NODE_ENV"] === "production" &&
+  process.env["NEXT_PHASE"] !== "phase-production-build" &&
+  env.EMAIL_PROVIDER === "console"
+) {
+  throw new Error(
+    "EMAIL_PROVIDER=console is not permitted when NODE_ENV=production. Set EMAIL_PROVIDER=resend with valid RESEND_API_KEY and EMAIL_FROM.",
+  );
 }
 
 /**

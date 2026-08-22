@@ -1,42 +1,21 @@
 import "dotenv/config";
 import { prisma } from "../lib/db";
+import { bootstrapReferenceData } from "./reference-data";
 
 /**
  * Development/demo seed data only — not real vendors, products, or pricing.
  * Re-runnable: clears existing catalogue/pricing rows first (Identity/
  * CustomerProfile data from Better Auth is left untouched).
+ *
+ * Canonical Category rows are production-safe reference data, not demo
+ * data — they live in ./reference-data.ts and `npm run
+ * bootstrap:reference-data` seeds them independently of everything else in
+ * this file. This script calls that same `bootstrapReferenceData()` for the
+ * category step (rather than redefining the list) so a local dev database
+ * ends up with an identical category tree either way, but never run this
+ * file (prisma/seed.ts) against staging/production — everything below the
+ * category step is demo Vendors/Listings.
  */
-
-type CategorySeed = {
-  name: string;
-  slug: string;
-  children?: { name: string; slug: string }[];
-};
-
-const CATEGORIES: CategorySeed[] = [
-  {
-    name: "Hair & Beauty Supplies",
-    slug: "hair-beauty-supplies",
-    children: [
-      { name: "Hair Extensions & Wigs", slug: "hair-extensions-wigs" },
-      { name: "Skincare & Cosmetics", slug: "skincare-cosmetics" },
-    ],
-  },
-  {
-    name: "Electronics & Accessories",
-    slug: "electronics-accessories",
-    children: [
-      { name: "Phones & Tablets", slug: "phones-tablets" },
-      { name: "Computer Accessories", slug: "computer-accessories" },
-    ],
-  },
-  { name: "Office & Business Supplies", slug: "office-business-supplies" },
-  { name: "Textiles & Fabrics", slug: "textiles-fabrics" },
-  { name: "Home & Kitchen", slug: "home-kitchen" },
-  { name: "Industrial & Safety Equipment", slug: "industrial-safety-equipment" },
-  { name: "Packaging & Printing", slug: "packaging-printing" },
-  { name: "Food & Beverage Supplies", slug: "food-beverage-supplies" },
-];
 
 type VendorSeed = {
   companyName: string;
@@ -468,25 +447,10 @@ async function main() {
   // history must never silently cascade-delete) and leaves the DB
   // half-reset. Upserting by each model's natural key keeps re-running the
   // seed safe at any point in the app's lifecycle, in dev or otherwise.
-  const categoryIdBySlug = new Map<string, string>();
-  for (const category of CATEGORIES) {
-    const parent = await prisma.category.upsert({
-      where: { slug: category.slug },
-      create: { name: category.name, slug: category.slug },
-      update: { name: category.name },
-    });
-    categoryIdBySlug.set(category.slug, parent.id);
-
-    for (const child of category.children ?? []) {
-      const created = await prisma.category.upsert({
-        where: { slug: child.slug },
-        create: { name: child.name, slug: child.slug, parentCategoryId: parent.id },
-        update: { name: child.name, parentCategoryId: parent.id },
-      });
-      categoryIdBySlug.set(child.slug, created.id);
-    }
-  }
-  console.log(`  Upserted ${categoryIdBySlug.size} categories.`);
+  await bootstrapReferenceData();
+  const allCategories = await prisma.category.findMany({ select: { id: true, slug: true } });
+  const categoryIdBySlug = new Map(allCategories.map((c) => [c.slug, c.id]));
+  console.log(`  Upserted ${categoryIdBySlug.size} categories (via bootstrapReferenceData).`);
 
   const vendorIdBySlug = new Map<string, string>();
   for (const vendor of VENDORS) {
