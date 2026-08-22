@@ -6,7 +6,16 @@ import { identityService } from "../../modules/identity/service";
 import { ordersService } from "../../modules/orders/service";
 import { err, type Result } from "../result";
 import { parseDeliveryFormData, maybeSaveAddressFromCheckout } from "../delivery-schema";
+import { checkActionRateLimit, RATE_LIMIT_MESSAGE } from "../rate-limit";
+import { resolveClientIp } from "../request-ip";
 import type { DeliveryInfo } from "../../modules/orders/types";
+
+/**
+ * M13 — order creation reserves real inventory per attempt; unthrottled it's
+ * a way to repeatedly tie up stock without ever paying. Per (client IP,
+ * customer) — see docs/decisions/0011-production-infrastructure-m13.md.
+ */
+const CHECKOUT_CREATE_RATE_LIMIT = { windowSeconds: 300, max: 10 };
 
 /**
  * Creates the PENDING_PAYMENT Order (ADR 0004 sequencing) then redirects to
@@ -23,6 +32,12 @@ export async function createOrderAction(
   if (!customerProfile) {
     return err("Something went wrong. Please try again.");
   }
+
+  const rateLimit = await checkActionRateLimit(
+    `checkout-create:${await resolveClientIp()}:${customerProfile.id}`,
+    CHECKOUT_CREATE_RATE_LIMIT,
+  );
+  if (!rateLimit.allowed) return err(RATE_LIMIT_MESSAGE);
 
   const parsed = parseDeliveryFormData(formData);
 

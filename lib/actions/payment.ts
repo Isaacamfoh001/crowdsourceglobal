@@ -6,7 +6,20 @@ import { identityService } from "../../modules/identity/service";
 import { paymentsService } from "../../modules/payments/service";
 import { requireAdminSession } from "../../modules/administration/policy";
 import { err, type Result } from "../result";
+import { checkActionRateLimit, RATE_LIMIT_MESSAGE } from "../rate-limit";
+import { resolveClientIp } from "../request-ip";
 import type { MockPaymentOutcome, MobileMoneyNetworkCode, PaymentStatusView } from "../../modules/payments/types";
+
+/**
+ * M13 — payment initiation and OTP submission are both real-money-adjacent
+ * actions worth throttling: OTP submission is a brute-force target (a
+ * bounded code guessed against a real payment), payment initiation calls
+ * out to Paystack per attempt. Conservative limits, per (client IP,
+ * customer) so one customer's activity never throttles another's — see
+ * docs/decisions/0011-production-infrastructure-m13.md.
+ */
+const OTP_SUBMIT_RATE_LIMIT = { windowSeconds: 300, max: 5 };
+const PAYMENT_INITIATE_RATE_LIMIT = { windowSeconds: 300, max: 10 };
 
 const ADMIN_FINANCE_ROLES = ["SUPER_ADMIN", "FINANCE_ADMIN"] as const;
 
@@ -62,6 +75,12 @@ export async function initiateMobileMoneyPaymentAction(
   const customerProfileId = await currentCustomerProfileId(orderId);
   if (!customerProfileId.ok) return customerProfileId;
 
+  const rateLimit = await checkActionRateLimit(
+    `payment-initiate:${await resolveClientIp()}:${customerProfileId.value}`,
+    PAYMENT_INITIATE_RATE_LIMIT,
+  );
+  if (!rateLimit.allowed) return err(RATE_LIMIT_MESSAGE);
+
   return paymentsService.initiateMobileMoneyPayment({
     customerProfileId: customerProfileId.value,
     orderId,
@@ -77,6 +96,12 @@ export async function initiateCardPaymentAction(
   const customerProfileId = await currentCustomerProfileId(orderId);
   if (!customerProfileId.ok) return customerProfileId;
 
+  const rateLimit = await checkActionRateLimit(
+    `payment-initiate:${await resolveClientIp()}:${customerProfileId.value}`,
+    PAYMENT_INITIATE_RATE_LIMIT,
+  );
+  if (!rateLimit.allowed) return err(RATE_LIMIT_MESSAGE);
+
   return paymentsService.initiateCardPayment({
     customerProfileId: customerProfileId.value,
     orderId,
@@ -91,6 +116,12 @@ export async function submitMobileMoneyOtpAction(
 ): Promise<Result<PaymentStatusView>> {
   const customerProfileId = await currentCustomerProfileId(orderId);
   if (!customerProfileId.ok) return customerProfileId;
+
+  const rateLimit = await checkActionRateLimit(
+    `otp-submit:${await resolveClientIp()}:${customerProfileId.value}`,
+    OTP_SUBMIT_RATE_LIMIT,
+  );
+  if (!rateLimit.allowed) return err(RATE_LIMIT_MESSAGE);
 
   return paymentsService.submitMobileMoneyOtp({
     customerProfileId: customerProfileId.value,

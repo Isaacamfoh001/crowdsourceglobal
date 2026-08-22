@@ -101,6 +101,30 @@ const envSchema = z.object({
    */
   OPS_FINANCE_ELIGIBLE_UNSETTLED_WARNING_HOURS: z.coerce.number().positive().default(168),
   OPS_FINANCE_SETTLEMENT_APPROVED_WARNING_HOURS: z.coerce.number().positive().default(72),
+  /**
+   * M13 file storage. "local" (default) — LocalDiskStorageProvider, dev/test
+   * only. "r2" — Cloudflare R2 via its S3-compatible API, requires the R2_*
+   * variables below. Production must never be able to fall back to local
+   * disk (see the fail-closed check below) — see lib/storage.ts.
+   */
+  STORAGE_PROVIDER: z.enum(["local", "r2"]).default("local"),
+  /** Required only when STORAGE_PROVIDER=r2. Used to build the R2 S3-compatible endpoint. */
+  R2_ACCOUNT_ID: z.string().optional(),
+  /** Required only when STORAGE_PROVIDER=r2. R2 API token credentials — server-only. */
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  /** Required only when STORAGE_PROVIDER=r2. The private bucket sourcing/resolution attachments are written to. */
+  R2_BUCKET_NAME: z.string().optional(),
+  /**
+   * M13. Bounds the Postgres connection pool `@prisma/adapter-pg` opens
+   * (lib/db.ts). This is a single Render web-service process, not a
+   * per-request serverless function, so one bounded pool for the process's
+   * lifetime is sufficient — not a per-request or per-instance concern.
+   * Keep this comfortably under the managed Postgres plan's max connection
+   * limit (leave headroom for `prisma migrate deploy`, `prisma studio`,
+   * and any manual psql session).
+   */
+  DATABASE_POOL_MAX: z.coerce.number().int().positive().default(10),
 });
 
 function loadEnv() {
@@ -136,6 +160,12 @@ function loadEnv() {
     VENDOR_PAYOUT_HOLD_HOURS: process.env["VENDOR_PAYOUT_HOLD_HOURS"] || undefined,
     OPS_FINANCE_ELIGIBLE_UNSETTLED_WARNING_HOURS: process.env["OPS_FINANCE_ELIGIBLE_UNSETTLED_WARNING_HOURS"] || undefined,
     OPS_FINANCE_SETTLEMENT_APPROVED_WARNING_HOURS: process.env["OPS_FINANCE_SETTLEMENT_APPROVED_WARNING_HOURS"] || undefined,
+    STORAGE_PROVIDER: process.env["STORAGE_PROVIDER"] || undefined,
+    R2_ACCOUNT_ID: process.env["R2_ACCOUNT_ID"] || undefined,
+    R2_ACCESS_KEY_ID: process.env["R2_ACCESS_KEY_ID"] || undefined,
+    R2_SECRET_ACCESS_KEY: process.env["R2_SECRET_ACCESS_KEY"] || undefined,
+    R2_BUCKET_NAME: process.env["R2_BUCKET_NAME"] || undefined,
+    DATABASE_POOL_MAX: process.env["DATABASE_POOL_MAX"] || undefined,
   });
 
   if (!parsed.success) {
@@ -176,6 +206,29 @@ if (env.PAYMENT_PROVIDER === "moolre" && (!env.MOOLRE_API_USER || !env.MOOLRE_AP
 
 if (env.PAYMENT_PROVIDER === "paystack" && !env.PAYSTACK_SECRET_KEY) {
   throw new Error("PAYMENT_PROVIDER=paystack requires PAYSTACK_SECRET_KEY to be set.");
+}
+
+if (
+  env.STORAGE_PROVIDER === "r2" &&
+  (!env.R2_ACCOUNT_ID || !env.R2_ACCESS_KEY_ID || !env.R2_SECRET_ACCESS_KEY || !env.R2_BUCKET_NAME)
+) {
+  throw new Error(
+    "STORAGE_PROVIDER=r2 requires R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME to be set.",
+  );
+}
+
+/**
+ * Fail closed: a running production server must never silently write
+ * sourcing/resolution attachments to local disk, which does not survive a
+ * redeploy/restart on any standard host (M13 audit finding). Skipped during
+ * `next build` for the same reason as the PAYMENT_PROVIDER=mock guard above.
+ */
+if (
+  process.env["NODE_ENV"] === "production" &&
+  process.env["NEXT_PHASE"] !== "phase-production-build" &&
+  env.STORAGE_PROVIDER === "local"
+) {
+  throw new Error("STORAGE_PROVIDER=local is not permitted when NODE_ENV=production. Set STORAGE_PROVIDER=r2 with valid R2 credentials.");
 }
 
 /**

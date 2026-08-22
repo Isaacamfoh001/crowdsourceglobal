@@ -97,6 +97,23 @@ model Verification {
   @@map("verification")
 }
 
+/// Better Auth-owned (M13). Backs its built-in database-backed rate
+/// limiter (rateLimit: { storage: "database", ... }, lib/auth.ts) —
+/// persists across restarts and multiple instances, unlike the in-memory
+/// default (a single Render web-service restart/redeploy would otherwise
+/// silently reset every limit to zero). Better Auth generates its own id
+/// and manages every row itself, same as User/Session/Account above —
+/// nothing in CrownSourceGlobal's own code reads or writes this table.
+model RateLimit {
+  id          String  @id
+  key         String?
+  count       Int?
+  lastRequest BigInt?
+
+  @@unique([key])
+  @@map("rate_limit")
+}
+
 /// CrownSourceGlobal-owned. The buyer-side profile — created automatically
 /// after every successful registration (email/password or Google), via a
 /// Better Auth `databaseHooks.user.create.after` hook, so a user reaches the
@@ -1033,6 +1050,22 @@ model IdempotencyKey {
   createdAt DateTime         @default(now())
 
   @@map("idempotency_key")
+}
+
+/// CrownSourceGlobal-owned (M13). Backs lib/rate-limit.ts's fixed-window
+/// limiter for high-risk server actions Better Auth's own rate limiter
+/// doesn't cover (payment/OTP initiation, checkout order creation) — see
+/// docs/decisions/0011-production-infrastructure-m13.md. Deliberately a
+/// separate table from Better Auth's own `RateLimit` above: that table is
+/// Better Auth-owned and only Better Auth's request lifecycle writes to it.
+model ActionRateLimit {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  count       Int      @default(1)
+  windowStart DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("action_rate_limit")
 }
 
 // ---------------------------------------------------------------------------

@@ -2,20 +2,18 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, normalize } from "node:path";
+import { env } from "./env";
+import { R2StorageProvider } from "./storage-r2";
 
 /**
  * Storage abstraction so domain/route code never depends on a specific
  * provider (CLAUDE.md §15/§54 — "do not couple domain logic to S3/
- * Cloudinary/etc"). `LocalDiskStorageProvider` below is the ONLY
- * implementation today — no production object-storage provider has been
- * selected yet, per the M6 brief's explicit instruction not to invent
- * credentials or silently bind CrownSourceGlobal to a vendor.
- *
- * PRODUCTION DEPENDENCY: before a real deployment, replace
- * `LocalDiskStorageProvider` with an S3/R2-backed implementation of this
- * same interface (docs/architecture/overview.md lists this as an open
- * item). Nothing outside this file needs to change — modules/sourcing and
- * the attachment route handler only ever call the interface below.
+ * Cloudinary/etc"). Selected via STORAGE_PROVIDER (lib/env.ts):
+ * `LocalDiskStorageProvider` for dev/test (default), `R2StorageProvider`
+ * (lib/storage-r2.ts) for production (M13) — production cannot silently
+ * fall back to local disk, see lib/env.ts's fail-closed check. Nothing
+ * outside this file/storage-r2.ts needs to change — modules/sourcing and
+ * the attachment route handlers only ever call the interface below.
  */
 export type StorageProvider = {
   putObject(params: { key: string; buffer: Buffer; contentType: string }): Promise<void>;
@@ -73,7 +71,20 @@ class LocalDiskStorageProvider implements StorageProvider {
   }
 }
 
-export const storageProvider: StorageProvider = new LocalDiskStorageProvider();
+function buildStorageProvider(): StorageProvider {
+  if (env.STORAGE_PROVIDER === "r2") {
+    // env.ts already fails startup if these are missing when STORAGE_PROVIDER=r2.
+    return new R2StorageProvider({
+      accountId: env.R2_ACCOUNT_ID as string,
+      accessKeyId: env.R2_ACCESS_KEY_ID as string,
+      secretAccessKey: env.R2_SECRET_ACCESS_KEY as string,
+      bucket: env.R2_BUCKET_NAME as string,
+    });
+  }
+  return new LocalDiskStorageProvider();
+}
+
+export const storageProvider: StorageProvider = buildStorageProvider();
 
 /** Opaque, non-guessable, never derived from a user-supplied filename. */
 export function generateStorageKey(prefix: string = "sourcing-attachments"): string {

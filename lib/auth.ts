@@ -80,5 +80,34 @@ export const auth = betterAuth({
     },
   },
 
+  /**
+   * M13. Better Auth already ships sensible built-in limits on exactly the
+   * routes that matter here — sign-in/sign-up (3 requests/10s) and
+   * request-password-reset/send-verification-email (3 requests/60s), all
+   * per (client IP, path) — see node_modules/better-auth's
+   * getDefaultSpecialRules(). No customRules override needed; those
+   * defaults are conservative without being disruptive to a legitimate
+   * user. What DOES need explicit configuration:
+   * - storage: "database" — the default is in-memory, which silently
+   *   resets every limit to zero on every restart/redeploy of this
+   *   single-process Render web service (misleading protection, exactly
+   *   what the M13 audit brief warned against). Uses the RateLimit table
+   *   (prisma/schema.prisma) via the same Prisma adapter already
+   *   configured above — no new infrastructure.
+   * - advanced.ipAddress.ipAddressHeaders — see lib/request-ip.ts's
+   *   comment and docs/decisions/0011-production-infrastructure-m13.md for
+   *   why cf-connecting-ip is preferred and the residual x-forwarded-for
+   *   trust caveat behind Render/Cloudflare.
+   */
+  rateLimit: {
+    enabled: true,
+    storage: "database",
+  },
+  advanced: {
+    ipAddress: {
+      ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"],
+    },
+  },
+
   plugins: [nextCookies()],
 });

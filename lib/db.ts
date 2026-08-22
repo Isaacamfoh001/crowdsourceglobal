@@ -9,12 +9,17 @@ import { env } from "./env";
  *
  * Prisma 7's client requires an explicit driver adapter (no more implicit
  * datasource-URL connection), hence @prisma/adapter-pg here.
+ *
+ * `max` bounds the underlying `pg.Pool` (M13) — this runs as a single
+ * Render web-service process, not a per-request serverless function, so one
+ * bounded pool for the process's lifetime is the right unit to size, not
+ * per-request/per-instance. See DATABASE_POOL_MAX in lib/env.ts.
  */
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-const adapter = new PrismaPg(env.DATABASE_URL);
+const adapter = new PrismaPg({ connectionString: env.DATABASE_URL, max: env.DATABASE_POOL_MAX });
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
 

@@ -64,12 +64,12 @@ Background/async work (webhook post-processing, email, PDF generation, inventory
 | Authorization | Custom `can(user, action, resource)` per module | No RBAC library at this stage |
 | Validation | Zod | Shared schemas client/server |
 | API strategy | Server actions/route handlers for the app; narrow `/api/v1` for payment webhooks and future external consumers | |
-| File/object storage | Provider TBD (R2 or S3 planned) — `lib/storage.ts`'s `StorageProvider` interface, local-disk dev adapter only so far (M6, sourcing-request attachments) | No production credentials invented; swapping providers means implementing the same three-method interface, no domain-layer changes |
+| File/object storage | `lib/storage.ts`'s `StorageProvider` interface — `LocalDiskStorageProvider` (dev/test) or `R2StorageProvider` (`lib/storage-r2.ts`, Cloudflare R2, M13), selected via `STORAGE_PROVIDER`; production fails closed if left at `local` | See ADR 0011 and `docs/deployment/render.md` — swapping providers means implementing the same three-method interface, no domain-layer changes |
 | Image handling | `sharp` on upload, Next.js `<Image>` on render | |
 | Payments | Provider-neutral `PaymentProvider` interface (`modules/payments/provider.ts`). Paystack (Ghana Mobile Money — MTN/AirtelTigo/Telecel) is the primary real provider as of M10A.2 — real webhook signature (HMAC-SHA512) and a real refund API. Moolre (M10A) remains selectable for development/experimental use only — see ADR 0006, 0007. Card acceptance (Visa/Mastercard, M10B) is always Paystack-hosted Checkout, independent of `PAYMENT_PROVIDER` — see ADR 0008 | `MockPaymentProvider` remains for dev/tests, not forced through the same interface (different, synchronous shape by design); production fails closed if `PAYMENT_PROVIDER=mock`. Card initiation deliberately bypasses `PaymentProvider.initiate()` (MoMo-shaped) via a Paystack-specific function — everything downstream (Payment table, webhook, verify, refund) is fully shared |
 | Email | `EmailProvider` interface (`lib/email-provider.ts`); `ConsoleEmailProvider` (zero-config dev default) or `ResendEmailProvider` (plain `fetch` against Resend's API, no SDK dependency) selected via `EMAIL_PROVIDER` | Resend chosen M7 — transactional focus, simple HTTP API, no infra to run. Fails fast at startup if `EMAIL_PROVIDER=resend` without `RESEND_API_KEY`/`EMAIL_FROM` |
 | In-app notifications | `Notification` table (`modules/notifications`), persisted synchronously in the same call as the domain event, independent of email | Implemented M7. No real-time channel in V1 — see "Future Realtime Path" below |
-| Background jobs | `EmailDeliveryJob` table + polling drain (`lib/email-worker.ts`, `scripts/process-email-jobs.ts`, M7); abandoned-payment sweep (`scripts/sweep-abandoned-payments.ts`, M10A) | Two narrow, purpose-built jobs rather than a generic `BackgroundJob` table — each is a direct query against its own source-of-truth rows (expired `EmailDeliveryJob`, expired `InventoryReservation` with no successful `Payment`), not a generic queue |
+| Background jobs | `EmailDeliveryJob` table + polling drain (`lib/email-worker.ts`, `scripts/process-email-jobs.ts`, M7); abandoned-payment sweep (`scripts/sweep-abandoned-payments.ts`, M10A); vendor-earnings eligibility sweep (`scripts/sweep-earnings-eligibility.ts`, M11). Scheduled in production via Render Cron Jobs (M13, `render.yaml`) — every 2/5/60 minutes respectively, see `docs/deployment/render.md` | Narrow, purpose-built jobs rather than a generic `BackgroundJob` table — each is a direct query against its own source-of-truth rows, not a generic queue |
 | PDF/documents | `@react-pdf/renderer` | No headless browser infra |
 | Search | PostgreSQL full-text (`tsvector`) + trigram | No dedicated search infra until evidence demands it |
 | Caching | None by default | Add only against a measured hot path |
@@ -77,7 +77,8 @@ Background/async work (webhook post-processing, email, PDF generation, inventory
 | Error monitoring | Sentry | |
 | Testing | Vitest (unit/domain), Playwright (E2E) | E2E covers the workflows in `/docs/workflows/workflows.md` |
 | CI/CD | GitHub Actions | Lint/typecheck/test on PR, deploy on merge to `main` |
-| Hosting | Vercel (app) + managed Postgres (Neon/Supabase) + small container/worker host (Fly.io/Render) for the background job process | Confirm once team ops preference is known |
+| Hosting | Render — Web Service (app) + Managed PostgreSQL + Cron Jobs (M13, `render.yaml`) | One platform for app, database, and scheduled jobs — see `docs/deployment/render.md` and ADR 0011 |
+| Rate limiting | Better Auth's built-in limiter (`storage: "database"`, `lib/auth.ts`) for its own routes; `lib/rate-limit.ts` (Postgres-backed, `ActionRateLimit` table) for payment/OTP/checkout server actions (M13) | No Redis — see ADR 0011 for the justification against CLAUDE.md §17 |
 
 ## Repository Structure
 
