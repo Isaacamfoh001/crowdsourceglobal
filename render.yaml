@@ -24,7 +24,7 @@
 
 databases:
   - name: crownsourceglobal-db
-    plan: starter
+    plan: basic-256mb
     postgresMajorVersion: "17"
 
 services:
