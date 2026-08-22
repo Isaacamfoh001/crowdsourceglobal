@@ -36,6 +36,8 @@ export type PublicListingSummary = {
   moq: number;
   availabilityStatus: string;
   hasBulkPricing: boolean;
+  /** First entry of the listing's images[] (M13.1), or null for a listing with no images — see lib/listing-images.ts to render it. */
+  primaryImage: string | null;
   category: PublicListingCategory;
   vendor: PublicListingVendor;
 };

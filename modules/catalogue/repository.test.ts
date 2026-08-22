@@ -86,6 +86,57 @@ describe("catalogueRepository", () => {
     expect(keys).not.toContain("marginRuleType");
   });
 
+  it("derives primaryImage as the first image on the summary, or null when there are none (M13.1)", async () => {
+    const withImages = await prisma.vendorListing.create({
+      data: {
+        vendorId,
+        categoryId,
+        title: "Listing With Images",
+        description: "Has product photos.",
+        basePrice: 50,
+        approvalStatus: "APPROVED",
+        listingStatus: "ACTIVE",
+        images: ["vendor-listing-images/first.png", "vendor-listing-images/second.png"],
+      },
+    });
+    const withoutImages = await prisma.vendorListing.create({
+      data: {
+        vendorId,
+        categoryId,
+        title: "Listing Without Images",
+        description: "No product photos yet.",
+        basePrice: 50,
+        approvalStatus: "APPROVED",
+        listingStatus: "ACTIVE",
+      },
+    });
+
+    const { rows } = await catalogueRepository.listListings({ vendorId }, { page: 1, pageSize: 48 });
+    const withImagesRow = rows.find((r) => r.id === withImages.id);
+    const withoutImagesRow = rows.find((r) => r.id === withoutImages.id);
+
+    expect(withImagesRow?.primaryImage).toBe("vendor-listing-images/first.png");
+    expect(withoutImagesRow?.primaryImage).toBeNull();
+  });
+
+  it("getListingById returns the full uploaded images array (M13.1)", async () => {
+    const listing = await prisma.vendorListing.create({
+      data: {
+        vendorId,
+        categoryId,
+        title: "Listing With Gallery",
+        description: "Multiple product photos.",
+        basePrice: 50,
+        approvalStatus: "APPROVED",
+        listingStatus: "ACTIVE",
+        images: ["vendor-listing-images/a.png", "vendor-listing-images/b.jpg", "vendor-listing-images/c.webp"],
+      },
+    });
+
+    const detail = await catalogueRepository.getListingById(listing.id);
+    expect(detail?.images).toEqual(["vendor-listing-images/a.png", "vendor-listing-images/b.jpg", "vendor-listing-images/c.webp"]);
+  });
+
   it("includes a parent category's subcategory listings when browsing the parent", async () => {
     const parent = await catalogueRepository.findCategoryBySlug("hair-beauty-supplies");
     expect(parent).not.toBeNull();

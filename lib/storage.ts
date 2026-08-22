@@ -86,7 +86,14 @@ function buildStorageProvider(): StorageProvider {
 
 export const storageProvider: StorageProvider = buildStorageProvider();
 
-/** Opaque, non-guessable, never derived from a user-supplied filename. */
-export function generateStorageKey(prefix: string = "sourcing-attachments"): string {
-  return `${prefix}/${randomUUID()}`;
+/**
+ * Opaque, non-guessable, never derived from a user-supplied filename.
+ * `extension` is optional (e.g. ".png") — callers that need to recover a
+ * content type from the key alone at serve time (M13.1's public product-
+ * image route, which has no DB-backed mimeType column to read from, unlike
+ * sourcing/resolution attachments) pass one; existing callers are
+ * unaffected.
+ */
+export function generateStorageKey(prefix: string = "sourcing-attachments", extension: string = ""): string {
+  return `${prefix}/${randomUUID()}${extension}`;
 }

@@ -4,10 +4,54 @@ import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
 import { ok, err, type Result } from "../../lib/result";
 import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
+import { storageProvider, generateStorageKey } from "../../lib/storage";
+import { validateListingImage, MAX_LISTING_IMAGES } from "./image-validation";
 import type { BulkTierInput, ListingFormInput, VendorListingDetail } from "./types";
 import type { NotificationType } from "../notifications/types";
 
 const PAGE_SIZE = DEFAULT_PAGE_SIZE;
+
+const IMAGE_EXTENSION_BY_MIME_TYPE: Record<string, string> = {
+  "image/png": ".png",
+  "image/jpeg": ".jpg",
+  "image/webp": ".webp",
+};
+
+/**
+ * Validates and uploads newly selected product image files through the
+ * existing M13 StorageProvider (never a direct S3/local-disk call from this
+ * module), returning the final images array — existing kept keys first
+ * (preserving whichever one is currently primary), newly uploaded ones
+ * appended after. All files are validated before any upload happens, so a
+ * single invalid file in a batch never leaves an orphaned upload behind.
+ */
+async function resolveImages(
+  existingImageKeys: string[],
+  newImageFiles: { buffer: Buffer; filename: string; mimeType: string }[],
+): Promise<Result<string[]>> {
+  if (existingImageKeys.length + newImageFiles.length > MAX_LISTING_IMAGES) {
+    return err(`You can have up to ${MAX_LISTING_IMAGES} images per listing.`);
+  }
+
+  for (const file of newImageFiles) {
+    const validation = validateListingImage({ mimeType: file.mimeType, sizeBytes: file.buffer.length, buffer: file.buffer });
+    if (!validation.ok) return err(validation.error);
+  }
+
+  const newKeys: string[] = [];
+  try {
+    for (const file of newImageFiles) {
+      const key = generateStorageKey("vendor-listing-images", IMAGE_EXTENSION_BY_MIME_TYPE[file.mimeType] ?? "");
+      await storageProvider.putObject({ key, buffer: file.buffer, contentType: file.mimeType });
+      newKeys.push(key);
+    }
+  } catch (error) {
+    console.error("Listing image upload failed:", error);
+    return err("Something went wrong uploading your image. Please try again.");
+  }
+
+  return ok([...existingImageKeys, ...newKeys]);
+}
 
 async function notifyVendorOwner(params: {
   vendorId: string;
@@ -97,9 +141,21 @@ export const vendorListingsService = {
     listingId: string,
     input: ListingFormInput,
     tiers: BulkTierInput[],
+    newImageFiles: { buffer: Buffer; filename: string; mimeType: string }[] = [],
   ): Promise<Result<null>> {
     const listing = await vendorListingsRepository.findDetailForVendor(vendorId, listingId);
     if (!listing) return err("Listing not found.");
+
+    // input.images is the set of EXISTING image keys the vendor kept (a
+    // vendor "removes" an image simply by omitting its key here — nothing
+    // is deleted from storage, see resolveImages' doc comment and the
+    // M13.1 report). newImageFiles are freshly selected files to validate
+    // and upload, appended after. The result is the complete, final images
+    // array — same shape saveContent already persisted before M13.1, so
+    // everything below (direct/staged/pendingChanges) is unchanged.
+    const imagesResult = await resolveImages(input.images, newImageFiles);
+    if (!imagesResult.ok) return imagesResult;
+    input = { ...input, images: imagesResult.value };
 
     const contentCheck = validateListingContent(input);
     if (!contentCheck.ok) return contentCheck;

@@ -2,8 +2,12 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../lib/db";
 import { vendorListingsService } from "./service";
 import { cartService } from "../cart/service";
+import { storageProvider } from "../../lib/storage";
 import * as emailProviderModule from "../../lib/email-provider";
 import { processEmailQueue } from "../../lib/email-worker";
+
+const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
 
 /** Integration tests against the real local Postgres dev database. */
 describe("vendorListingsService", () => {
@@ -464,6 +468,161 @@ describe("vendorListingsService", () => {
 
     const afterApproval = await prisma.vendorListing.findUnique({ where: { id: listingId } });
     expect(afterApproval?.basePrice.toNumber()).toBe(newPrice);
+  });
+
+  // --- Product images (M13.1) ---------------------------------------------
+
+  describe("product images", () => {
+    function pngFile(name = "photo.png") {
+      return { buffer: PNG_MAGIC, filename: name, mimeType: "image/png" as const };
+    }
+
+    it("creates a listing with one image, uploaded through the existing StorageProvider", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      const result = await vendorListingsService.saveContent(
+        vendorAId,
+        listingId,
+        { ...validContent, categoryId },
+        [],
+        [pngFile()],
+      );
+      expect(result.ok).toBe(true);
+
+      const detail = await vendorListingsService.getDetail(vendorAId, listingId);
+      expect(detail?.images).toHaveLength(1);
+      expect(detail?.images[0]).toMatch(/^vendor-listing-images\//);
+
+      // Round-trips through the real StorageProvider interface — proves
+      // this went through storageProvider.putObject, not a bespoke path.
+      const stored = await storageProvider.readObject(detail!.images[0]!);
+      expect(stored?.buffer.equals(PNG_MAGIC)).toBe(true);
+    });
+
+    it("creates a listing with multiple images", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      const result = await vendorListingsService.saveContent(
+        vendorAId,
+        listingId,
+        { ...validContent, categoryId },
+        [],
+        [pngFile("a.png"), { buffer: JPEG_MAGIC, filename: "b.jpg", mimeType: "image/jpeg" }, pngFile("c.png")],
+      );
+      expect(result.ok).toBe(true);
+
+      const detail = await vendorListingsService.getDetail(vendorAId, listingId);
+      expect(detail?.images).toHaveLength(3);
+    });
+
+    it("uses the first image as the primary image", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      await vendorListingsService.saveContent(
+        vendorAId,
+        listingId,
+        { ...validContent, categoryId },
+        [],
+        [pngFile("first.png"), pngFile("second.png")],
+      );
+      const detail = await vendorListingsService.getDetail(vendorAId, listingId);
+      const firstKey = detail!.images[0]!;
+
+      // Newly added images append after whatever is already first — the
+      // original first upload stays primary across a later edit.
+      await vendorListingsService.saveContent(
+        vendorAId,
+        listingId,
+        { ...validContent, categoryId, images: detail!.images },
+        [],
+        [pngFile("third.png")],
+      );
+      const updated = await vendorListingsService.getDetail(vendorAId, listingId);
+      expect(updated?.images[0]).toBe(firstKey);
+      expect(updated?.images).toHaveLength(3);
+    });
+
+    it("enforces a maximum of 5 images", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      const sixFiles = Array.from({ length: 6 }, (_, i) => pngFile(`${i}.png`));
+      const result = await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId }, [], sixFiles);
+      expect(result.ok).toBe(false);
+
+      const detail = await vendorListingsService.getDetail(vendorAId, listingId);
+      expect(detail?.images).toHaveLength(0); // nothing partially applied
+    });
+
+    it("rejects a disallowed file type", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      const result = await vendorListingsService.saveContent(
+        vendorAId,
+        listingId,
+        { ...validContent, categoryId },
+        [],
+        [{ buffer: Buffer.from("not an image"), filename: "malware.exe", mimeType: "application/x-msdownload" }],
+      );
+      expect(result.ok).toBe(false);
+    });
+
+    it("rejects an oversized image", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      const oversized = Buffer.concat([PNG_MAGIC, Buffer.alloc(5 * 1024 * 1024)]);
+      const result = await vendorListingsService.saveContent(
+        vendorAId,
+        listingId,
+        { ...validContent, categoryId },
+        [],
+        [{ buffer: oversized, filename: "huge.png", mimeType: "image/png" }],
+      );
+      expect(result.ok).toBe(false);
+    });
+
+    it("rejects a file whose content doesn't match its claimed image type", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      const fakePng = Buffer.from("not actually a png");
+      const result = await vendorListingsService.saveContent(
+        vendorAId,
+        listingId,
+        { ...validContent, categoryId },
+        [],
+        [{ buffer: fakePng, filename: "fake.png", mimeType: "image/png" }],
+      );
+      expect(result.ok).toBe(false);
+    });
+
+    it("allows adding and removing images when editing", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId }, [], [pngFile("a.png"), pngFile("b.png")]);
+      const afterCreate = await vendorListingsService.getDetail(vendorAId, listingId);
+      expect(afterCreate?.images).toHaveLength(2);
+      const [keep, remove] = afterCreate!.images;
+
+      // Vendor removes one existing image (simply omits its key) and adds a new one.
+      await vendorListingsService.saveContent(
+        vendorAId,
+        listingId,
+        { ...validContent, categoryId, images: [keep!] },
+        [],
+        [pngFile("c.png")],
+      );
+      const afterEdit = await vendorListingsService.getDetail(vendorAId, listingId);
+      expect(afterEdit?.images).toHaveLength(2);
+      expect(afterEdit?.images).toContain(keep);
+      expect(afterEdit?.images).not.toContain(remove);
+    });
+
+    it("rejects an image upload attempt against a listing owned by a different vendor", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      const result = await vendorListingsService.saveContent(
+        vendorBId,
+        listingId,
+        { ...validContent, categoryId },
+        [],
+        [pngFile()],
+      );
+      expect(result.ok).toBe(false);
+
+      // Vendor A's listing is untouched — no image was attached on their behalf.
+      const detail = await vendorListingsService.getDetail(vendorAId, listingId);
+      expect(detail?.images).toHaveLength(0);
+    });
   });
 
   // --- Notification dispatch ----------------------------------------------

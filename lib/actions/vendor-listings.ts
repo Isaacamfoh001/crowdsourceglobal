@@ -29,7 +29,6 @@ const contentSchema = z.object({
   moq: z.coerce.number().int().min(1),
   maxOq: z.coerce.number().int().min(1).optional(),
   leadTimeDays: z.coerce.number().int().min(0).optional(),
-  images: z.string().trim().optional(),
 });
 
 function parseTiers(formData: FormData) {
@@ -65,22 +64,30 @@ export async function saveListingAction(
     moq: formData.get("moq"),
     maxOq: formData.get("maxOq") || undefined,
     leadTimeDays: formData.get("leadTimeDays") || undefined,
-    images: formData.get("images") || undefined,
   });
   if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "Check the listing details.");
 
   const tiers = parseTiers(formData);
   if (tiers === null) return err("Check the bulk pricing tiers.");
 
-  const images = parsed.data.images
-    ? parsed.data.images.split("\n").map((line) => line.trim()).filter(Boolean)
-    : [];
+  // Existing images the vendor kept (an omitted key means "removed" — see
+  // vendorListingsService.saveContent's doc comment) plus newly selected
+  // files to validate/upload — mirrors the sourcing-attachment action's
+  // File-from-FormData pattern (lib/actions/sourcing.ts).
+  const existingImages = formData.getAll("existingImages").map(String).filter(Boolean);
+  const newImageFiles: { buffer: Buffer; filename: string; mimeType: string }[] = [];
+  for (const entry of formData.getAll("newImages")) {
+    if (entry instanceof File && entry.size > 0) {
+      newImageFiles.push({ buffer: Buffer.from(await entry.arrayBuffer()), filename: entry.name, mimeType: entry.type });
+    }
+  }
 
   const result = await vendorListingsService.saveContent(
     vendorId,
     listingId,
-    { ...parsed.data, images },
+    { ...parsed.data, images: existingImages },
     tiers,
+    newImageFiles,
   );
   if (!result.ok) return result;
   revalidatePath(`/vendor/portal/listings/${listingId}`);

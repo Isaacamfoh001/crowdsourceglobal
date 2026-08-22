@@ -5,7 +5,7 @@ import { Container } from "../../../../components/ui/Container";
 import { Badge } from "../../../../components/ui/Badge";
 import { Button } from "../../../../components/ui/Button";
 import { Breadcrumbs } from "../../../../components/catalogue/Breadcrumbs";
-import { ListingImagePlaceholder } from "../../../../components/catalogue/ListingImagePlaceholder";
+import { ListingImageGallery } from "../../../../components/catalogue/ListingImageGallery";
 import { AvailabilityBadge } from "../../../../components/catalogue/AvailabilityBadge";
 import { BulkPricingTable } from "../../../../components/catalogue/BulkPricingTable";
 import { AddToCartForm } from "../../../../components/catalogue/AddToCartForm";
@@ -55,10 +55,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
         />
 
         <div className="mt-6 grid gap-10 lg:grid-cols-2">
-          <ListingImagePlaceholder
-            categorySlug={listing.category.slug}
-            className="aspect-square rounded-2xl border border-stone-200"
-          />
+          <ListingImageGallery images={listing.images} categorySlug={listing.category.slug} title={listing.title} />
 
           <div>
             <Link

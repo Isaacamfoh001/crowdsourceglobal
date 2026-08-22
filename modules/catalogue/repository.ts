@@ -31,6 +31,7 @@ const listingSummarySelect = {
   currency: true,
   moq: true,
   availabilityStatus: true,
+  images: true,
   category: { select: { id: true, name: true, slug: true } },
   vendor: { select: { id: true, companyName: true, storefrontSlug: true } },
   _count: { select: { bulkPriceTiers: true } },
@@ -101,12 +102,14 @@ type SummaryRow = {
   currency: string;
   moq: number;
   availabilityStatus: string;
+  images: unknown;
   category: { id: string; name: string; slug: string };
   vendor: { id: string; companyName: string; storefrontSlug: string };
   _count: { bulkPriceTiers: number };
 };
 
 function toSummary(row: SummaryRow): PublicListingSummary {
+  const images = parseImages(row.images);
   return {
     id: row.id,
     title: row.title,
@@ -115,6 +118,7 @@ function toSummary(row: SummaryRow): PublicListingSummary {
     moq: row.moq,
     availabilityStatus: row.availabilityStatus,
     hasBulkPricing: row._count.bulkPriceTiers > 0,
+    primaryImage: images[0] ?? null,
     category: row.category,
     vendor: row.vendor,
   };
