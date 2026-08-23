@@ -28,7 +28,7 @@ export function ReconcilePaymentButton({ paymentId }: { paymentId: string }) {
       <Button type="button" variant="outline" onClick={handleClick} disabled={isPending}>
         {isPending ? "Verifying with Moolre…" : "Verify with provider"}
       </Button>
-      {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      {error ? <p className="text-xs text-danger-600">{error}</p> : null}
     </div>
   );
 }

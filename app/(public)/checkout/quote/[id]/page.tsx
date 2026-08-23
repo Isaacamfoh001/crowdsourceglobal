@@ -34,15 +34,15 @@ export default async function QuoteCheckoutPage({ params }: { params: Promise<Pa
   const addresses = await addressesService.listForCustomer(customerProfile.id);
 
   return (
-    <div className="bg-stone-50 py-10 sm:py-14">
+    <div className="bg-ivory-50 py-10 sm:py-14">
       <Container>
-        <h1 className="font-display text-3xl font-medium text-stone-900">Checkout</h1>
-        <p className="mt-1 text-sm text-stone-500">From quotation {quote.reference}</p>
+        <h1 className="font-display text-3xl font-medium text-espresso-950">Checkout</h1>
+        <p className="mt-1 text-sm text-espresso-900/50">From quotation {quote.reference}</p>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
-          <div className="rounded-2xl border border-stone-200 bg-white p-6 sm:p-8">
-            <h2 className="font-display text-lg font-medium text-stone-900">Delivery information</h2>
-            <p className="mt-1 text-sm text-stone-500">
+          <div className="rounded-2xl border border-ivory-300 bg-white p-6 sm:p-8">
+            <h2 className="font-display text-lg font-medium text-espresso-950">Delivery information</h2>
+            <p className="mt-1 text-sm text-espresso-900/50">
               We&apos;ll pass this to the vendors fulfilling your order.
             </p>
             <div className="mt-6">
@@ -50,28 +50,28 @@ export default async function QuoteCheckoutPage({ params }: { params: Promise<Pa
             </div>
           </div>
 
-          <div className="h-fit rounded-2xl border border-stone-200 bg-white p-6">
-            <h2 className="font-display text-lg font-medium text-stone-900">Quote summary</h2>
+          <div className="h-fit rounded-2xl border border-ivory-300 bg-white p-6">
+            <h2 className="font-display text-lg font-medium text-espresso-950">Quote summary</h2>
 
             <ul className="mt-4 flex flex-col gap-1.5">
               {quote.items.map((item) => (
-                <li key={item.id} className="flex justify-between text-sm text-stone-700">
+                <li key={item.id} className="flex justify-between text-sm text-espresso-800">
                   <span className="truncate pr-2">
                     {item.description} × {item.quantity}
                   </span>
-                  <span className="shrink-0 font-medium text-stone-900">
+                  <span className="shrink-0 font-medium text-espresso-950">
                     {formatPrice(item.lineTotal, quote.currency)}
                   </span>
                 </li>
               ))}
             </ul>
 
-            <div className="mt-5 border-t border-stone-200 pt-4">
-              <div className="flex justify-between text-sm text-stone-600">
+            <div className="mt-5 border-t border-ivory-300 pt-4">
+              <div className="flex justify-between text-sm text-espresso-900/65">
                 <span>Subtotal</span>
                 <span>{formatPrice(quote.subtotal, quote.currency)}</span>
               </div>
-              <div className="mt-1 flex justify-between text-base font-semibold text-stone-900">
+              <div className="mt-1 flex justify-between text-base font-semibold text-espresso-950">
                 <span>Total</span>
                 <span>{formatPrice(quote.total, quote.currency)}</span>
               </div>

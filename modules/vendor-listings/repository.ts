@@ -104,6 +104,10 @@ export const vendorListingsRepository = {
    * distinct from findSummariesForVendor, which app/vendor/portal/page.tsx
    * (the dashboard) still needs unbounded to compute its stat-card counts
    * across every listing, not just one page's worth.
+   *
+   * (M14.2) Also selects `images` (read-only addition, display only) so the
+   * listings list can show each listing's primary photo instead of a
+   * text-only row — only the first entry is ever used, never the full array.
    */
   async findSummariesForVendorPaginated(vendorId: string, page: number, pageSize: number) {
     const where = { vendorId };
@@ -122,6 +126,7 @@ export const vendorListingsRepository = {
           changesRequestedReason: true,
           pendingChanges: true,
           updatedAt: true,
+          images: true,
         },
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
         skip: paginationSkip(page, pageSize),
@@ -142,6 +147,7 @@ export const vendorListingsRepository = {
         hasPendingChanges: row.pendingChanges !== null,
         changesRequestedReason: row.changesRequestedReason,
         updatedAt: row.updatedAt,
+        primaryImage: Array.isArray(row.images) && row.images.length > 0 ? (row.images[0] as string) : null,
       })),
       total,
     };

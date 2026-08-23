@@ -17,12 +17,12 @@ const STATUS_FILTERS = [
 ] as const;
 
 const STATUS_TONE: Record<string, string> = {
-  DRAFT: "bg-stone-200 text-stone-600",
-  APPROVED: "bg-amber-100 text-amber-700",
-  PROCESSING: "bg-amber-100 text-amber-700",
-  PAID: "bg-emerald-100 text-emerald-700",
-  FAILED: "bg-red-100 text-red-700",
-  CANCELLED: "bg-stone-200 text-stone-500",
+  DRAFT: "bg-ivory-300 text-espresso-900/65",
+  APPROVED: "bg-warning-100 text-warning-700",
+  PROCESSING: "bg-warning-100 text-warning-700",
+  PAID: "bg-success-100 text-success-700",
+  FAILED: "bg-danger-100 text-danger-700",
+  CANCELLED: "bg-ivory-300 text-espresso-900/50",
 };
 
 export default async function AdminSettlementsPage({ searchParams }: { searchParams: Promise<{ status?: string; page?: string }> }) {
@@ -35,10 +35,10 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/admin/finance" className="text-sm text-stone-500 hover:text-stone-700">
+        <Link href="/admin/finance" className="text-sm text-espresso-900/50 hover:text-espresso-800">
           ← Finance
         </Link>
-        <h1 className="mt-2 font-display text-2xl font-medium text-stone-900">Settlements</h1>
+        <h1 className="mt-2 font-display text-2xl font-medium text-espresso-950">Settlements</h1>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -47,7 +47,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
             key={filter.label}
             href={filter.value ? `/admin/finance/settlements?status=${filter.value}` : "/admin/finance/settlements"}
             className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium ${
-              status === filter.value ? "bg-brand-700 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+              status === filter.value ? "bg-forest-800 text-white" : "bg-white text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
             }`}
           >
             {filter.label}
@@ -56,20 +56,20 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-          <p className="text-sm text-stone-500">No settlements found.</p>
+        <div className="rounded-2xl border border-dashed border-ivory-400 bg-white p-10 text-center">
+          <p className="text-sm text-espresso-900/50">No settlements found.</p>
         </div>
       ) : (
-        <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
+        <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
           {rows.map((s) => (
-            <Link key={s.id} href={`/admin/finance/settlements/${s.id}`} className="flex flex-col gap-2 px-5 py-4 hover:bg-stone-50 sm:flex-row sm:items-center sm:justify-between">
+            <Link key={s.id} href={`/admin/finance/settlements/${s.id}`} className="flex flex-col gap-2 px-5 py-4 hover:bg-ivory-50 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-medium text-stone-900">{s.settlementNumber}</p>
-                <p className="text-xs text-stone-500">{s.vendorName}</p>
+                <p className="text-sm font-medium text-espresso-950">{s.settlementNumber}</p>
+                <p className="text-xs text-espresso-900/50">{s.vendorName}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-stone-900">{formatPrice(s.netAmount, s.currency)}</span>
-                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_TONE[s.status] ?? "bg-stone-200 text-stone-600"}`}>{s.status}</span>
+                <span className="text-sm font-medium text-espresso-950">{formatPrice(s.netAmount, s.currency)}</span>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_TONE[s.status] ?? "bg-ivory-300 text-espresso-900/65"}`}>{s.status}</span>
               </div>
             </Link>
           ))}
@@ -79,12 +79,12 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
       {total > pageSize ? (
         <div className="flex justify-center gap-2">
           {currentPage > 1 ? (
-            <Link href={`/admin/finance/settlements?${status ? `status=${status}&` : ""}page=${currentPage - 1}`} className="text-sm font-medium text-brand-700 hover:underline">
+            <Link href={`/admin/finance/settlements?${status ? `status=${status}&` : ""}page=${currentPage - 1}`} className="text-sm font-medium text-forest-800 hover:underline">
               ← Previous
             </Link>
           ) : null}
           {currentPage * pageSize < total ? (
-            <Link href={`/admin/finance/settlements?${status ? `status=${status}&` : ""}page=${currentPage + 1}`} className="text-sm font-medium text-brand-700 hover:underline">
+            <Link href={`/admin/finance/settlements?${status ? `status=${status}&` : ""}page=${currentPage + 1}`} className="text-sm font-medium text-forest-800 hover:underline">
               Next →
             </Link>
           ) : null}

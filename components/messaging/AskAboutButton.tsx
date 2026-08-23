@@ -38,7 +38,7 @@ export function AskAboutButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-forest-800 hover:underline"
       >
         <MessageCircle className="size-4" strokeWidth={1.75} />
         {label}
@@ -47,11 +47,11 @@ export function AskAboutButton({
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-2 rounded-xl border border-stone-200 bg-stone-50 p-4">
+    <form action={formAction} className="flex flex-col gap-2 rounded-xl border border-ivory-300 bg-ivory-50 p-4">
       <input type="hidden" name="contextType" value={contextType} />
       <input type="hidden" name="contextRefId" value={contextRefId} />
       <input type="hidden" name="currentPath" value={currentPath} />
-      <p className="text-sm font-medium text-stone-700">Ask CrownSourceGlobal</p>
+      <p className="text-sm font-medium text-espresso-800">Ask CrownSourceGlobal</p>
       {resumedBody ? (
         <FormMessage tone="success">
           Continuing the message you started before signing in — review it and send.
@@ -65,7 +65,7 @@ export function AskAboutButton({
         defaultValue={resumedBody ?? ""}
         placeholder={placeholder}
         disabled={isPending}
-        className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-[15px] text-stone-900 shadow-soft outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+        className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
       />
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={isPending}>
@@ -75,7 +75,7 @@ export function AskAboutButton({
           Cancel
         </Button>
       </div>
-      <p className="text-xs text-stone-400">
+      <p className="text-xs text-espresso-900/35">
         {isSignedIn
           ? "This goes to CrownSourceGlobal, not directly to the vendor."
           : "You'll sign in first, then this message goes to CrownSourceGlobal — not directly to the vendor."}

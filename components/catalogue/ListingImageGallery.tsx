@@ -22,7 +22,7 @@ export function ListingImageGallery({
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   if (images.length === 0) {
-    return <ListingImagePlaceholder categorySlug={categorySlug} className="aspect-square rounded-2xl border border-stone-200" />;
+    return <ListingImagePlaceholder categorySlug={categorySlug} className="aspect-[4/5]" />;
   }
 
   const selected = images[Math.min(selectedIndex, images.length - 1)] as string;
@@ -33,7 +33,7 @@ export function ListingImageGallery({
       <img
         src={listingImageUrl(selected)}
         alt={title}
-        className="aspect-square w-full rounded-2xl border border-stone-200 object-cover"
+        className="aspect-[4/5] w-full bg-ivory-200 object-cover"
       />
       {images.length > 1 ? (
         <div className="flex flex-wrap gap-2">
@@ -44,8 +44,8 @@ export function ListingImageGallery({
               onClick={() => setSelectedIndex(index)}
               aria-label={`Show image ${index + 1}`}
               aria-current={index === selectedIndex}
-              className={`size-16 shrink-0 overflow-hidden rounded-lg border-2 ${
-                index === selectedIndex ? "border-brand-600" : "border-transparent"
+              className={`size-16 shrink-0 overflow-hidden border-2 ${
+                index === selectedIndex ? "border-champagne-500" : "border-transparent opacity-60 hover:opacity-100"
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- thumbnail of the same storage-backed image */}

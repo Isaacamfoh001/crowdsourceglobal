@@ -16,10 +16,10 @@ export default async function VendorMessagesPage({ searchParams }: { searchParam
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-2xl font-medium text-stone-900">Messages</h1>
+      <h1 className="font-display text-2xl font-medium text-espresso-950">Messages</h1>
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-stone-900">Contact CrownSourceGlobal</h2>
+      <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+        <h2 className="text-sm font-semibold text-espresso-950">Contact CrownSourceGlobal</h2>
         <div className="mt-3">
           <StartVendorConversationForm />
         </div>

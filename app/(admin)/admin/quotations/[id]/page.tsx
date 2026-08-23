@@ -4,6 +4,8 @@ import { requireAdminSession } from "../../../../../modules/administration/polic
 import { quotationService } from "../../../../../modules/quotation/service";
 import { QuoteStatusBadge } from "../../../../../components/quotation/QuoteStatusBadge";
 import { formatPrice } from "../../../../../lib/format";
+import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { Card } from "../../../../../components/ui/Card";
 
 type Params = { id: string };
 
@@ -25,23 +27,19 @@ export default async function AdminQuotationDetailPage({ params }: { params: Pro
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-medium text-stone-900">{quote.reference}</h1>
-          <p className="mt-1 text-sm text-stone-500">
-            {quote.customerName} · {quote.customerEmail}
-          </p>
-        </div>
-        <QuoteStatusBadge status={quote.status} />
-      </div>
+      <PageHeader
+        title={quote.reference}
+        description={`${quote.customerName} · ${quote.customerEmail}`}
+        actions={<QuoteStatusBadge status={quote.status} />}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="rounded-2xl border border-stone-200 bg-white p-5">
-          <h2 className="font-display text-base font-medium text-stone-900">Items</h2>
+        <Card>
+          <h2 className="font-display text-base font-medium text-espresso-950">Items</h2>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[480px] text-sm">
               <thead>
-                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-stone-500">
+                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-espresso-900/50">
                   <th className="py-2">Item</th>
                   <th className="py-2">Vendor</th>
                   <th className="py-2 text-right">Qty</th>
@@ -50,19 +48,19 @@ export default async function AdminQuotationDetailPage({ params }: { params: Pro
                   <th className="py-2 text-right">Line total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100">
+              <tbody className="divide-y divide-ivory-100">
                 {quote.items.map((item) => (
                   <tr key={item.id}>
-                    <td className="py-2.5 text-stone-900">{item.description}</td>
-                    <td className="py-2.5 text-stone-600">{item.vendor?.companyName ?? "—"}</td>
-                    <td className="py-2.5 text-right text-stone-700">{item.quantity}</td>
-                    <td className="py-2.5 text-right text-stone-700">
+                    <td className="py-2.5 text-espresso-950">{item.description}</td>
+                    <td className="py-2.5 text-espresso-900/65">{item.vendor?.companyName ?? "—"}</td>
+                    <td className="py-2.5 text-right text-espresso-800">{item.quantity}</td>
+                    <td className="py-2.5 text-right text-espresso-800">
                       {formatPrice(item.unitPrice, quote.currency)}
                     </td>
-                    <td className="py-2.5 text-right text-stone-500">
+                    <td className="py-2.5 text-right text-espresso-900/50">
                       {formatPrice(item.vendorPayableBasis, quote.currency)}
                     </td>
-                    <td className="py-2.5 text-right font-medium text-stone-900">
+                    <td className="py-2.5 text-right font-medium text-espresso-950">
                       {formatPrice(item.lineTotal, quote.currency)}
                     </td>
                   </tr>
@@ -70,36 +68,36 @@ export default async function AdminQuotationDetailPage({ params }: { params: Pro
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
 
         <div className="flex flex-col gap-4">
-          <div className="rounded-2xl border border-stone-200 bg-white p-5">
-            <h2 className="font-display text-base font-medium text-stone-900">Summary</h2>
-            <div className="mt-3 flex justify-between text-sm text-stone-600">
+          <Card>
+            <h2 className="font-display text-base font-medium text-espresso-950">Summary</h2>
+            <div className="mt-3 flex justify-between text-sm text-espresso-900/65">
               <span>Subtotal</span>
               <span>{formatPrice(quote.subtotal, quote.currency)}</span>
             </div>
-            <div className="mt-1 flex justify-between text-base font-semibold text-stone-900">
+            <div className="mt-1 flex justify-between text-base font-semibold text-espresso-950">
               <span>Total</span>
               <span>{formatPrice(quote.total, quote.currency)}</span>
             </div>
-            <div className="mt-4 flex flex-col gap-1 text-xs text-stone-500">
+            <div className="mt-4 flex flex-col gap-1 text-xs text-espresso-900/50">
               <span>Issued {formatDate(quote.issuedAt)}</span>
               <span>Valid until {formatDate(quote.expiresAt)}</span>
               {quote.acceptedAt ? <span>Accepted {formatDate(quote.acceptedAt)}</span> : null}
             </div>
-          </div>
+          </Card>
 
           {quote.acceptedOrderId ? (
-            <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <p className="text-sm text-stone-500">This quotation converted to an order.</p>
-              <p className="mt-1 text-sm font-medium text-brand-700">Order id: {quote.acceptedOrderId}</p>
-            </div>
+            <Card>
+              <p className="text-sm text-espresso-900/50">This quotation converted to an order.</p>
+              <p className="mt-1 text-sm font-medium text-forest-800">Order id: {quote.acceptedOrderId}</p>
+            </Card>
           ) : null}
         </div>
       </div>
 
-      <Link href="/admin/quotations" className="text-sm font-medium text-brand-700 hover:underline">
+      <Link href="/admin/quotations" className="text-sm font-medium text-forest-800 hover:underline">
         ← Back to quotations
       </Link>
     </div>

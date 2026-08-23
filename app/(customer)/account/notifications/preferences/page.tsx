@@ -13,11 +13,11 @@ export default async function NotificationPreferencesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/account/notifications" className="text-sm font-medium text-brand-700 hover:underline">
+        <Link href="/account/notifications" className="text-sm font-medium text-forest-800 hover:underline">
           ← Back to notifications
         </Link>
-        <h1 className="mt-2 font-display text-2xl font-medium text-stone-900">Notification preferences</h1>
-        <p className="mt-1 text-sm text-stone-500">
+        <h1 className="mt-2 font-display text-2xl font-medium text-espresso-950">Notification preferences</h1>
+        <p className="mt-1 text-sm text-espresso-900/50">
           These settings apply across your whole CrownSourceGlobal account — as a customer, vendor, or staff
           member.
         </p>

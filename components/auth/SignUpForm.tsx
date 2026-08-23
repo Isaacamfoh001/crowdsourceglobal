@@ -53,15 +53,15 @@ export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
   if (success) {
     return (
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+        <div className="flex size-12 items-center justify-center rounded-full bg-champagne-200 text-forest-800">
           <CheckCircle2 className="size-6" strokeWidth={1.75} />
         </div>
-        <h1 className="text-2xl font-medium text-stone-900">Check your email</h1>
+        <h1 className="text-2xl font-medium text-espresso-950">Check your email</h1>
         <FormMessage tone="success">
           We&apos;ve sent a verification link to your inbox. Verify your email to finish
           setting up your CrownSourceGlobal account.
         </FormMessage>
-        <Link href="/sign-in" className="text-sm font-medium text-brand-700 hover:underline">
+        <Link href="/sign-in" className="text-sm font-medium text-forest-800 hover:underline">
           Back to sign in
         </Link>
       </div>
@@ -71,8 +71,8 @@ export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
   return (
     <div className="flex flex-col gap-7">
       <div>
-        <h1 className="text-2xl font-medium text-stone-900">Create your account</h1>
-        <p className="mt-1.5 text-[15px] text-stone-500">
+        <h1 className="text-2xl font-medium text-espresso-950">Create your account</h1>
+        <p className="mt-1.5 text-[15px] text-espresso-900/50">
           Shop normally, buy in bulk, or request custom sourcing.
         </p>
       </div>
@@ -80,10 +80,10 @@ export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
       {googleEnabled ? (
         <>
           <GoogleButton label="Continue with Google" callbackURL={redirectTo} />
-          <div className="flex items-center gap-3 text-xs font-medium tracking-wide text-stone-400 uppercase">
-            <div className="h-px flex-1 bg-stone-200" />
+          <div className="flex items-center gap-3 text-xs font-medium tracking-wide text-espresso-900/35 uppercase">
+            <div className="h-px flex-1 bg-ivory-300" />
             or
-            <div className="h-px flex-1 bg-stone-200" />
+            <div className="h-px flex-1 bg-ivory-300" />
           </div>
         </>
       ) : null}
@@ -125,9 +125,9 @@ export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
         </Button>
       </form>
 
-      <p className="text-center text-sm text-stone-500">
+      <p className="text-center text-sm text-espresso-900/50">
         Already have an account?{" "}
-        <Link href="/sign-in" className="font-medium text-brand-700 hover:underline">
+        <Link href="/sign-in" className="font-medium text-forest-800 hover:underline">
           Sign in
         </Link>
       </p>

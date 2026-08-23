@@ -49,10 +49,10 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-medium text-stone-900">{detail.caseNumber}</h1>
-          <p className="mt-1 text-sm text-stone-500">
+          <h1 className="font-display text-2xl font-medium text-espresso-950">{detail.caseNumber}</h1>
+          <p className="mt-1 text-sm text-espresso-900/50">
             Order{" "}
-            <Link href={`/admin/operations`} className="text-brand-700 hover:underline">
+            <Link href={`/admin/operations`} className="text-forest-800 hover:underline">
               {detail.orderNumber}
             </Link>{" "}
             · {detail.customerName} ({detail.customerEmail}) · {detail.issueType.replace(/_/g, " ").toLowerCase()}
@@ -61,8 +61,8 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
         <CaseStatusBadge status={detail.status} label={detail.statusLabel} />
       </div>
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-5">
-        <h2 className="font-display text-base font-medium text-stone-900">Assignment</h2>
+      <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+        <h2 className="font-display text-base font-medium text-espresso-950">Assignment</h2>
         <div className="mt-3">
           <AssignResolutionStaffForm id={detail.id} staff={staff} assignedStaffId={detail.assignedStaffId} />
         </div>
@@ -70,24 +70,24 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-6">
-          <div className="rounded-2xl border border-stone-200 bg-white p-5">
-            <h2 className="font-display text-base font-medium text-stone-900">Customer report</h2>
-            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-stone-700">{detail.customerDescription}</p>
-            <ul className="mt-4 divide-y divide-stone-100">
+          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <h2 className="font-display text-base font-medium text-espresso-950">Customer report</h2>
+            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-espresso-800">{detail.customerDescription}</p>
+            <ul className="mt-4 divide-y divide-ivory-100">
               {detail.items.map((item) => (
-                <li key={item.id} className="py-2.5 text-sm text-stone-700">
-                  {item.description} × {item.quantityAffected} <span className="text-stone-400">(of {item.purchasedQuantity} purchased, {formatPrice(item.unitPrice, "GHS")} each)</span>
+                <li key={item.id} className="py-2.5 text-sm text-espresso-800">
+                  {item.description} × {item.quantityAffected} <span className="text-espresso-900/35">(of {item.purchasedQuantity} purchased, {formatPrice(item.unitPrice, "GHS")} each)</span>
                 </li>
               ))}
             </ul>
             {detail.requestedResolution ? (
-              <p className="mt-2 text-xs text-stone-500">Customer requested: {detail.requestedResolution.replace(/_/g, " ").toLowerCase()}</p>
+              <p className="mt-2 text-xs text-espresso-900/50">Customer requested: {detail.requestedResolution.replace(/_/g, " ").toLowerCase()}</p>
             ) : null}
             {detail.attachments.length > 0 ? (
               <ul className="mt-4 flex flex-col gap-2">
                 {detail.attachments.map((a) => (
                   <li key={a.id}>
-                    <a href={`/api/resolutions/attachments/${a.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm font-medium text-brand-700 hover:underline">
+                    <a href={`/api/resolutions/attachments/${a.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm font-medium text-forest-800 hover:underline">
                       <Paperclip className="size-3.5" />
                       {a.filename}
                     </a>
@@ -97,11 +97,11 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
             ) : null}
           </div>
 
-          <div className="rounded-2xl border border-stone-200 bg-white p-5">
-            <h2 className="font-display text-base font-medium text-stone-900">Customer communication</h2>
-            <p className="mt-1 text-sm text-stone-500">
+          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <h2 className="font-display text-base font-medium text-espresso-950">Customer communication</h2>
+            <p className="mt-1 text-sm text-espresso-900/50">
               Reply from{" "}
-              <Link href="/admin/messages" className="text-brand-700 hover:underline">
+              <Link href="/admin/messages" className="text-forest-800 hover:underline">
                 Admin → Messages
               </Link>{" "}
               — this case&apos;s thread appears there as &ldquo;About case {detail.caseNumber}&rdquo;.
@@ -114,13 +114,13 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
           </div>
 
           {detail.affectedVendors.length > 0 ? (
-            <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <h2 className="font-display text-base font-medium text-stone-900">Vendor coordination</h2>
-              <p className="mt-1 text-sm text-stone-500">Vendors never see customer contact details or this conversation with the customer.</p>
+            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+              <h2 className="font-display text-base font-medium text-espresso-950">Vendor coordination</h2>
+              <p className="mt-1 text-sm text-espresso-900/50">Vendors never see customer contact details or this conversation with the customer.</p>
               <div className="mt-3 flex flex-col gap-4">
                 {detail.affectedVendors.map((v) => (
                   <div key={v.vendorId}>
-                    <p className="text-sm font-medium text-stone-900">{v.vendorName}</p>
+                    <p className="text-sm font-medium text-espresso-950">{v.vendorName}</p>
                     {detail.status === "UNDER_REVIEW" ? (
                       <div className="mt-2">
                         <RequestVendorResponseForm id={detail.id} vendorId={v.vendorId} vendorName={v.vendorName} />
@@ -133,32 +133,32 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
           ) : null}
 
           {detail.status === "UNDER_REVIEW" ? (
-            <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <h2 className="font-display text-base font-medium text-stone-900">Resolution decision</h2>
-              <p className="mt-1 text-sm text-stone-500">Choose an outcome per item. This creates the refund/return/replacement records and notifies the customer.</p>
+            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+              <h2 className="font-display text-base font-medium text-espresso-950">Resolution decision</h2>
+              <p className="mt-1 text-sm text-espresso-900/50">Choose an outcome per item. This creates the refund/return/replacement records and notifies the customer.</p>
               <div className="mt-4">
                 <ApproveResolutionForm id={detail.id} items={detail.items} cancellableFulfilmentId={cancellableFulfilmentId} />
               </div>
-              <div className="mt-6 border-t border-stone-200 pt-4">
+              <div className="mt-6 border-t border-ivory-300 pt-4">
                 <RejectCaseForm id={detail.id} />
               </div>
             </div>
           ) : null}
 
           {detail.refunds.length > 0 ? (
-            <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <h2 className="font-display text-base font-medium text-stone-900">Refund</h2>
+            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+              <h2 className="font-display text-base font-medium text-espresso-950">Refund</h2>
               <div className="mt-3 flex flex-col gap-4">
                 {detail.refunds.map((r) => {
                   const statusTone =
-                    r.status === "COMPLETED" ? "text-emerald-700" : r.status === "FAILED" ? "text-red-700" : r.status === "PROCESSING" ? "text-amber-700" : "text-stone-600";
+                    r.status === "COMPLETED" ? "text-success-700" : r.status === "FAILED" ? "text-danger-700" : r.status === "PROCESSING" ? "text-warning-700" : "text-espresso-900/65";
                   return (
-                    <div key={r.id} className="rounded-lg border border-stone-200 p-3.5">
-                      <p className="text-sm text-stone-700">Approved amount: {formatPrice(r.amount, r.currency)}</p>
-                      {r.paymentProvider ? <p className="mt-1 text-xs text-stone-500">Provider: {r.paymentProvider}</p> : null}
+                    <div key={r.id} className="rounded-lg border border-ivory-300 p-3.5">
+                      <p className="text-sm text-espresso-800">Approved amount: {formatPrice(r.amount, r.currency)}</p>
+                      {r.paymentProvider ? <p className="mt-1 text-xs text-espresso-900/50">Provider: {r.paymentProvider}</p> : null}
                       <p className={`mt-1 text-sm font-medium ${statusTone}`}>Refund status: {r.status}</p>
-                      {r.providerReference ? <p className="mt-1 text-xs text-stone-500">Provider refund reference: {r.providerReference}</p> : null}
-                      {r.failureReason ? <p className="mt-1 text-xs text-red-600">{r.failureReason}</p> : null}
+                      {r.providerReference ? <p className="mt-1 text-xs text-espresso-900/50">Provider refund reference: {r.providerReference}</p> : null}
+                      {r.failureReason ? <p className="mt-1 text-xs text-danger-600">{r.failureReason}</p> : null}
                       {r.status === "APPROVED" || r.status === "FAILED" || r.status === "PROCESSING" ? (
                         <div className="mt-2">
                           <ProcessRefundButtons caseId={detail.id} refundId={r.id} status={r.status} paymentProvider={r.paymentProvider} />
@@ -172,12 +172,12 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
           ) : null}
 
           {detail.returns.length > 0 ? (
-            <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <h2 className="font-display text-base font-medium text-stone-900">Return</h2>
+            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+              <h2 className="font-display text-base font-medium text-espresso-950">Return</h2>
               <div className="mt-3 flex flex-col gap-4">
                 {detail.returns.map((r) => (
-                  <div key={r.id} className="rounded-lg border border-stone-200 p-3.5">
-                    <p className="text-sm text-stone-700">
+                  <div key={r.id} className="rounded-lg border border-ivory-300 p-3.5">
+                    <p className="text-sm text-espresso-800">
                       Status: <span className="font-medium">{r.status.replace(/_/g, " ").toLowerCase()}</span>
                       {r.trackingReference ? ` · ${r.trackingReference}` : ""}
                     </p>
@@ -208,14 +208,14 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
           ) : null}
 
           {detail.replacements.length > 0 ? (
-            <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <h2 className="font-display text-base font-medium text-stone-900">Replacement</h2>
+            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+              <h2 className="font-display text-base font-medium text-espresso-950">Replacement</h2>
               <div className="mt-3 flex flex-col gap-3">
                 {detail.replacements.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 p-3.5 text-sm">
-                    <span className="text-stone-700">Quantity {r.quantity}</span>
+                  <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-ivory-300 p-3.5 text-sm">
+                    <span className="text-espresso-800">Quantity {r.quantity}</span>
                     {r.replacementFulfilmentId ? (
-                      <Link href={`/admin/operations/${r.replacementFulfilmentId}`} className="text-brand-700 hover:underline">
+                      <Link href={`/admin/operations/${r.replacementFulfilmentId}`} className="text-forest-800 hover:underline">
                         View fulfilment
                       </Link>
                     ) : (
@@ -227,9 +227,9 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-gold-200 bg-gold-50/40 p-5">
-            <h2 className="font-display text-base font-medium text-stone-900">Internal CrownSource notes</h2>
-            <p className="mt-1 text-xs text-stone-500">Never visible to the customer or vendor.</p>
+          <div className="rounded-2xl border border-champagne-300 bg-champagne-200/15 p-5">
+            <h2 className="font-display text-base font-medium text-espresso-950">Internal CrownSource notes</h2>
+            <p className="mt-1 text-xs text-espresso-900/50">Never visible to the customer or vendor.</p>
             <div className="mt-3">
               <AddInternalNoteForm id={detail.id} />
             </div>
@@ -237,34 +237,34 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="rounded-2xl border border-stone-200 bg-white p-5">
-            <h2 className="font-display text-base font-medium text-stone-900">Next action</h2>
+          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <h2 className="font-display text-base font-medium text-espresso-950">Next action</h2>
             <div className="mt-3 flex flex-col gap-2">
               {detail.status === "OPEN" ? <MoveToReviewButton id={detail.id} /> : null}
               {detail.status === "AWAITING_CUSTOMER" || detail.status === "AWAITING_VENDOR" ? <ResumeReviewButton id={detail.id} /> : null}
               {detail.status === "RESOLUTION_APPROVED" || detail.status === "RESOLUTION_IN_PROGRESS" ? <ResolveCaseButton id={detail.id} /> : null}
               {detail.status === "RESOLVED" || detail.status === "REJECTED" ? <CloseCaseButton id={detail.id} /> : null}
-              {detail.status === "CLOSED" ? <p className="text-sm text-stone-500">Closed.</p> : null}
+              {detail.status === "CLOSED" ? <p className="text-sm text-espresso-900/50">Closed.</p> : null}
             </div>
           </div>
 
           {detail.customerSafeDecisionReason ? (
-            <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <h2 className="font-display text-base font-medium text-stone-900">Customer-facing decision</h2>
-              <p className="mt-2 text-sm text-stone-700">{detail.customerSafeDecisionReason}</p>
-              {detail.responsibility ? <p className="mt-2 text-xs text-stone-400">Internal: responsibility = {detail.responsibility.toLowerCase()}</p> : null}
+            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+              <h2 className="font-display text-base font-medium text-espresso-950">Customer-facing decision</h2>
+              <p className="mt-2 text-sm text-espresso-800">{detail.customerSafeDecisionReason}</p>
+              {detail.responsibility ? <p className="mt-2 text-xs text-espresso-900/35">Internal: responsibility = {detail.responsibility.toLowerCase()}</p> : null}
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-stone-200 bg-white p-5">
-            <h2 className="font-display text-base font-medium text-stone-900">Activity</h2>
+          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <h2 className="font-display text-base font-medium text-espresso-950">Activity</h2>
             <ul className="mt-3 flex flex-col gap-2 text-sm">
               {detail.activities.map((activity) => (
-                <li key={activity.id} className="text-stone-600">
-                  <span className="font-medium text-stone-900">{activity.type.replace(/_/g, " ")}</span>
-                  <span className="ml-1.5 text-xs text-stone-400">{formatDate(activity.createdAt)}</span>
+                <li key={activity.id} className="text-espresso-900/65">
+                  <span className="font-medium text-espresso-950">{activity.type.replace(/_/g, " ")}</span>
+                  <span className="ml-1.5 text-xs text-espresso-900/35">{formatDate(activity.createdAt)}</span>
                   {activity.type === "internal_note" && activity.metadata?.["note"] ? (
-                    <p className="mt-0.5 text-xs text-stone-500">{String(activity.metadata["note"])}</p>
+                    <p className="mt-0.5 text-xs text-espresso-900/50">{String(activity.metadata["note"])}</p>
                   ) : null}
                 </li>
               ))}
@@ -273,7 +273,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
         </div>
       </div>
 
-      <Link href="/admin/resolutions" className="text-sm font-medium text-brand-700 hover:underline">
+      <Link href="/admin/resolutions" className="text-sm font-medium text-forest-800 hover:underline">
         ← Back to resolutions
       </Link>
     </div>

@@ -16,10 +16,10 @@ export default async function AddressesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-2xl font-medium text-stone-900">Saved addresses</h1>
-        <p className="mt-1 text-[15px] text-stone-500">Manage the delivery addresses you can select at checkout.</p>
+        <h1 className="font-display text-2xl font-medium text-espresso-950">Saved addresses</h1>
+        <p className="mt-1 text-[15px] text-espresso-900/50">Manage the delivery addresses you can select at checkout.</p>
       </div>
-      <div className="max-w-xl rounded-2xl border border-stone-200 bg-white p-6">
+      <div className="max-w-xl rounded-2xl border border-ivory-300 bg-white p-6">
         <AddressManager addresses={addresses} />
       </div>
     </div>

@@ -14,8 +14,8 @@ const FINANCE_MUTATION_ROLES = ["SUPER_ADMIN", "FINANCE_ADMIN"];
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-4 py-2 text-sm">
-      <span className="text-stone-500">{label}</span>
-      <span className="text-right font-medium text-stone-900">{value}</span>
+      <span className="text-espresso-900/50">{label}</span>
+      <span className="text-right font-medium text-espresso-950">{value}</span>
     </div>
   );
 }
@@ -46,37 +46,37 @@ export default async function AdminSettlementDetailPage({ params }: { params: Pr
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <div>
-        <Link href="/admin/finance/settlements" className="text-sm text-stone-500 hover:text-stone-700">
+        <Link href="/admin/finance/settlements" className="text-sm text-espresso-900/50 hover:text-espresso-800">
           ← Settlements
         </Link>
-        <h1 className="mt-2 font-display text-2xl font-medium text-stone-900">{settlement.settlementNumber}</h1>
-        <Link href={`/admin/finance/vendors/${settlement.vendorId}`} className="text-sm text-brand-700 hover:underline">
+        <h1 className="mt-2 font-display text-2xl font-medium text-espresso-950">{settlement.settlementNumber}</h1>
+        <Link href={`/admin/finance/vendors/${settlement.vendorId}`} className="text-sm text-forest-800 hover:underline">
           {settlement.vendorName}
         </Link>
       </div>
 
       {settlement.reversedAt ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <div className="rounded-xl border border-danger-200 bg-danger-50 p-4 text-sm text-danger-800">
           <p className="font-medium">This payout was reversed</p>
           <p className="mt-1">{settlement.reversalReason}</p>
         </div>
       ) : null}
 
       {settlement.status === "PROCESSING" ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="rounded-xl border border-warning-200 bg-warning-50 p-4 text-sm text-warning-800">
           <p className="font-medium">Payout processing</p>
           <p className="mt-1">CrownSourceGlobal sent this transfer to Paystack and is waiting for confirmation.</p>
         </div>
       ) : null}
 
       {settlement.status === "FAILED" ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <div className="rounded-xl border border-danger-200 bg-danger-50 p-4 text-sm text-danger-800">
           <p className="font-medium">Payout failed</p>
           {settlement.payoutFailureReasonSafe ? <p className="mt-1">{settlement.payoutFailureReasonSafe}</p> : null}
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-6">
+      <div className="rounded-2xl border border-ivory-300 bg-white p-6">
         <Field label="Status" value={settlement.status} />
         <Field label="Gross" value={formatPrice(settlement.grossPayable, settlement.currency)} />
         {settlement.adjustmentTotal !== 0 ? <Field label="Adjustments" value={formatPrice(settlement.adjustmentTotal, settlement.currency)} /> : null}
@@ -90,22 +90,22 @@ export default async function AdminSettlementDetailPage({ params }: { params: Pr
         {settlement.payoutNote ? <Field label="Note" value={settlement.payoutNote} /> : null}
       </div>
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-6">
-        <h2 className="font-display text-base font-medium text-stone-900">Included orders</h2>
-        <div className="mt-3 divide-y divide-stone-100">
+      <div className="rounded-2xl border border-ivory-300 bg-white p-6">
+        <h2 className="font-display text-base font-medium text-espresso-950">Included orders</h2>
+        <div className="mt-3 divide-y divide-ivory-100">
           {settlement.items.map((item) => (
             <div key={item.id} className="flex items-center justify-between gap-4 py-2 text-sm">
-              <span className="text-stone-600">Order {item.orderNumber}</span>
-              <span className="font-medium text-stone-900">{formatPrice(item.amount, settlement.currency)}</span>
+              <span className="text-espresso-900/65">Order {item.orderNumber}</span>
+              <span className="font-medium text-espresso-950">{formatPrice(item.amount, settlement.currency)}</span>
             </div>
           ))}
         </div>
         {settlement.adjustments.length > 0 ? (
-          <div className="mt-3 divide-y divide-stone-100 border-t border-stone-100 pt-3">
+          <div className="mt-3 divide-y divide-ivory-100 border-t border-ivory-100 pt-3">
             {settlement.adjustments.map((a) => (
               <div key={a.id} className="flex items-center justify-between gap-4 py-2 text-sm">
-                <span className="text-stone-600">{a.reason}</span>
-                <span className={`font-medium ${a.amount < 0 ? "text-red-600" : "text-emerald-700"}`}>{formatPrice(a.amount, settlement.currency)}</span>
+                <span className="text-espresso-900/65">{a.reason}</span>
+                <span className={`font-medium ${a.amount < 0 ? "text-danger-600" : "text-success-700"}`}>{formatPrice(a.amount, settlement.currency)}</span>
               </div>
             ))}
           </div>
@@ -113,7 +113,7 @@ export default async function AdminSettlementDetailPage({ params }: { params: Pr
       </div>
 
       {canMutate ? (
-        <div className="rounded-2xl border border-stone-200 bg-white p-6">
+        <div className="rounded-2xl border border-ivory-300 bg-white p-6">
           <SettlementActions settlementId={settlement.id} status={settlement.status} automatedPayoutsEnabled={env.PAYMENT_PROVIDER === "paystack"} />
         </div>
       ) : null}

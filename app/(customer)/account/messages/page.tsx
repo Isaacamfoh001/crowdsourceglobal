@@ -20,8 +20,8 @@ export default async function CustomerMessagesPage({ searchParams }: { searchPar
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-2xl font-medium text-stone-900">Messages</h1>
-        <p className="mt-1 text-[15px] text-stone-500">
+        <h1 className="font-display text-2xl font-medium text-espresso-950">Messages</h1>
+        <p className="mt-1 text-[15px] text-espresso-900/50">
           Conversations with CrownSourceGlobal about vendors, listings, or orders.
         </p>
       </div>

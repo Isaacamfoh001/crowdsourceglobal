@@ -26,7 +26,7 @@ export function ToggleActiveButton({ listingId, active }: { listingId: string; a
       <input type="hidden" name="active" value={String(!active)} />
       <button
         type="submit"
-        className="text-sm font-medium text-stone-600 underline decoration-stone-300 hover:text-stone-900"
+        className="text-sm font-medium text-espresso-900/65 underline decoration-ivory-400 hover:text-espresso-950"
       >
         {active ? "Hide from marketplace" : "Show on marketplace"}
       </button>

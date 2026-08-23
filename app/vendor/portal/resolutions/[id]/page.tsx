@@ -27,32 +27,32 @@ export default async function VendorResolutionDetailPage({ params }: { params: P
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-medium text-stone-900">{detail.caseNumber}</h1>
-          <p className="mt-1 text-sm text-stone-500">Order {detail.orderNumber}</p>
+          <h1 className="font-display text-2xl font-medium text-espresso-950">{detail.caseNumber}</h1>
+          <p className="mt-1 text-sm text-espresso-900/50">Order {detail.orderNumber}</p>
         </div>
         <CaseStatusBadge status={detail.status} label={detail.statusLabel} />
       </div>
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-5">
-        <h2 className="font-display text-base font-medium text-stone-900">Affected item(s)</h2>
-        <ul className="mt-3 divide-y divide-stone-100">
+      <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+        <h2 className="font-display text-base font-medium text-espresso-950">Affected item(s)</h2>
+        <ul className="mt-3 divide-y divide-ivory-100">
           {detail.items.map((item, index) => (
-            <li key={index} className="py-2.5 text-sm text-stone-700">
+            <li key={index} className="py-2.5 text-sm text-espresso-800">
               {item.description} × {item.quantityAffected}
             </li>
           ))}
         </ul>
       </div>
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-5">
-        <h2 className="font-display text-base font-medium text-stone-900">CrownSourceGlobal</h2>
-        <p className="mt-1 text-sm text-stone-500">If CrownSourceGlobal needs information from you about this, it&apos;ll appear here.</p>
+      <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+        <h2 className="font-display text-base font-medium text-espresso-950">CrownSourceGlobal</h2>
+        <p className="mt-1 text-sm text-espresso-900/50">If CrownSourceGlobal needs information from you about this, it&apos;ll appear here.</p>
         <div className="mt-3">
           <AskVendorResolutionButton caseId={detail.id} label="Message CrownSourceGlobal about this" />
         </div>
       </div>
 
-      <Link href="/vendor/portal/resolutions" className="text-sm font-medium text-brand-700 hover:underline">
+      <Link href="/vendor/portal/resolutions" className="text-sm font-medium text-forest-800 hover:underline">
         ← Back to issues
       </Link>
     </div>

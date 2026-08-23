@@ -24,13 +24,13 @@ export default async function VendorOnboardingStatusPage() {
   if (!application) {
     return (
       <div className="flex flex-col items-center text-center">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-brand-100 text-brand-700">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-champagne-200 text-forest-800">
           <Store className="size-7" strokeWidth={1.75} />
         </div>
-        <h1 className="mt-6 font-display text-3xl font-medium text-stone-900">
+        <h1 className="mt-6 font-display text-3xl font-medium text-espresso-950">
           Become a CrownSourceGlobal vendor
         </h1>
-        <p className="mt-4 max-w-md text-[15px] leading-relaxed text-stone-600">
+        <p className="mt-4 max-w-md text-[15px] leading-relaxed text-espresso-900/65">
           A few short steps — who you are, what you sell, and how you operate. You can save
           your progress and finish later.
         </p>
@@ -44,10 +44,10 @@ export default async function VendorOnboardingStatusPage() {
   if (["DRAFT", "CHANGES_REQUESTED", "REJECTED"].includes(application.status)) {
     return (
       <div className="flex flex-col items-center text-center">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-gold-100 text-gold-700">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-champagne-200 text-champagne-700">
           <PenLine className="size-7" strokeWidth={1.75} />
         </div>
-        <h1 className="mt-6 font-display text-3xl font-medium text-stone-900">
+        <h1 className="mt-6 font-display text-3xl font-medium text-espresso-950">
           {application.status === "DRAFT" ? "Continue your application" : "Update your application"}
         </h1>
         {application.status !== "DRAFT" && application.decisionReason ? (
@@ -55,7 +55,7 @@ export default async function VendorOnboardingStatusPage() {
             <FormMessage tone="error">{application.decisionReason}</FormMessage>
           </div>
         ) : (
-          <p className="mt-4 max-w-md text-[15px] leading-relaxed text-stone-600">
+          <p className="mt-4 max-w-md text-[15px] leading-relaxed text-espresso-900/65">
             Pick up where you left off — your answers are saved.
           </p>
         )}
@@ -69,13 +69,13 @@ export default async function VendorOnboardingStatusPage() {
   if (["SUBMITTED", "UNDER_REVIEW"].includes(application.status)) {
     return (
       <div className="flex flex-col items-center text-center">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-stone-100 text-stone-500">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-ivory-100 text-espresso-900/50">
           <Hourglass className="size-7" strokeWidth={1.75} />
         </div>
-        <h1 className="mt-6 font-display text-3xl font-medium text-stone-900">
+        <h1 className="mt-6 font-display text-3xl font-medium text-espresso-950">
           Application under review
         </h1>
-        <p className="mt-4 max-w-md text-[15px] leading-relaxed text-stone-600">
+        <p className="mt-4 max-w-md text-[15px] leading-relaxed text-espresso-900/65">
           Thanks for applying, {application.contactName ?? session.user.name}. Our team is
           reviewing your application and will let you know once it&apos;s decided. This
           usually doesn&apos;t take long.
@@ -92,13 +92,13 @@ export default async function VendorOnboardingStatusPage() {
   if (application.status === "APPROVED") {
     return (
       <div className="flex flex-col items-center text-center">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-brand-100 text-brand-700">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-champagne-200 text-forest-800">
           <CheckCircle2 className="size-7" strokeWidth={1.75} />
         </div>
-        <h1 className="mt-6 font-display text-3xl font-medium text-stone-900">
+        <h1 className="mt-6 font-display text-3xl font-medium text-espresso-950">
           Your vendor account is approved
         </h1>
-        <p className="mt-4 max-w-md text-[15px] leading-relaxed text-stone-600">
+        <p className="mt-4 max-w-md text-[15px] leading-relaxed text-espresso-900/65">
           Welcome to CrownSourceGlobal. Head into your Vendor Portal to set up your store.
         </p>
         <Link href="/vendor/portal" className="mt-8">
@@ -110,11 +110,11 @@ export default async function VendorOnboardingStatusPage() {
 
   return (
     <div className="flex flex-col items-center text-center">
-      <div className="flex size-14 items-center justify-center rounded-2xl bg-stone-100 text-stone-500">
+      <div className="flex size-14 items-center justify-center rounded-2xl bg-ivory-100 text-espresso-900/50">
         <ShieldQuestion className="size-7" strokeWidth={1.75} />
       </div>
-      <h1 className="mt-6 font-display text-3xl font-medium text-stone-900">Application status</h1>
-      <p className="mt-4 max-w-md text-[15px] leading-relaxed text-stone-600">
+      <h1 className="mt-6 font-display text-3xl font-medium text-espresso-950">Application status</h1>
+      <p className="mt-4 max-w-md text-[15px] leading-relaxed text-espresso-900/65">
         Something unexpected happened with your application status. Contact support if this
         persists.
       </p>

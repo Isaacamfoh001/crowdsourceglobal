@@ -20,8 +20,8 @@ const STATUS_LABEL: Record<string, string> = {
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-4 py-2 text-sm">
-      <span className="text-stone-500">{label}</span>
-      <span className="text-right font-medium text-stone-900">{value}</span>
+      <span className="text-espresso-900/50">{label}</span>
+      <span className="text-right font-medium text-espresso-950">{value}</span>
     </div>
   );
 }
@@ -37,21 +37,21 @@ export default async function VendorEarningDetailPage({ params }: { params: Prom
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <div>
-        <Link href="/vendor/portal/finance" className="text-sm text-stone-500 hover:text-stone-700">
+        <Link href="/vendor/portal/finance" className="text-sm text-espresso-900/50 hover:text-espresso-800">
           ← Finance
         </Link>
-        <h1 className="mt-2 font-display text-2xl font-medium text-stone-900">Order {earning.orderNumber}</h1>
-        <p className="mt-1 text-sm text-stone-500">{STATUS_LABEL[earning.status]}</p>
+        <h1 className="mt-2 font-display text-2xl font-medium text-espresso-950">Order {earning.orderNumber}</h1>
+        <p className="mt-1 text-sm text-espresso-900/50">{STATUS_LABEL[earning.status]}</p>
       </div>
 
       {earning.status === "ON_HOLD" && earning.holdReasonSafe ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <div className="rounded-xl border border-danger-200 bg-danger-50 p-4 text-sm text-danger-800">
           <p className="font-medium">On hold</p>
           <p className="mt-1">{earning.holdReasonSafe}</p>
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-6">
+      <div className="rounded-2xl border border-ivory-300 bg-white p-6">
         <Field label="Item" value={earning.orderItemDescription} />
         <Field label="Quantity" value={earning.quantity} />
         <Field label="Original amount" value={formatPrice(earning.originalPayableAmount, earning.currency)} />
@@ -62,13 +62,13 @@ export default async function VendorEarningDetailPage({ params }: { params: Prom
       </div>
 
       {earning.adjustments.length > 0 ? (
-        <div className="rounded-2xl border border-stone-200 bg-white p-6">
-          <h2 className="font-display text-base font-medium text-stone-900">Adjustments</h2>
-          <div className="mt-3 divide-y divide-stone-100">
+        <div className="rounded-2xl border border-ivory-300 bg-white p-6">
+          <h2 className="font-display text-base font-medium text-espresso-950">Adjustments</h2>
+          <div className="mt-3 divide-y divide-ivory-100">
             {earning.adjustments.map((adjustment) => (
               <div key={adjustment.id} className="flex items-center justify-between gap-4 py-2 text-sm">
-                <span className="text-stone-600">{adjustment.reason}</span>
-                <span className={`font-medium ${adjustment.amount < 0 ? "text-red-600" : "text-emerald-700"}`}>
+                <span className="text-espresso-900/65">{adjustment.reason}</span>
+                <span className={`font-medium ${adjustment.amount < 0 ? "text-danger-600" : "text-success-700"}`}>
                   {adjustment.amount < 0 ? "-" : "+"}
                   {formatPrice(Math.abs(adjustment.amount), earning.currency)}
                 </span>

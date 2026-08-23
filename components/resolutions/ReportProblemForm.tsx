@@ -40,40 +40,40 @@ export function ReportProblemForm({ context, defaultFulfilmentId }: { context: O
       <input type="hidden" name="orderId" value={context.orderId} />
 
       <div>
-        <label className="text-sm font-medium text-stone-900">What went wrong?</label>
+        <label className="text-sm font-medium text-espresso-950">What went wrong?</label>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {ISSUE_TYPES.map((option) => (
             <label
               key={option.value}
               className={`flex cursor-pointer flex-col gap-0.5 rounded-lg border px-3.5 py-2.5 text-sm ${
-                issueType === option.value ? "border-brand-600 bg-brand-50" : "border-stone-300 bg-white hover:bg-stone-50"
+                issueType === option.value ? "border-forest-700 bg-champagne-200/20" : "border-ivory-400 bg-white hover:bg-ivory-50"
               }`}
             >
-              <span className="flex items-center gap-2 font-medium text-stone-900">
+              <span className="flex items-center gap-2 font-medium text-espresso-950">
                 <input
                   type="radio"
                   name="issueType"
                   value={option.value}
                   checked={issueType === option.value}
                   onChange={() => setIssueType(option.value)}
-                  className="accent-brand-700"
+                  className="accent-forest-800"
                 />
                 {option.label}
               </span>
-              {option.hint ? <span className="pl-6 text-xs text-stone-500">{option.hint}</span> : null}
+              {option.hint ? <span className="pl-6 text-xs text-espresso-900/50">{option.hint}</span> : null}
             </label>
           ))}
         </div>
       </div>
 
       <div>
-        <label className="text-sm font-medium text-stone-900">Affected item(s)</label>
+        <label className="text-sm font-medium text-espresso-950">Affected item(s)</label>
         <div className="mt-2 flex flex-col gap-3">
           {relevantFulfilments.map((f) => (
-            <div key={f.fulfilmentId} className="rounded-lg border border-stone-200 p-3.5">
-              <p className="flex items-center justify-between text-xs text-stone-500">
+            <div key={f.fulfilmentId} className="rounded-lg border border-ivory-300 p-3.5">
+              <p className="flex items-center justify-between text-xs text-espresso-900/50">
                 <span>{f.vendorName}</span>
-                {isCancellation ? <span className="font-medium text-gold-700">{ELIGIBILITY_LABEL[f.eligibility]}</span> : null}
+                {isCancellation ? <span className="font-medium text-champagne-700">{ELIGIBILITY_LABEL[f.eligibility]}</span> : null}
               </p>
               <div className="mt-2 flex flex-col gap-2">
                 {f.items.map((item) => {
@@ -84,7 +84,7 @@ export function ReportProblemForm({ context, defaultFulfilmentId }: { context: O
                       <label className="flex flex-1 items-center gap-2">
                         <input
                           type="checkbox"
-                          className="accent-brand-700"
+                          className="accent-forest-800"
                           checked={checked}
                           onChange={(e) => {
                             const next = new Set(selected);
@@ -94,8 +94,8 @@ export function ReportProblemForm({ context, defaultFulfilmentId }: { context: O
                           }}
                         />
                         {checked ? <input type="hidden" name="orderItemId" value={item.orderItemId} /> : null}
-                        <span className="text-stone-800">
-                          {item.description} <span className="text-stone-400">({formatPrice(item.unitPrice, "GHS")} each, qty {item.quantity})</span>
+                        <span className="text-espresso-900">
+                          {item.description} <span className="text-espresso-900/35">({formatPrice(item.unitPrice, "GHS")} each, qty {item.quantity})</span>
                         </span>
                       </label>
                       {checked ? (
@@ -106,7 +106,7 @@ export function ReportProblemForm({ context, defaultFulfilmentId }: { context: O
                           max={item.quantity}
                           defaultValue={item.quantity}
                           aria-label={`Quantity affected for ${item.description}`}
-                          className="w-20 rounded-lg border border-stone-300 px-2 py-1.5 text-sm"
+                          className="w-20 rounded-lg border border-ivory-400 px-2 py-1.5 text-sm"
                         />
                       ) : null}
                     </div>
@@ -122,7 +122,7 @@ export function ReportProblemForm({ context, defaultFulfilmentId }: { context: O
       </div>
 
       <div>
-        <label htmlFor="description" className="text-sm font-medium text-stone-900">
+        <label htmlFor="description" className="text-sm font-medium text-espresso-950">
           Tell us what happened
         </label>
         <textarea
@@ -132,12 +132,12 @@ export function ReportProblemForm({ context, defaultFulfilmentId }: { context: O
           required
           minLength={5}
           placeholder="Describe the issue in a bit of detail…"
-          className="mt-2 w-full rounded-lg border border-stone-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+          className="mt-2 w-full rounded-lg border border-ivory-400 px-3.5 py-2.5 text-sm outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
         />
       </div>
 
       <div>
-        <label htmlFor="evidence" className="text-sm font-medium text-stone-900">
+        <label htmlFor="evidence" className="text-sm font-medium text-espresso-950">
           Photos or documents (optional)
         </label>
         <input
@@ -146,7 +146,7 @@ export function ReportProblemForm({ context, defaultFulfilmentId }: { context: O
           name="evidence"
           multiple
           accept="image/png,image/jpeg,image/webp,application/pdf"
-          className="mt-2 block w-full text-sm text-stone-600 file:mr-3 file:rounded-lg file:border-0 file:bg-stone-100 file:px-3.5 file:py-2 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-200"
+          className="mt-2 block w-full text-sm text-espresso-900/65 file:mr-3 file:rounded-lg file:border-0 file:bg-ivory-100 file:px-3.5 file:py-2 file:text-sm file:font-medium file:text-espresso-800 hover:file:bg-ivory-300"
         />
       </div>
 

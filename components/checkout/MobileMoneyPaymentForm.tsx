@@ -125,11 +125,11 @@ export function MobileMoneyPaymentForm({ orderId }: { orderId: string }) {
   if (step === "otp") {
     return (
       <form onSubmit={handleOtpSubmit} className="flex flex-col gap-4">
-        <p className="text-sm text-stone-600">
+        <p className="text-sm text-espresso-900/65">
           Enter the verification code sent to your phone via SMS to authorize this payment.
         </p>
         {error ? <FormMessage tone="error">{error}</FormMessage> : null}
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-stone-700" htmlFor="otp">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-espresso-800" htmlFor="otp">
           Verification code
           <input
             id="otp"
@@ -139,7 +139,7 @@ export function MobileMoneyPaymentForm({ orderId }: { orderId: string }) {
             required
             value={otp}
             onChange={(e) => setOtp(e.target.value)}
-            className="rounded-lg border border-stone-300 px-3 py-2.5 text-base focus:border-stone-500 focus:outline-none"
+            className="rounded-lg border border-ivory-400 px-3 py-2.5 text-base focus:border-espresso-900/50 focus:outline-none"
             autoFocus
           />
         </label>
@@ -154,18 +154,18 @@ export function MobileMoneyPaymentForm({ orderId }: { orderId: string }) {
     return (
       <div className="flex flex-col items-center gap-4 py-4 text-center">
         <div
-          className={step === "pending" ? "size-10 animate-spin rounded-full border-4 border-stone-200 border-t-stone-600" : "size-10 rounded-full border-4 border-amber-300"}
+          className={step === "pending" ? "size-10 animate-spin rounded-full border-4 border-ivory-300 border-t-espresso-900/65" : "size-10 rounded-full border-4 border-warning-200"}
           aria-hidden
         />
-        <p className="text-sm font-medium text-stone-800" role="status">
+        <p className="text-sm font-medium text-espresso-900" role="status">
           {step === "stalled"
             ? "This is taking longer than expected."
             : payment?.providerStatus === "TP17"
               ? "Verification successful. We're confirming your payment."
               : "Check your phone and approve the payment prompt."}
         </p>
-        {payment?.phoneMasked ? <p className="text-xs text-stone-500">Sent to {payment.phoneMasked}</p> : null}
-        <p className="text-xs text-stone-400">Order reference: {payment?.reference}</p>
+        {payment?.phoneMasked ? <p className="text-xs text-espresso-900/50">Sent to {payment.phoneMasked}</p> : null}
+        <p className="text-xs text-espresso-900/35">Order reference: {payment?.reference}</p>
         {step === "stalled" ? (
           <Button type="button" variant="outline" onClick={handleManualCheck} disabled={isSubmitting}>
             {isSubmitting ? "Checking…" : "Check payment status"}
@@ -195,13 +195,13 @@ export function MobileMoneyPaymentForm({ orderId }: { orderId: string }) {
       {error ? <FormMessage tone="error">{error}</FormMessage> : null}
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm font-medium text-stone-700">Mobile Money network</legend>
+        <legend className="text-sm font-medium text-espresso-800">Mobile Money network</legend>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {NETWORKS.map((n) => (
             <label
               key={n.value}
               className={`flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-sm font-medium ${
-                network === n.value ? "border-stone-800 bg-stone-900 text-white" : "border-stone-300 text-stone-700"
+                network === n.value ? "border-espresso-900 bg-espresso-950 text-white" : "border-ivory-400 text-espresso-800"
               }`}
             >
               <input
@@ -218,7 +218,7 @@ export function MobileMoneyPaymentForm({ orderId }: { orderId: string }) {
         </div>
       </fieldset>
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-stone-700" htmlFor="phone">
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-espresso-800" htmlFor="phone">
         Mobile Money number
         <input
           id="phone"
@@ -229,7 +229,7 @@ export function MobileMoneyPaymentForm({ orderId }: { orderId: string }) {
           placeholder="024 123 4567"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          className="rounded-lg border border-stone-300 px-3 py-2.5 text-base focus:border-stone-500 focus:outline-none"
+          className="rounded-lg border border-ivory-400 px-3 py-2.5 text-base focus:border-espresso-900/50 focus:outline-none"
         />
       </label>
 

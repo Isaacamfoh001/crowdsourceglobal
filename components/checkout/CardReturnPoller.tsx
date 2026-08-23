@@ -44,6 +44,6 @@ export function CardReturnPoller({ orderId, paymentId }: { orderId: string; paym
   }, []);
 
   return <div className="mt-6 flex justify-center">
-    <div className="size-10 animate-spin rounded-full border-4 border-stone-200 border-t-stone-600" aria-hidden />
+    <div className="size-10 animate-spin rounded-full border-4 border-ivory-300 border-t-espresso-900/65" aria-hidden />
   </div>;
 }

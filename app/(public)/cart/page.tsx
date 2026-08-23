@@ -2,7 +2,9 @@ import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
 import { Container } from "../../../components/ui/Container";
 import { Button } from "../../../components/ui/Button";
-import { EmptyState } from "../../../components/catalogue/EmptyState";
+import { Card } from "../../../components/ui/Card";
+import { PageHeader } from "../../../components/ui/PageHeader";
+import { EmptyState } from "../../../components/ui/EmptyState";
 import { CartLineItem } from "../../../components/cart/CartLineItem";
 import { formatPrice } from "../../../lib/format";
 import { requireSession, getCurrentCustomerProfile } from "../../../modules/identity/policy";
@@ -19,39 +21,45 @@ export default async function CartPage() {
     : { cartId: null, itemCount: 0, vendorGroups: [], subtotal: 0, currency: "GHS" };
 
   return (
-    <div className="bg-stone-50 py-10 sm:py-14">
-      <Container>
-        <h1 className="font-display text-3xl font-medium text-stone-900">Your cart</h1>
+    <div className="bg-ivory-50">
+      <div className="bg-espresso-950 py-7 sm:py-9">
+        <Container>
+          <PageHeader
+            title="Your cart"
+            description={
+              cart.vendorGroups.length > 0
+                ? `${cart.itemCount} item${cart.itemCount === 1 ? "" : "s"} from ${cart.vendorGroups.length} vendor${cart.vendorGroups.length === 1 ? "" : "s"}, one checkout.`
+                : "Browse the marketplace to add items."
+            }
+            className="[&_h1]:text-white [&_p]:text-ivory-200/55"
+          />
+        </Container>
+      </div>
 
+      <Container className={`py-10 sm:py-14 ${cart.vendorGroups.length > 0 ? "pb-28 lg:pb-14" : ""}`}>
         {cart.vendorGroups.length === 0 ? (
           <div className="mt-10">
             <EmptyState
               title="Your cart is empty"
               description="Browse the marketplace to find what you need."
+              actionHref="/shop"
+              actionLabel="Continue shopping"
             />
-            <div className="mt-6 flex justify-center">
-              <Link href="/shop">
-                <Button>Continue shopping</Button>
-              </Link>
-            </div>
           </div>
         ) : (
           <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
             <div className="flex flex-col gap-6">
               {cart.vendorGroups.map((group) => (
-                <div
-                  key={group.vendor.id}
-                  className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"
-                >
+                <Card key={group.vendor.id}>
                   <div className="flex items-center justify-between gap-3">
                     <Link
                       href={`/vendors/${group.vendor.storefrontSlug}`}
-                      className="flex min-w-0 items-center gap-2 font-display text-[15px] font-medium text-stone-900 hover:text-brand-800"
+                      className="flex min-w-0 items-center gap-2 font-display text-[15px] font-medium text-espresso-950 hover:text-forest-900"
                     >
-                      <ShoppingBag className="size-4 shrink-0 text-stone-400" strokeWidth={1.75} />
+                      <ShoppingBag className="size-4 shrink-0 text-espresso-900/35" strokeWidth={1.75} />
                       <span className="truncate">{group.vendor.companyName}</span>
                     </Link>
-                    <span className="shrink-0 text-sm text-stone-500">
+                    <span className="shrink-0 text-sm text-espresso-900/50">
                       {formatPrice(group.subtotal, cart.currency)}
                     </span>
                   </div>
@@ -61,36 +69,57 @@ export default async function CartPage() {
                       <CartLineItem key={line.id} line={line} />
                     ))}
                   </div>
-                </div>
+                </Card>
               ))}
 
-              <Link href="/shop" className="text-sm font-medium text-brand-700 hover:underline">
+              <Link href="/shop" className="text-sm font-medium text-forest-800 hover:underline">
                 ← Continue shopping
               </Link>
             </div>
 
-            <div className="h-fit rounded-2xl border border-stone-200 bg-white p-6">
-              <h2 className="font-display text-lg font-medium text-stone-900">Order summary</h2>
-              <div className="mt-4 flex justify-between text-sm text-stone-600">
+            <Card as="div" elevated className="h-fit">
+              <h2 className="font-display text-lg font-medium text-espresso-950">Order summary</h2>
+              <div className="mt-4 flex justify-between text-sm text-espresso-900/65">
                 <span>
                   Subtotal ({cart.itemCount} item{cart.itemCount === 1 ? "" : "s"})
                 </span>
-                <span className="font-medium text-stone-900">
+                <span className="font-medium text-espresso-950">
                   {formatPrice(cart.subtotal, cart.currency)}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-stone-400">
+              <p className="mt-1 text-xs text-espresso-900/35">
                 Delivery is arranged after checkout.
               </p>
-              <Link href="/checkout">
+              <Link href="/checkout" className="hidden lg:block">
                 <Button size="lg" fullWidth className="mt-5">
                   Proceed to checkout
                 </Button>
               </Link>
-            </div>
+            </Card>
           </div>
         )}
       </Container>
+
+      {/* Persistent mobile checkout action — on a long multi-vendor cart the
+          desktop sidebar summary can be several screens below the fold, so
+          the primary action stays reachable without scrolling. */}
+      {cart.vendorGroups.length > 0 ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-ivory-300 bg-white/95 px-4 py-3 backdrop-blur-sm lg:hidden">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs text-espresso-900/50">
+                {cart.itemCount} item{cart.itemCount === 1 ? "" : "s"}
+              </p>
+              <p className="text-base font-semibold text-espresso-950">
+                {formatPrice(cart.subtotal, cart.currency)}
+              </p>
+            </div>
+            <Link href="/checkout" className="shrink-0">
+              <Button size="lg">Checkout</Button>
+            </Link>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

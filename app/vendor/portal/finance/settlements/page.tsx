@@ -22,12 +22,12 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_TONE: Record<string, string> = {
-  DRAFT: "bg-stone-200 text-stone-600",
-  APPROVED: "bg-amber-100 text-amber-700",
-  PROCESSING: "bg-amber-100 text-amber-700",
-  PAID: "bg-emerald-100 text-emerald-700",
-  FAILED: "bg-stone-200 text-stone-600",
-  CANCELLED: "bg-stone-200 text-stone-500",
+  DRAFT: "bg-ivory-300 text-espresso-900/65",
+  APPROVED: "bg-warning-100 text-warning-700",
+  PROCESSING: "bg-warning-100 text-warning-700",
+  PAID: "bg-success-100 text-success-700",
+  FAILED: "bg-ivory-300 text-espresso-900/65",
+  CANCELLED: "bg-ivory-300 text-espresso-900/50",
 };
 
 export default async function VendorSettlementsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
@@ -40,30 +40,30 @@ export default async function VendorSettlementsPage({ searchParams }: { searchPa
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/vendor/portal/finance" className="text-sm text-stone-500 hover:text-stone-700">
+        <Link href="/vendor/portal/finance" className="text-sm text-espresso-900/50 hover:text-espresso-800">
           ← Finance
         </Link>
-        <h1 className="mt-2 font-display text-2xl font-medium text-stone-900">Settlement history</h1>
+        <h1 className="mt-2 font-display text-2xl font-medium text-espresso-950">Settlement history</h1>
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-          <p className="text-sm text-stone-500">No settlements yet.</p>
+        <div className="rounded-2xl border border-dashed border-ivory-400 bg-white p-10 text-center">
+          <p className="text-sm text-espresso-900/50">No settlements yet.</p>
         </div>
       ) : (
-        <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
+        <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
           {rows.map((settlement) => (
             <Link
               key={settlement.id}
               href={`/vendor/portal/finance/settlements/${settlement.id}`}
-              className="flex flex-col gap-2 px-5 py-4 hover:bg-stone-50 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 px-5 py-4 hover:bg-ivory-50 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="text-sm font-medium text-stone-900">{settlement.settlementNumber}</p>
-                <p className="text-xs text-stone-500">{settlement.createdAt.toLocaleDateString()}</p>
+                <p className="text-sm font-medium text-espresso-950">{settlement.settlementNumber}</p>
+                <p className="text-xs text-espresso-900/50">{settlement.createdAt.toLocaleDateString()}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-stone-900">{formatPrice(settlement.netAmount, settlement.currency)}</span>
+                <span className="text-sm font-medium text-espresso-950">{formatPrice(settlement.netAmount, settlement.currency)}</span>
                 <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_TONE[settlement.status]}`}>{STATUS_LABEL[settlement.status]}</span>
               </div>
             </Link>
@@ -74,12 +74,12 @@ export default async function VendorSettlementsPage({ searchParams }: { searchPa
       {total > pageSize ? (
         <div className="flex justify-center gap-2">
           {currentPage > 1 ? (
-            <Link href={`/vendor/portal/finance/settlements?page=${currentPage - 1}`} className="text-sm font-medium text-brand-700 hover:underline">
+            <Link href={`/vendor/portal/finance/settlements?page=${currentPage - 1}`} className="text-sm font-medium text-forest-800 hover:underline">
               ← Previous
             </Link>
           ) : null}
           {currentPage * pageSize < total ? (
-            <Link href={`/vendor/portal/finance/settlements?page=${currentPage + 1}`} className="text-sm font-medium text-brand-700 hover:underline">
+            <Link href={`/vendor/portal/finance/settlements?page=${currentPage + 1}`} className="text-sm font-medium text-forest-800 hover:underline">
               Next →
             </Link>
           ) : null}

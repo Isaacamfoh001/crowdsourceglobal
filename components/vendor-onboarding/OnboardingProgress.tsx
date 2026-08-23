@@ -19,20 +19,20 @@ export function OnboardingProgress({ current }: { current: (typeof STEPS)[number
             <span
               className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                 isCurrent
-                  ? "bg-brand-700 text-white"
+                  ? "bg-forest-800 text-white"
                   : isDone
-                    ? "bg-brand-100 text-brand-800"
-                    : "bg-stone-100 text-stone-400"
+                    ? "bg-champagne-200 text-forest-900"
+                    : "bg-ivory-100 text-espresso-900/35"
               }`}
               aria-current={isCurrent ? "step" : undefined}
             >
               {index + 1}
             </span>
-            <span className={`text-xs font-medium sm:text-sm ${isCurrent ? "text-stone-900" : "text-stone-500"}`}>
+            <span className={`text-xs font-medium sm:text-sm ${isCurrent ? "text-espresso-950" : "text-espresso-900/50"}`}>
               {step.label}
             </span>
             {index < STEPS.length - 1 ? (
-              <span className="mx-0.5 h-px w-4 shrink-0 bg-stone-200 sm:w-6" aria-hidden />
+              <span className="mx-0.5 h-px w-4 shrink-0 bg-ivory-300 sm:w-6" aria-hidden />
             ) : null}
           </li>
         );

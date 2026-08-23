@@ -32,7 +32,7 @@ export function PaymentMethodTabs({
           type="button"
           onClick={() => setMethod("momo")}
           className={`rounded-lg border px-3 py-2.5 text-sm font-medium ${
-            method === "momo" ? "border-stone-800 bg-stone-900 text-white" : "border-stone-300 text-stone-700"
+            method === "momo" ? "border-espresso-900 bg-espresso-950 text-white" : "border-ivory-400 text-espresso-800"
           }`}
         >
           Mobile Money
@@ -41,7 +41,7 @@ export function PaymentMethodTabs({
           type="button"
           onClick={() => setMethod("card")}
           className={`rounded-lg border px-3 py-2.5 text-sm font-medium ${
-            method === "card" ? "border-stone-800 bg-stone-900 text-white" : "border-stone-300 text-stone-700"
+            method === "card" ? "border-espresso-900 bg-espresso-950 text-white" : "border-ivory-400 text-espresso-800"
           }`}
         >
           Card

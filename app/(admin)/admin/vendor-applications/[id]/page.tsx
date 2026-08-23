@@ -3,6 +3,9 @@ import { ApplicationDecisionForms } from "../../../../../components/admin/Applic
 import { requireAdminSession } from "../../../../../modules/administration/policy";
 import { vendorApplicationsService } from "../../../../../modules/vendor-applications/service";
 import { BeginReviewButton } from "../../../../../components/admin/BeginReviewButton";
+import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { Card } from "../../../../../components/ui/Card";
+import { StatusBadge } from "../../../../../components/ui/StatusBadge";
 
 type Params = { id: string };
 
@@ -12,8 +15,8 @@ export const dynamic = "force-dynamic";
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 py-2.5 text-sm">
-      <dt className="text-stone-500">{label}</dt>
-      <dd className="text-right font-medium text-stone-900">{value || "—"}</dd>
+      <dt className="text-espresso-900/50">{label}</dt>
+      <dd className="text-right font-medium text-espresso-950">{value || "—"}</dd>
     </div>
   );
 }
@@ -31,18 +34,14 @@ export default async function AdminVendorApplicationDetailPage({ params }: { par
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-display text-2xl font-medium text-stone-900">
-          {application.displayName ?? application.applicant.name}
-        </h1>
-        <p className="mt-1 text-sm text-stone-500">
-          {application.applicant.name} · {application.applicant.email}
-        </p>
-      </div>
+      <PageHeader
+        title={application.displayName ?? application.applicant.name}
+        description={`${application.applicant.name} · ${application.applicant.email}`}
+        actions={<StatusBadge tone="neutral">{application.status.replace(/_/g, " ")}</StatusBadge>}
+      />
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6">
-        <dl className="divide-y divide-stone-100">
-          <Row label="Status" value={application.status} />
+      <Card>
+        <dl className="divide-y divide-ivory-100">
           <Row label="Seller type" value={application.sellerType ?? ""} />
           <Row label="Contact" value={`${application.contactName ?? ""} · ${application.contactPhone ?? ""}`} />
           <Row label="Store description" value={application.storeDescription ?? ""} />
@@ -60,7 +59,7 @@ export default async function AdminVendorApplicationDetailPage({ params }: { par
           <Row label="Bulk capable" value={application.bulkCapable ? "Yes" : "No"} />
           <Row label="Service areas" value={application.serviceAreas ?? ""} />
         </dl>
-      </div>
+      </Card>
 
       {reviewable ? (
         <>
@@ -68,10 +67,10 @@ export default async function AdminVendorApplicationDetailPage({ params }: { par
           <ApplicationDecisionForms applicationId={application.id} />
         </>
       ) : (
-        <div className="rounded-2xl border border-stone-200 bg-white p-5 text-sm text-stone-600">
+        <Card className="text-sm text-espresso-900/65">
           This application is {application.status.toLowerCase().replace("_", " ")}
           {application.decisionReason ? ` — ${application.decisionReason}` : ""}.
-        </div>
+        </Card>
       )}
     </div>
   );

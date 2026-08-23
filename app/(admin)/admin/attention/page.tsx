@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdminSession } from "../../../../modules/administration/policy";
 import { adminDashboardService } from "../../../../modules/admin-dashboard/service";
 import { AttentionList } from "../../../../components/admin/dashboard/AttentionList";
+import { PageHeader } from "../../../../components/ui/PageHeader";
 import type { AttentionModule, AttentionType } from "../../../../modules/admin-dashboard/types";
 import type { AttentionSeverity } from "../../../../modules/operations/policy";
 
@@ -74,10 +75,7 @@ export default async function AdminAttentionPage({ searchParams }: { searchParam
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-display text-2xl font-medium text-stone-900">Attention required</h1>
-        <p className="mt-1 text-sm text-stone-500">{total} item{total === 1 ? "" : "s"} need CrownSource action.</p>
-      </div>
+      <PageHeader title="Attention required" description={`${total} item${total === 1 ? "" : "s"} need CrownSource action.`} />
 
       <div className="flex flex-col gap-3">
         <FilterRow label="Severity" current={params}>
@@ -118,17 +116,17 @@ export default async function AdminAttentionPage({ searchParams }: { searchParam
           <Link
             href={buildHref(params, { page: String(Math.max(1, page - 1)) })}
             aria-disabled={page <= 1}
-            className={`rounded-lg border px-3.5 py-2 text-sm font-medium ${page <= 1 ? "pointer-events-none border-stone-200 text-stone-300" : "border-stone-300 text-stone-700 hover:bg-stone-50"}`}
+            className={`rounded-lg border px-3.5 py-2 text-sm font-medium ${page <= 1 ? "pointer-events-none border-ivory-300 text-ivory-400" : "border-ivory-400 text-espresso-800 hover:bg-ivory-50"}`}
           >
             Previous
           </Link>
-          <span className="text-sm text-stone-500">
+          <span className="text-sm text-espresso-900/50">
             Page {page} of {totalPages}
           </span>
           <Link
             href={buildHref(params, { page: String(Math.min(totalPages, page + 1)) })}
             aria-disabled={page >= totalPages}
-            className={`rounded-lg border px-3.5 py-2 text-sm font-medium ${page >= totalPages ? "pointer-events-none border-stone-200 text-stone-300" : "border-stone-300 text-stone-700 hover:bg-stone-50"}`}
+            className={`rounded-lg border px-3.5 py-2 text-sm font-medium ${page >= totalPages ? "pointer-events-none border-ivory-300 text-ivory-400" : "border-ivory-400 text-espresso-800 hover:bg-ivory-50"}`}
           >
             Next
           </Link>
@@ -141,7 +139,7 @@ export default async function AdminAttentionPage({ searchParams }: { searchParam
 function FilterRow({ label, children }: { label: string; current: SearchParams; children: React.ReactNode }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="w-24 shrink-0 text-xs font-medium tracking-wide text-stone-400 uppercase">{label}</span>
+      <span className="w-24 shrink-0 text-xs font-medium tracking-wide text-espresso-900/35 uppercase">{label}</span>
       <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>
   );
@@ -151,7 +149,7 @@ function FilterLink({ href, active, children }: { href: string; active: boolean;
   return (
     <Link
       href={href}
-      className={`rounded-full px-3 py-1 text-xs font-medium ${active ? "bg-brand-700 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"}`}
+      className={`rounded-full px-3 py-1 text-xs font-medium ${active ? "bg-forest-800 text-white" : "bg-ivory-100 text-espresso-900/65 hover:bg-ivory-300"}`}
     >
       {children}
     </Link>

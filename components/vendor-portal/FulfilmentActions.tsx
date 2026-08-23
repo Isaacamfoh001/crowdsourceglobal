@@ -49,7 +49,7 @@ export function ReportIssueForm({ fulfilmentId }: { fulfilmentId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-sm font-medium text-red-600 underline decoration-red-200 hover:text-red-800"
+        className="text-sm font-medium text-danger-600 underline decoration-danger-200 hover:text-danger-800"
       >
         Report an issue with this order
       </button>
@@ -57,11 +57,11 @@ export function ReportIssueForm({ fulfilmentId }: { fulfilmentId: string }) {
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+    <form action={formAction} className="flex flex-col gap-3 rounded-xl border border-danger-200 bg-danger-50 p-4">
       <input type="hidden" name="fulfilmentId" value={fulfilmentId} />
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="category" className="text-sm font-medium text-stone-700">
+        <label htmlFor="category" className="text-sm font-medium text-espresso-800">
           What&apos;s the issue?
         </label>
         <select
@@ -70,7 +70,7 @@ export function ReportIssueForm({ fulfilmentId }: { fulfilmentId: string }) {
           required
           disabled={isPending}
           defaultValue=""
-          className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm"
+          className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm"
         >
           <option value="" disabled>
             Select a reason
@@ -83,7 +83,7 @@ export function ReportIssueForm({ fulfilmentId }: { fulfilmentId: string }) {
         </select>
       </div>
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="description" className="text-sm font-medium text-stone-700">
+        <label htmlFor="description" className="text-sm font-medium text-espresso-800">
           Details
         </label>
         <textarea
@@ -92,14 +92,14 @@ export function ReportIssueForm({ fulfilmentId }: { fulfilmentId: string }) {
           rows={3}
           required
           disabled={isPending}
-          className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm"
+          className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm"
         />
       </div>
-      <p className="text-xs text-stone-500">
+      <p className="text-xs text-espresso-900/50">
         This pauses the order so CrownSourceGlobal operations can help resolve it.
       </p>
       <div className="flex gap-2">
-        <Button type="submit" variant="outline" disabled={isPending} className="border-red-300 text-red-700">
+        <Button type="submit" variant="outline" disabled={isPending} className="border-danger-300 text-danger-700">
           {isPending ? "Reporting…" : "Report issue"}
         </Button>
         <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>
@@ -119,7 +119,7 @@ export function RecordShipmentForm({ fulfilmentId }: { fulfilmentId: string }) {
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="carrier" className="text-sm font-medium text-stone-700">
+          <label htmlFor="carrier" className="text-sm font-medium text-espresso-800">
             Carrier
           </label>
           <input
@@ -128,11 +128,11 @@ export function RecordShipmentForm({ fulfilmentId }: { fulfilmentId: string }) {
             required
             disabled={isPending}
             placeholder="e.g. DHL, FedEx"
-            className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm"
+            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm"
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="trackingReference" className="text-sm font-medium text-stone-700">
+          <label htmlFor="trackingReference" className="text-sm font-medium text-espresso-800">
             Tracking reference
           </label>
           <input
@@ -140,11 +140,11 @@ export function RecordShipmentForm({ fulfilmentId }: { fulfilmentId: string }) {
             name="trackingReference"
             required
             disabled={isPending}
-            className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm"
+            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm"
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="shippedAt" className="text-sm font-medium text-stone-700">
+          <label htmlFor="shippedAt" className="text-sm font-medium text-espresso-800">
             Ship date
           </label>
           <input
@@ -153,11 +153,11 @@ export function RecordShipmentForm({ fulfilmentId }: { fulfilmentId: string }) {
             type="date"
             required
             disabled={isPending}
-            className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm"
+            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm"
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="expectedArrivalAt" className="text-sm font-medium text-stone-700">
+          <label htmlFor="expectedArrivalAt" className="text-sm font-medium text-espresso-800">
             Expected arrival (optional)
           </label>
           <input
@@ -165,7 +165,7 @@ export function RecordShipmentForm({ fulfilmentId }: { fulfilmentId: string }) {
             name="expectedArrivalAt"
             type="date"
             disabled={isPending}
-            className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm"
+            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm"
           />
         </div>
       </div>

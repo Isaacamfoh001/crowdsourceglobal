@@ -25,12 +25,12 @@ export function SectionHeading({
         </Badge>
       ) : null}
       <h2
-        className={`text-3xl font-medium tracking-tight sm:text-4xl ${onDark ? "text-white" : "text-stone-900"}`}
+        className={`font-display text-3xl font-medium tracking-tight sm:text-4xl ${onDark ? "text-ivory-50" : "text-espresso-950"}`}
       >
         {title}
       </h2>
       {subtitle ? (
-        <p className={`mt-4 text-lg leading-relaxed ${onDark ? "text-white/70" : "text-stone-600"}`}>
+        <p className={`mt-4 text-lg leading-relaxed ${onDark ? "text-ivory-100/70" : "text-espresso-900/65"}`}>
           {subtitle}
         </p>
       ) : null}

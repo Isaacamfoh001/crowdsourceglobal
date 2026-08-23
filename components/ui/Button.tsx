@@ -1,22 +1,24 @@
 import type { ButtonHTMLAttributes } from "react";
 
-type ButtonVariant = "primary" | "secondary" | "outline" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
 type ButtonSize = "sm" | "md" | "lg";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-900 focus-visible:outline-brand-700 disabled:bg-stone-300 disabled:text-stone-500",
+    "bg-forest-800 text-ivory-50 hover:bg-forest-900 active:bg-forest-950 focus-visible:outline-forest-700 disabled:bg-ivory-300 disabled:text-espresso-900/40",
   secondary:
-    "bg-stone-900 text-white hover:bg-stone-800 active:bg-stone-950 focus-visible:outline-stone-900 disabled:bg-stone-300 disabled:text-stone-500",
+    "bg-espresso-900 text-ivory-50 hover:bg-espresso-950 active:bg-espresso-950 focus-visible:outline-espresso-800 disabled:bg-ivory-300 disabled:text-espresso-900/40",
   outline:
-    "border border-stone-300 bg-white text-stone-900 hover:border-stone-400 hover:bg-stone-50 focus-visible:outline-stone-400 disabled:text-stone-400",
+    "border border-ivory-400 bg-ivory-50 text-espresso-950 hover:border-champagne-400 hover:bg-ivory-100 focus-visible:outline-espresso-700 disabled:text-espresso-900/30",
   ghost:
-    "bg-transparent text-stone-700 hover:bg-stone-100 focus-visible:outline-stone-400 disabled:text-stone-400",
+    "bg-transparent text-espresso-800 hover:bg-ivory-100 focus-visible:outline-espresso-700 disabled:text-espresso-900/30",
+  danger:
+    "border border-danger-300 bg-white text-danger-700 hover:border-danger-400 hover:bg-danger-50 focus-visible:outline-danger-600 disabled:border-ivory-300 disabled:text-espresso-900/30",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "px-3.5 py-2 text-sm gap-1.5",
-  md: "px-4.5 py-2.5 text-sm gap-2",
+  sm: "px-3.5 py-2.5 text-sm gap-1.5",
+  md: "px-4.5 py-3 text-sm gap-2",
   lg: "px-6 py-3.5 text-base gap-2.5",
 };
 

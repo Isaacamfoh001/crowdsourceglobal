@@ -45,7 +45,7 @@ export function AssignResolutionStaffForm({ id, staff, assignedStaffId }: { id: 
         name="staffId"
         defaultValue={assignedStaffId ?? ""}
         disabled={isPending}
-        className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+        className="rounded-lg border border-ivory-400 px-3 py-2 text-sm"
       >
         <option value="">Unassigned</option>
         {staff.map((s) => (
@@ -99,7 +99,7 @@ export function RequestCustomerClarificationForm({ id }: { id: string }) {
         required
         placeholder="What do you need from the customer?"
         disabled={isPending}
-        className="w-full rounded-lg border border-stone-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+        className="w-full rounded-lg border border-ivory-400 px-3.5 py-2.5 text-sm outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
       />
       <Button type="submit" variant="outline" size="sm" disabled={isPending} className="w-fit">
         {isPending ? "Sending…" : "Request more information"}
@@ -121,7 +121,7 @@ export function RequestVendorResponseForm({ id, vendorId, vendorName }: { id: st
         required
         placeholder={`Ask ${vendorName}…`}
         disabled={isPending}
-        className="w-full rounded-lg border border-stone-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+        className="w-full rounded-lg border border-ivory-400 px-3.5 py-2.5 text-sm outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
       />
       <Button type="submit" variant="outline" size="sm" disabled={isPending} className="w-fit">
         {isPending ? "Sending…" : `Ask ${vendorName}`}
@@ -134,7 +134,7 @@ export function RequestVendorResponseForm({ id, vendorId, vendorName }: { id: st
 export function RejectCaseForm({ id }: { id: string }) {
   const [state, formAction, isPending] = useActionState(rejectResolutionCaseAction, null);
   return (
-    <form action={formAction} className="flex flex-col gap-2 rounded-xl border border-red-200 bg-red-50 p-4">
+    <form action={formAction} className="flex flex-col gap-2 rounded-xl border border-danger-200 bg-danger-50 p-4">
       <input type="hidden" name="caseId" value={id} />
       <textarea
         name="reason"
@@ -143,9 +143,9 @@ export function RejectCaseForm({ id }: { id: string }) {
         minLength={3}
         placeholder="Explain the decision — the customer will see this."
         disabled={isPending}
-        className="w-full rounded-lg border border-red-300 bg-white px-3.5 py-2.5 text-sm outline-none"
+        className="w-full rounded-lg border border-danger-200 bg-white px-3.5 py-2.5 text-sm outline-none"
       />
-      <Button type="submit" variant="outline" size="sm" disabled={isPending} className="w-fit border-red-300 text-red-700">
+      <Button type="submit" variant="outline" size="sm" disabled={isPending} className="w-fit border-danger-200 text-danger-700">
         {isPending ? "Saving…" : "Reject case"}
       </Button>
       <ErrorMessage state={state} />
@@ -181,13 +181,13 @@ export function ApproveResolutionForm({
 
       <div className="flex flex-col gap-3">
         {items.map((item) => (
-          <div key={item.id} className="rounded-lg border border-stone-200 p-3.5">
+          <div key={item.id} className="rounded-lg border border-ivory-300 p-3.5">
             <input type="hidden" name="itemId" value={item.id} />
-            <p className="text-sm font-medium text-stone-900">
-              {item.description} <span className="font-normal text-stone-400">(affected qty {item.quantityAffected}, unit price GH₵{item.unitPrice.toFixed(2)})</span>
+            <p className="text-sm font-medium text-espresso-950">
+              {item.description} <span className="font-normal text-espresso-900/35">(affected qty {item.quantityAffected}, unit price GH₵{item.unitPrice.toFixed(2)})</span>
             </p>
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <select name="decision" defaultValue="NO_ACTION" disabled={isPending} className="rounded-lg border border-stone-300 px-3 py-2 text-sm">
+              <select name="decision" defaultValue="NO_ACTION" disabled={isPending} className="rounded-lg border border-ivory-400 px-3 py-2 text-sm">
                 {DECISION_OPTIONS.map((d) => (
                   <option key={d.value} value={d.value}>
                     {d.label}
@@ -201,7 +201,7 @@ export function ApproveResolutionForm({
                 min={0}
                 placeholder="Refund amount (GH₵)"
                 disabled={isPending}
-                className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                className="rounded-lg border border-ivory-400 px-3 py-2 text-sm"
               />
               <input
                 type="number"
@@ -210,7 +210,7 @@ export function ApproveResolutionForm({
                 max={item.quantityAffected}
                 placeholder="Replacement qty"
                 disabled={isPending}
-                className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                className="rounded-lg border border-ivory-400 px-3 py-2 text-sm"
               />
             </div>
           </div>
@@ -218,18 +218,18 @@ export function ApproveResolutionForm({
       </div>
 
       {cancellableFulfilmentId ? (
-        <label className="flex items-center gap-2 text-sm text-stone-700">
-          <input type="checkbox" name="cancelFulfilmentId" value={cancellableFulfilmentId} className="accent-brand-700" />
+        <label className="flex items-center gap-2 text-sm text-espresso-800">
+          <input type="checkbox" name="cancelFulfilmentId" value={cancellableFulfilmentId} className="accent-forest-800" />
           Also cancel this fulfilment and restock affected inventory
         </label>
       ) : null}
 
       <div>
-        <label className="text-sm font-medium text-stone-900">Responsibility (internal only)</label>
-        <p className="mt-0.5 text-xs text-stone-500">
+        <label className="text-sm font-medium text-espresso-950">Responsibility (internal only)</label>
+        <p className="mt-0.5 text-xs text-espresso-900/50">
           Choosing &quot;vendor&quot; affects that vendor&apos;s earning (hold or cancellation) — this has real financial consequences, so it is never pre-selected.
         </p>
-        <select name="responsibility" defaultValue="" required disabled={isPending} className="mt-1 block rounded-lg border border-stone-300 px-3 py-2 text-sm">
+        <select name="responsibility" defaultValue="" required disabled={isPending} className="mt-1 block rounded-lg border border-ivory-400 px-3 py-2 text-sm">
           <option value="" disabled>
             Select responsibility…
           </option>
@@ -242,7 +242,7 @@ export function ApproveResolutionForm({
       </div>
 
       <div>
-        <label className="text-sm font-medium text-stone-900">Explanation for the customer</label>
+        <label className="text-sm font-medium text-espresso-950">Explanation for the customer</label>
         <textarea
           name="customerSafeDecisionReason"
           rows={2}
@@ -250,7 +250,7 @@ export function ApproveResolutionForm({
           minLength={3}
           placeholder="This is shown to the customer."
           disabled={isPending}
-          className="mt-1 w-full rounded-lg border border-stone-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+          className="mt-1 w-full rounded-lg border border-ivory-400 px-3.5 py-2.5 text-sm outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
         />
       </div>
 
@@ -299,7 +299,7 @@ export function AddInternalNoteForm({ id }: { id: string }) {
         required
         placeholder="Internal CrownSource note — never visible to the customer or vendor."
         disabled={isPending}
-        className="w-full rounded-lg border border-gold-300 bg-gold-50 px-3.5 py-2.5 text-sm outline-none"
+        className="w-full rounded-lg border border-champagne-400 bg-champagne-200/15 px-3.5 py-2.5 text-sm outline-none"
       />
       <Button type="submit" variant="outline" size="sm" disabled={isPending} className="w-fit">
         {isPending ? "Saving…" : "Add internal note"}
@@ -348,7 +348,7 @@ export function ProcessRefundButtons({
         <Button type="button" size="sm" variant="outline" onClick={handleCheckStatus} disabled={checkPending}>
           {checkPending ? "Checking…" : "Check refund status"}
         </Button>
-        {checkError ? <p className="text-xs text-red-600">{checkError}</p> : null}
+        {checkError ? <p className="text-xs text-danger-600">{checkError}</p> : null}
       </div>
     );
   }
@@ -403,8 +403,8 @@ export function ReturnTransitForm({ caseId, returnId }: { caseId: string; return
     <form action={formAction} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="caseId" value={caseId} />
       <input type="hidden" name="returnId" value={returnId} />
-      <input type="text" name="method" required placeholder="Method (e.g. courier pickup)" className="rounded-lg border border-stone-300 px-3 py-2 text-sm" />
-      <input type="text" name="trackingReference" placeholder="Tracking reference" className="rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      <input type="text" name="method" required placeholder="Method (e.g. courier pickup)" className="rounded-lg border border-ivory-400 px-3 py-2 text-sm" />
+      <input type="text" name="trackingReference" placeholder="Tracking reference" className="rounded-lg border border-ivory-400 px-3 py-2 text-sm" />
       <Button type="submit" variant="outline" size="sm" disabled={isPending}>
         {isPending ? "Saving…" : "Mark in transit"}
       </Button>
@@ -433,11 +433,11 @@ export function InspectReturnForm({ caseId, returnId }: { caseId: string; return
     <form action={formAction} className="flex flex-col gap-2">
       <input type="hidden" name="caseId" value={caseId} />
       <input type="hidden" name="returnId" value={returnId} />
-      <select name="outcome" defaultValue="RESELLABLE" disabled={isPending} className="w-fit rounded-lg border border-stone-300 px-3 py-2 text-sm">
+      <select name="outcome" defaultValue="RESELLABLE" disabled={isPending} className="w-fit rounded-lg border border-ivory-400 px-3 py-2 text-sm">
         <option value="RESELLABLE">Resellable — restock</option>
         <option value="NOT_RESELLABLE">Not resellable</option>
       </select>
-      <textarea name="notes" rows={2} placeholder="Inspection notes (internal)" disabled={isPending} className="w-full rounded-lg border border-stone-300 px-3.5 py-2.5 text-sm" />
+      <textarea name="notes" rows={2} placeholder="Inspection notes (internal)" disabled={isPending} className="w-full rounded-lg border border-ivory-400 px-3.5 py-2.5 text-sm" />
       <Button type="submit" variant="outline" size="sm" disabled={isPending} className="w-fit">
         {isPending ? "Saving…" : "Save inspection"}
       </Button>

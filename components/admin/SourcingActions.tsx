@@ -44,7 +44,7 @@ export function AssignStaffForm({ id, staff, assignedStaffId }: { id: string; st
         name="staffId"
         defaultValue={assignedStaffId ?? ""}
         disabled={isPending}
-        className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+        className="rounded-lg border border-ivory-400 bg-white px-3 py-2 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
       >
         <option value="">Unassigned</option>
         {staff.map((s) => (
@@ -102,7 +102,7 @@ export function RequestClarificationForm({ id }: { id: string }) {
         required
         placeholder="What do you need from the customer?"
         disabled={isPending}
-        className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+        className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
       />
       <Button type="submit" size="sm" disabled={isPending} className="self-start">
         {isPending ? "Sending…" : "Request clarification"}
@@ -125,10 +125,10 @@ export function AddSourcingOptionForm({
   const [sourceType, setSourceType] = useState<SourcingOptionSourceType>("VENDOR_LISTING");
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-xl border border-stone-200 bg-stone-50 p-4">
+    <form action={formAction} className="flex flex-col gap-3 rounded-xl border border-ivory-300 bg-ivory-50 p-4">
       <input type="hidden" name="id" value={id} />
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="sourceType" className="text-sm font-medium text-stone-700">
+        <label htmlFor="sourceType" className="text-sm font-medium text-espresso-800">
           Source type
         </label>
         <select
@@ -137,7 +137,7 @@ export function AddSourcingOptionForm({
           value={sourceType}
           onChange={(e) => setSourceType(e.target.value as SourcingOptionSourceType)}
           disabled={isPending}
-          className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+          className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
         >
           <option value="VENDOR_LISTING">Existing vendor listing</option>
           <option value="VENDOR">Marketplace vendor (no matching listing)</option>
@@ -147,7 +147,7 @@ export function AddSourcingOptionForm({
 
       {sourceType === "VENDOR_LISTING" ? (
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="vendorListingId" className="text-sm font-medium text-stone-700">
+          <label htmlFor="vendorListingId" className="text-sm font-medium text-espresso-800">
             Listing
           </label>
           <select
@@ -161,7 +161,7 @@ export function AddSourcingOptionForm({
               if (vendorField && listing) vendorField.value = listing.vendorId;
             }}
             defaultValue=""
-            className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
           >
             <option value="" disabled>
               Select a listing
@@ -178,7 +178,7 @@ export function AddSourcingOptionForm({
 
       {sourceType === "VENDOR" ? (
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="vendorId" className="text-sm font-medium text-stone-700">
+          <label htmlFor="vendorId" className="text-sm font-medium text-espresso-800">
             Vendor
           </label>
           <select
@@ -187,7 +187,7 @@ export function AddSourcingOptionForm({
             required
             disabled={isPending}
             defaultValue=""
-            className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
           >
             <option value="" disabled>
               Select a vendor
@@ -233,7 +233,7 @@ export function RemoveSourcingOptionButton({ id, optionId }: { id: string; optio
     <form action={formAction}>
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="optionId" value={optionId} />
-      <button type="submit" disabled={isPending} className="text-xs font-medium text-stone-400 hover:text-red-600">
+      <button type="submit" disabled={isPending} className="text-xs font-medium text-espresso-900/35 hover:text-danger-600">
         Remove
       </button>
     </form>
@@ -253,9 +253,9 @@ export function AllocationForm({ id, options, quantity }: { id: string; options:
       <input type="hidden" name="id" value={id} />
       {options.map((option) => (
         <div key={option.id} className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-stone-700">
+          <span className="text-espresso-800">
             {option.vendorName ?? option.vendorListingTitle ?? option.externalSupplierName ?? "Option"}
-            <span className="ml-1.5 text-xs text-stone-400">
+            <span className="ml-1.5 text-xs text-espresso-900/35">
               ({formatPrice(option.unitSupplyCost, option.currency)}/unit)
             </span>
           </span>
@@ -266,11 +266,11 @@ export function AllocationForm({ id, options, quantity }: { id: string; options:
             value={values[option.id] ?? 0}
             onChange={(e) => setValues((prev) => ({ ...prev, [option.id]: Number(e.target.value) }))}
             disabled={isPending}
-            className="w-24 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-right text-sm text-stone-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+            className="w-24 rounded-lg border border-ivory-400 bg-white px-3 py-1.5 text-right text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
           />
         </div>
       ))}
-      <div className={`text-sm font-medium ${total === quantity ? "text-brand-700" : "text-gold-700"}`}>
+      <div className={`text-sm font-medium ${total === quantity ? "text-forest-800" : "text-champagne-700"}`}>
         Allocated {total} of {quantity} requested
       </div>
       <Button type="submit" size="sm" disabled={isPending} className="self-start">
@@ -300,7 +300,7 @@ export function PrepareQuoteForm({
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="id" value={id} />
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="description" className="text-sm font-medium text-stone-700">
+        <label htmlFor="description" className="text-sm font-medium text-espresso-800">
           Customer-facing commercial description
         </label>
         <textarea
@@ -310,13 +310,13 @@ export function PrepareQuoteForm({
           required
           placeholder="e.g. 500 Custom Embroidered Polo Shirts, navy blue, 220gsm cotton, left-chest logo"
           disabled={isPending}
-          className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+          className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="text-sm font-medium text-stone-700">Other internal costs (optional)</label>
+          <label className="text-sm font-medium text-espresso-800">Other internal costs (optional)</label>
           <input
             type="number"
             name="otherInternalCosts"
@@ -326,11 +326,11 @@ export function PrepareQuoteForm({
             onChange={(e) => setOtherCosts(Number(e.target.value) || 0)}
             disabled={isPending}
             placeholder="0.00"
-            className="mt-1.5 w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+            className="mt-1.5 w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-stone-700">Customer unit price</label>
+          <label className="text-sm font-medium text-espresso-800">Customer unit price</label>
           <input
             type="number"
             name="unitPrice"
@@ -341,21 +341,21 @@ export function PrepareQuoteForm({
             onChange={(e) => setUnitPrice(Number(e.target.value) || 0)}
             disabled={isPending}
             placeholder="0.00"
-            className="mt-1.5 w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+            className="mt-1.5 w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
           />
         </div>
       </div>
 
-      <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm">
-        <div className="flex justify-between text-stone-600">
+      <div className="rounded-xl border border-ivory-300 bg-ivory-50 p-4 text-sm">
+        <div className="flex justify-between text-espresso-900/65">
           <span>Supplier allocation cost</span>
           <span>{formatPrice(allocationCost, currency)}</span>
         </div>
-        <div className="flex justify-between text-stone-600">
+        <div className="flex justify-between text-espresso-900/65">
           <span>Other internal costs</span>
           <span>{formatPrice(otherCosts, currency)}</span>
         </div>
-        <div className="mt-1 flex justify-between border-t border-stone-200 pt-1 font-medium text-stone-900">
+        <div className="mt-1 flex justify-between border-t border-ivory-300 pt-1 font-medium text-espresso-950">
           <span>Internal total</span>
           <span>{formatPrice(internalTotal, currency)}</span>
         </div>
@@ -380,7 +380,7 @@ export function MarkUnableToSourceForm({ id }: { id: string }) {
         required
         placeholder="Customer-safe explanation — this is shown to the customer."
         disabled={isPending}
-        className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+        className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
       />
       <Button type="submit" variant="outline" size="sm" disabled={isPending} className="self-start">
         {isPending ? "Saving…" : "Mark unable to source"}

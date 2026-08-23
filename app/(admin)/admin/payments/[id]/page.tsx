@@ -13,8 +13,8 @@ const ADMIN_FINANCE_ROLES = ["SUPER_ADMIN", "FINANCE_ADMIN"] as const;
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-4 py-2 text-sm">
-      <span className="text-stone-500">{label}</span>
-      <span className="text-right font-medium text-stone-900">{value}</span>
+      <span className="text-espresso-900/50">{label}</span>
+      <span className="text-right font-medium text-espresso-950">{value}</span>
     </div>
   );
 }
@@ -29,20 +29,20 @@ export default async function AdminPaymentDetailPage({ params }: { params: Promi
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <div>
-        <Link href="/admin/payments" className="text-sm text-stone-500 hover:text-stone-700">
+        <Link href="/admin/payments" className="text-sm text-espresso-900/50 hover:text-espresso-800">
           ← Payments
         </Link>
-        <h1 className="mt-2 font-display text-2xl font-medium text-stone-900">{payment.reference}</h1>
+        <h1 className="mt-2 font-display text-2xl font-medium text-espresso-950">{payment.reference}</h1>
       </div>
 
       {payment.exceptionReason ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <div className="rounded-xl border border-danger-200 bg-danger-50 p-4 text-sm text-danger-800">
           <p className="font-medium">Requires attention</p>
           <p className="mt-1">{payment.exceptionReason}</p>
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-6">
+      <div className="rounded-2xl border border-ivory-300 bg-white p-6">
         <Field label="Order" value={payment.order.orderNumber} />
         <Field label="Customer" value={payment.order.customerProfile.displayName} />
         <Field label="Amount" value={formatPrice(payment.amount.toNumber(), payment.currency)} />

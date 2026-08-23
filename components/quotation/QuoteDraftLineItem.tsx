@@ -15,24 +15,24 @@ export function QuoteDraftLineItem({ line }: { line: QuoteDraftLineView }) {
   const dirty = quantity !== line.quantity;
 
   return (
-    <div className="flex flex-col gap-3 border-b border-stone-100 py-5 last:border-0 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 border-b border-ivory-100 py-5 last:border-0 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+        <p className="text-xs font-semibold uppercase tracking-wide text-espresso-900/35">
           {line.vendor.companyName}
         </p>
         <Link
           href={`/listings/${line.listingId}`}
-          className="line-clamp-2 font-display text-[15px] font-medium text-stone-900 hover:text-brand-800"
+          className="line-clamp-2 font-display text-[15px] font-medium text-espresso-950 hover:text-forest-900"
         >
           {line.title}
         </Link>
         {!line.stillEligible ? (
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-red-600">
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-danger-600">
             <TriangleAlert className="size-3.5" strokeWidth={2} />
             No longer available — remove this line before generating your quote.
           </p>
         ) : (
-          <p className="mt-1 text-sm text-stone-500">{formatPrice(line.unitPrice, line.currency)} / unit</p>
+          <p className="mt-1 text-sm text-espresso-900/50">{formatPrice(line.unitPrice, line.currency)} / unit</p>
         )}
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -44,7 +44,7 @@ export function QuoteDraftLineItem({ line }: { line: QuoteDraftLineView }) {
               onClick={() => setQuantity((q) => Math.max(line.moq, q - 1))}
               disabled={quantity <= line.moq}
               aria-label="Decrease quantity"
-              className="flex size-8 items-center justify-center rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex size-8 items-center justify-center rounded-lg border border-ivory-400 text-espresso-800 hover:bg-ivory-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Minus className="size-3.5" />
             </button>
@@ -54,13 +54,13 @@ export function QuoteDraftLineItem({ line }: { line: QuoteDraftLineView }) {
               min={line.moq}
               onChange={(event) => setQuantity(Number(event.target.value) || line.moq)}
               aria-label={`Quantity for ${line.title}`}
-              className="w-16 rounded-lg border border-stone-300 py-1.5 text-center text-sm font-medium text-stone-900"
+              className="w-16 rounded-lg border border-ivory-400 py-1.5 text-center text-sm font-medium text-espresso-950"
             />
             <button
               type="button"
               onClick={() => setQuantity((q) => q + 1)}
               aria-label="Increase quantity"
-              className="flex size-8 items-center justify-center rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50"
+              className="flex size-8 items-center justify-center rounded-lg border border-ivory-400 text-espresso-800 hover:bg-ivory-50"
             >
               <Plus className="size-3.5" />
             </button>
@@ -68,7 +68,7 @@ export function QuoteDraftLineItem({ line }: { line: QuoteDraftLineView }) {
               <button
                 type="submit"
                 disabled={updatePending}
-                className="text-sm font-medium text-brand-700 hover:underline disabled:opacity-50"
+                className="text-sm font-medium text-forest-800 hover:underline disabled:opacity-50"
               >
                 {updatePending ? "Updating…" : "Update"}
               </button>
@@ -81,7 +81,7 @@ export function QuoteDraftLineItem({ line }: { line: QuoteDraftLineView }) {
               type="submit"
               disabled={removePending}
               aria-label={`Remove ${line.title}`}
-              className="flex items-center gap-1 text-sm text-stone-400 hover:text-red-600 disabled:opacity-50"
+              className="flex items-center gap-1 text-sm text-espresso-900/35 hover:text-danger-600 disabled:opacity-50"
             >
               <Trash2 className="size-3.5" />
               Remove
@@ -90,7 +90,7 @@ export function QuoteDraftLineItem({ line }: { line: QuoteDraftLineView }) {
         </div>
       </div>
 
-      <p className="text-right text-[15px] font-semibold text-stone-900 sm:w-28">
+      <p className="text-right text-[15px] font-semibold text-espresso-950 sm:w-28">
         {formatPrice(line.lineTotal, line.currency)}
       </p>
     </div>

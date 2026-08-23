@@ -12,45 +12,46 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
       {/* Brand panel — full experience on desktop, compact band on mobile */}
-      <div className="relative flex shrink-0 flex-col justify-between overflow-hidden bg-brand-900 px-6 py-6 lg:w-[42%] lg:px-14 lg:py-14">
+      <div className="relative flex shrink-0 flex-col justify-between overflow-hidden bg-forest-950 px-6 py-6 lg:w-[42%] lg:px-14 lg:py-14">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 hidden bg-[radial-gradient(80%_60%_at_20%_10%,var(--color-brand-800),transparent)] lg:block"
+          className="pointer-events-none absolute inset-0 -z-10 hidden bg-[radial-gradient(80%_60%_at_20%_10%,var(--color-forest-900),transparent)] lg:block"
         />
-        <div className="flex items-center justify-between lg:block">
+        <div className="flex items-center justify-between">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-200 hover:text-white lg:mt-10"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-champagne-300 hover:text-white"
           >
             <ArrowLeft className="size-4" />
             Back to marketplace
           </Link>
-          {/* <Logo onDark /> */}
+          <Logo onDark className="lg:hidden" />
         </div>
 
         <div className="mt-10 hidden lg:block">
+          <Logo onDark className="mb-8" />
           <h2 className="font-display text-3xl font-medium leading-snug text-white">
             One account. Every way to buy.
           </h2>
           <ul className="mt-8 flex flex-col gap-5">
             {reassurances.map((item) => (
               <li key={item.text} className="flex items-start gap-3">
-                <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-gold-300">
+                <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-champagne-400">
                   <item.icon className="size-4" strokeWidth={1.75} />
                 </div>
-                <p className="text-[15px] leading-relaxed text-brand-100/90">{item.text}</p>
+                <p className="text-[15px] leading-relaxed text-champagne-200/90">{item.text}</p>
               </li>
             ))}
           </ul>
         </div>
 
-        <p className="hidden text-sm text-brand-300/70 lg:block">
+        <p className="hidden text-sm text-champagne-200/50 lg:block">
           © {new Date().getFullYear()} CrownSourceGlobal
         </p>
       </div>
 
       {/* Form panel */}
-      <div className="flex flex-1 items-center justify-center bg-stone-50 px-6 py-12 sm:py-16">
+      <div className="flex flex-1 items-center justify-center bg-ivory-50 px-6 py-12 sm:py-16">
         <div className="w-full max-w-md">{children}</div>
       </div>
     </div>

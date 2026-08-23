@@ -11,6 +11,7 @@ const cartItemListingSelect = {
   availabilityStatus: true,
   approvalStatus: true,
   listingStatus: true,
+  images: true,
   category: { select: { slug: true } },
   vendor: { select: { id: true, companyName: true, storefrontSlug: true } },
 } as const;

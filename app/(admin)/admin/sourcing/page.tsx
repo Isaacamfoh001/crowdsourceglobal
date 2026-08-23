@@ -5,6 +5,9 @@ import { sourcingService } from "../../../../modules/sourcing/service";
 import { SourcingStatusBadge } from "../../../../components/sourcing/SourcingStatusBadge";
 import { parsePage } from "../../../../lib/pagination";
 import { Pagination } from "../../../../components/shared/Pagination";
+import { PageHeader } from "../../../../components/ui/PageHeader";
+import { Card } from "../../../../components/ui/Card";
+import { EmptyState } from "../../../../components/ui/EmptyState";
 
 export const metadata = { title: "Sourcing — Admin" };
 export const dynamic = "force-dynamic";
@@ -37,7 +40,7 @@ export default async function AdminSourcingPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-2xl font-medium text-stone-900">Sourcing requests</h1>
+      <PageHeader title="Sourcing requests" description={`${total} request${total === 1 ? "" : "s"}.`} />
 
       <div className="flex flex-wrap gap-2">
         {STATUS_FILTERS.map((filter) => (
@@ -46,8 +49,8 @@ export default async function AdminSourcingPage({
             href={filter.value ? `/admin/sourcing?status=${filter.value}` : "/admin/sourcing"}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
               activeStatus === filter.value
-                ? "bg-brand-700 text-white"
-                : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+                ? "bg-forest-800 text-white"
+                : "bg-white text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
             }`}
           >
             {filter.label}
@@ -56,25 +59,23 @@ export default async function AdminSourcingPage({
       </div>
 
       {requests.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-          <p className="text-sm text-stone-500">No sourcing requests found.</p>
-        </div>
+        <EmptyState title="No sourcing requests found" description="Try a different status filter." />
       ) : (
-        <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
+        <Card as="div" padded={false} className="divide-y divide-ivory-100">
           {requests.map((request) => (
             <Link
               key={request.id}
               href={`/admin/sourcing/${request.id}`}
-              className="flex flex-col gap-2 px-5 py-4 hover:bg-stone-50 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 px-5 py-4 hover:bg-ivory-50 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="flex items-center gap-1.5 text-sm font-medium text-stone-900">
+                <p className="flex items-center gap-1.5 text-sm font-medium text-espresso-950">
                   {request.title}
                   {request.requiredByDate && request.requiredByDate < soonThreshold ? (
-                    <TriangleAlert className="size-3.5 text-gold-600" strokeWidth={2} />
+                    <TriangleAlert className="size-3.5 text-champagne-600" strokeWidth={2} />
                   ) : null}
                 </p>
-                <p className="text-xs text-stone-500">
+                <p className="text-xs text-espresso-900/50">
                   {request.requestNumber} · {request.customerName} · {request.quantity} {request.quantityUnit ?? ""} ·{" "}
                   {request.submittedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                   {request.requiredByDate
@@ -85,13 +86,13 @@ export default async function AdminSourcingPage({
               </div>
               <div className="flex items-center gap-2">
                 {request.hasQuotation ? (
-                  <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700">Quoted</span>
+                  <span className="rounded-full bg-champagne-200/20 px-2.5 py-1 text-xs font-medium text-forest-800">Quoted</span>
                 ) : null}
                 <SourcingStatusBadge status={request.status} label={request.statusLabel} />
               </div>
             </Link>
           ))}
-        </div>
+        </Card>
       )}
 
       <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/admin/sourcing" extraParams={{ status: activeStatus }} />

@@ -15,7 +15,7 @@ export function AddEvidenceForm({ caseId }: { caseId: string }) {
         name="evidence"
         required
         accept="image/png,image/jpeg,image/webp,application/pdf"
-        className="text-sm text-stone-600 file:mr-3 file:rounded-lg file:border-0 file:bg-stone-100 file:px-3.5 file:py-2 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-200"
+        className="text-sm text-espresso-900/65 file:mr-3 file:rounded-lg file:border-0 file:bg-ivory-100 file:px-3.5 file:py-2 file:text-sm file:font-medium file:text-espresso-800 hover:file:bg-ivory-300"
       />
       <Button type="submit" variant="outline" size="sm" disabled={isPending}>
         {isPending ? "Uploading…" : "Upload"}

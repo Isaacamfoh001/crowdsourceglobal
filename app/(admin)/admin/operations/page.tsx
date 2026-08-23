@@ -40,8 +40,8 @@ export default async function AdminOperationsPage({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-medium text-stone-900">Operations</h1>
-        <Link href="/admin/operations/receiving-locations" className="text-sm font-medium text-brand-700 hover:underline">
+        <h1 className="font-display text-2xl font-medium text-espresso-950">Operations</h1>
+        <Link href="/admin/operations/receiving-locations" className="text-sm font-medium text-forest-800 hover:underline">
           Receiving locations
         </Link>
       </div>
@@ -53,7 +53,7 @@ export default async function AdminOperationsPage({
               key={filter.label}
               href={qs(filter.value)}
               className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium ${
-                status === filter.value ? "border-brand-700 bg-brand-700 text-white" : "border-stone-300 bg-white text-stone-700"
+                status === filter.value ? "border-forest-800 bg-forest-800 text-white" : "border-ivory-400 bg-white text-espresso-800"
               }`}
             >
               {filter.label}
@@ -64,7 +64,7 @@ export default async function AdminOperationsPage({
           <Link
             href={origin === "INTERNATIONAL_INBOUND" ? qs(status) : `/admin/operations?${status ? `status=${status}&` : ""}origin=INTERNATIONAL_INBOUND`}
             className={`rounded-full border px-3.5 py-1.5 text-sm font-medium ${
-              origin === "INTERNATIONAL_INBOUND" ? "border-gold-600 bg-gold-100 text-gold-800" : "border-stone-300 bg-white text-stone-700"
+              origin === "INTERNATIONAL_INBOUND" ? "border-champagne-600 bg-champagne-200 text-espresso-900" : "border-ivory-400 bg-white text-espresso-800"
             }`}
           >
             International only
@@ -73,23 +73,23 @@ export default async function AdminOperationsPage({
       </div>
 
       {fulfilments.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-          <p className="text-sm text-stone-500">No fulfilments match this filter.</p>
+        <div className="rounded-2xl border border-dashed border-ivory-400 bg-white p-10 text-center">
+          <p className="text-sm text-espresso-900/50">No fulfilments match this filter.</p>
         </div>
       ) : (
-        <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
+        <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
           {fulfilments.map((f) => (
             <Link
               key={f.id}
               href={`/admin/operations/${f.id}`}
-              className="flex flex-col gap-2 px-5 py-4 hover:bg-stone-50 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 px-5 py-4 hover:bg-ivory-50 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-stone-900">{f.orderNumber}</p>
-                  {f.hasOpenIssue ? <AlertTriangle className="size-4 text-red-500" strokeWidth={1.75} /> : null}
+                  <p className="text-sm font-medium text-espresso-950">{f.orderNumber}</p>
+                  {f.hasOpenIssue ? <AlertTriangle className="size-4 text-danger-600" strokeWidth={1.75} /> : null}
                 </div>
-                <p className="text-xs text-stone-500">
+                <p className="text-xs text-espresso-900/50">
                   {f.vendorName} · {f.itemCount} item{f.itemCount === 1 ? "" : "s"}
                   {f.origin === "INTERNATIONAL_INBOUND" ? " · International" : " · Domestic"}
                 </p>

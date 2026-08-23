@@ -24,15 +24,15 @@ export default async function NotificationsPage({ searchParams }: { searchParams
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-medium text-stone-900">Notifications</h1>
-          <p className="mt-1 text-sm text-stone-500">
+          <h1 className="font-display text-2xl font-medium text-espresso-950">Notifications</h1>
+          <p className="mt-1 text-sm text-espresso-900/50">
             Updates about your orders, quotes, sourcing requests, vendor account, and messages.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Link
             href="/account/notifications/preferences"
-            className="text-sm font-medium text-stone-600 hover:text-stone-900"
+            className="text-sm font-medium text-espresso-900/65 hover:text-espresso-950"
           >
             Preferences
           </Link>
@@ -41,12 +41,12 @@ export default async function NotificationsPage({ searchParams }: { searchParams
       </div>
 
       {notifications.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-          <CheckCheck className="mx-auto size-8 text-stone-300" strokeWidth={1.5} />
-          <p className="mt-3 text-sm text-stone-500">You&apos;re all caught up — no notifications yet.</p>
+        <div className="rounded-2xl border border-dashed border-ivory-400 bg-white p-10 text-center">
+          <CheckCheck className="mx-auto size-8 text-ivory-400" strokeWidth={1.5} />
+          <p className="mt-3 text-sm text-espresso-900/50">You&apos;re all caught up — no notifications yet.</p>
         </div>
       ) : (
-        <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
+        <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
           {notifications.map((notification) => (
             <NotificationRow key={notification.id} notification={notification} />
           ))}

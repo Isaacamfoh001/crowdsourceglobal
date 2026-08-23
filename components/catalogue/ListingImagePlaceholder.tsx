@@ -20,11 +20,9 @@ export function ListingImagePlaceholder({
   const Icon = getCategoryIcon(categorySlug);
 
   return (
-    <div
-      className={`flex items-center justify-center bg-gradient-to-br from-brand-50 to-stone-100 ${className}`}
-    >
+    <div className={`flex items-center justify-center bg-ivory-200 ${className}`}>
       {/* eslint-disable-next-line react-hooks/static-components */}
-      <Icon className="size-10 text-brand-300" strokeWidth={1.25} />
+      <Icon className="size-10 text-champagne-600/60" strokeWidth={1.1} />
     </div>
   );
 }

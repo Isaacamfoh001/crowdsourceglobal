@@ -26,12 +26,12 @@ export function SummaryCards({ summary, operationalAllowed }: { summary: Summary
         <Link
           key={card.label}
           href={card.href}
-          className={`rounded-2xl border bg-white p-4 transition-colors hover:bg-stone-50 ${
-            card.emphasize ? "border-red-200 bg-red-50/50" : "border-stone-200"
+          className={`rounded-2xl border bg-white p-4 transition-colors hover:bg-ivory-50 ${
+            card.emphasize ? "border-danger-200 bg-danger-50/50" : "border-ivory-300"
           }`}
         >
-          <p className={`font-display text-2xl font-medium ${card.emphasize ? "text-red-700" : "text-stone-900"}`}>{card.count}</p>
-          <p className="mt-1 text-xs text-stone-500">{card.label}</p>
+          <p className={`font-display text-2xl font-medium ${card.emphasize ? "text-danger-700" : "text-espresso-950"}`}>{card.count}</p>
+          <p className="mt-1 text-xs text-espresso-900/50">{card.label}</p>
         </Link>
       ))}
     </div>

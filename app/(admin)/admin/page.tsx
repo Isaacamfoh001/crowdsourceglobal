@@ -6,6 +6,7 @@ import { AttentionList } from "../../../components/admin/dashboard/AttentionList
 import { SummaryCards } from "../../../components/admin/dashboard/SummaryCards";
 import { KpiSection } from "../../../components/admin/dashboard/KpiSection";
 import { RecentActivity } from "../../../components/admin/dashboard/RecentActivity";
+import { PageHeader } from "../../../components/ui/PageHeader";
 import type { DateRange } from "../../../modules/admin-dashboard/types";
 
 export const metadata = { title: "Dashboard — Admin" };
@@ -41,18 +42,15 @@ export default async function AdminHomePage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="font-display text-2xl font-medium text-stone-900">Operations overview</h1>
-        <p className="mt-1 text-sm text-stone-500">What needs CrownSource attention right now.</p>
-      </div>
+      <PageHeader title="Operations overview" description="What needs CrownSource attention right now." />
 
       <SummaryCards summary={data.summary} operationalAllowed={operationalAllowed} />
 
       <div>
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-base font-medium text-stone-900">Attention required</h2>
+          <h2 className="font-display text-base font-medium text-espresso-950">Attention required</h2>
           {data.attentionItems.length > 8 ? (
-            <Link href="/admin/attention" className="text-sm font-medium text-brand-700 hover:underline">
+            <Link href="/admin/attention" className="text-sm font-medium text-forest-800 hover:underline">
               View all ({data.attentionItems.length})
             </Link>
           ) : null}
@@ -67,13 +65,13 @@ export default async function AdminHomePage({ searchParams }: { searchParams: Pr
       {operationalAllowed ? <RecentActivity entries={data.recentActivity} /> : null}
 
       <div>
-        <h2 className="font-display text-base font-medium text-stone-900">Quick links</h2>
+        <h2 className="font-display text-base font-medium text-espresso-950">Quick links</h2>
         <div className="mt-3 flex flex-wrap gap-2">
           {visibleQuickLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-full border border-stone-300 bg-white px-3.5 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
+              className="rounded-full border border-ivory-400 bg-white px-3.5 py-1.5 text-sm font-medium text-espresso-800 hover:bg-ivory-50"
             >
               {link.label}
             </Link>

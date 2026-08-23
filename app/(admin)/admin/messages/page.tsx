@@ -3,6 +3,7 @@ import { requireAdminSession } from "../../../../modules/administration/policy";
 import { messagingService } from "../../../../modules/messaging/service";
 import { parsePage } from "../../../../lib/pagination";
 import { Pagination } from "../../../../components/shared/Pagination";
+import { PageHeader } from "../../../../components/ui/PageHeader";
 
 export const metadata = { title: "Messages — Admin" };
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export default async function AdminMessagesPage({ searchParams }: { searchParams
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-2xl font-medium text-stone-900">Messages</h1>
+      <PageHeader title="Messages" description={`${total} conversation${total === 1 ? "" : "s"}.`} />
       <ConversationList
         conversations={conversations}
         basePath="/admin/messages"

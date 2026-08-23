@@ -1,5 +1,4 @@
-import { Section } from "../ui/Section";
-import { SectionHeading } from "../ui/SectionHeading";
+import { Container } from "../ui/Container";
 
 const steps = [
   {
@@ -30,28 +29,31 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <Section id="how-it-works" tone="default">
-      <SectionHeading
-        eyebrow="How it works"
-        title="From request to delivery, in four steps"
-        align="center"
-      />
+    <section id="how-it-works" className="bg-ivory-50 py-16 sm:py-20 lg:py-28">
+      <Container>
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-xs font-semibold tracking-[0.2em] text-champagne-700 uppercase">How it works</p>
+          <h2 className="mt-3 font-display text-3xl font-medium tracking-tight text-espresso-950 sm:text-4xl">
+            From request to delivery, in four steps
+          </h2>
+        </div>
 
-      <div className="mt-16 grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
-        {steps.map((step) => (
-          <div key={step.number} className="relative">
-            <span className="font-display text-4xl font-medium text-brand-200">
-              {step.number}
-            </span>
-            <h3 className="mt-3 font-display text-lg font-medium text-stone-900">
-              {step.title}
-            </h3>
-            <p className="mt-2 text-[15px] leading-relaxed text-stone-600">
-              {step.description}
-            </p>
-          </div>
-        ))}
-      </div>
-    </Section>
+        <div className="mt-16 grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((step) => (
+            <div key={step.number} className="relative">
+              <span className="font-display text-4xl font-medium text-champagne-300">
+                {step.number}
+              </span>
+              <h3 className="mt-3 font-display text-lg font-medium text-espresso-950">
+                {step.title}
+              </h3>
+              <p className="mt-2 text-[15px] leading-relaxed text-espresso-900/70">
+                {step.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Container>
+    </section>
   );
 }

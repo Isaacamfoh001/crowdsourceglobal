@@ -10,28 +10,28 @@ export default async function ProfilePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-2xl font-medium text-stone-900">Your profile</h1>
+      <h1 className="font-display text-2xl font-medium text-espresso-950">Your profile</h1>
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-soft">
-        <dl className="divide-y divide-stone-100">
+      <div className="rounded-2xl border border-ivory-300 bg-white p-6 shadow-soft">
+        <dl className="divide-y divide-ivory-100">
           <div className="flex justify-between py-3">
-            <dt className="text-sm font-medium text-stone-500">Name</dt>
-            <dd className="text-sm text-stone-900">
+            <dt className="text-sm font-medium text-espresso-900/50">Name</dt>
+            <dd className="text-sm text-espresso-950">
               {customerProfile?.displayName ?? session.user.name}
             </dd>
           </div>
           <div className="flex justify-between py-3">
-            <dt className="text-sm font-medium text-stone-500">Email</dt>
-            <dd className="text-sm text-stone-900">{session.user.email}</dd>
+            <dt className="text-sm font-medium text-espresso-900/50">Email</dt>
+            <dd className="text-sm text-espresso-950">{session.user.email}</dd>
           </div>
           <div className="flex justify-between py-3">
-            <dt className="text-sm font-medium text-stone-500">Email verified</dt>
-            <dd className="text-sm text-stone-900">{session.user.emailVerified ? "Yes" : "No"}</dd>
+            <dt className="text-sm font-medium text-espresso-900/50">Email verified</dt>
+            <dd className="text-sm text-espresso-950">{session.user.emailVerified ? "Yes" : "No"}</dd>
           </div>
         </dl>
       </div>
 
-      <p className="text-sm text-stone-400">
+      <p className="text-sm text-espresso-900/35">
         Profile editing, saved addresses, and business details will appear here in a later
         milestone.
       </p>

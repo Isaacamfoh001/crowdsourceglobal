@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import { FlaskConical, ShieldCheck } from "lucide-react";
 import { Container } from "../../../../../components/ui/Container";
+import { Card } from "../../../../../components/ui/Card";
 import { Badge } from "../../../../../components/ui/Badge";
 import { MockPaymentForm } from "../../../../../components/checkout/MockPaymentForm";
 import { PaymentMethodTabs } from "../../../../../components/checkout/PaymentMethodTabs";
@@ -51,7 +52,7 @@ export default async function PaymentPage({ params }: { params: Promise<Params> 
   const isRealPayment = isRealMobileMoney || isCardAvailable;
 
   return (
-    <div className="bg-stone-50 py-10 sm:py-14">
+    <div className="bg-ivory-50 py-10 sm:py-14">
       <Container className="max-w-xl">
         <div className="mb-6 flex justify-center">
           {isRealPayment ? (
@@ -67,15 +68,15 @@ export default async function PaymentPage({ params }: { params: Promise<Params> 
           )}
         </div>
 
-        <div className="rounded-2xl border border-stone-200 bg-white p-6 sm:p-8">
-          <h1 className="text-center font-display text-2xl font-medium text-stone-900">
+        <Card elevated className="sm:p-8">
+          <h1 className="text-center font-display text-2xl font-medium text-espresso-950">
             Complete payment
           </h1>
-          <p className="mt-1.5 text-center text-sm text-stone-500">Order {order.orderNumber}</p>
+          <p className="mt-1.5 text-center text-sm text-espresso-900/50">Order {order.orderNumber}</p>
 
-          <div className="mt-6 flex justify-between border-y border-stone-100 py-4 text-lg">
-            <span className="font-medium text-stone-700">Total</span>
-            <span className="font-semibold text-stone-900">
+          <div className="mt-6 flex justify-between border-y border-ivory-100 py-4 text-lg">
+            <span className="font-medium text-espresso-800">Total</span>
+            <span className="font-semibold text-espresso-950">
               {formatPrice(order.total, order.currency)}
             </span>
           </div>
@@ -86,7 +87,7 @@ export default async function PaymentPage({ params }: { params: Promise<Params> 
             </div>
           ) : (
             <>
-              <p className="mt-4 text-center text-sm leading-relaxed text-stone-500">
+              <p className="mt-4 text-center text-sm leading-relaxed text-espresso-900/50">
                 This is a simulated payment for development — no real money moves and no card
                 details are collected. Choose an outcome below to continue.
               </p>
@@ -95,7 +96,7 @@ export default async function PaymentPage({ params }: { params: Promise<Params> 
               </div>
             </>
           )}
-        </div>
+        </Card>
       </Container>
     </div>
   );

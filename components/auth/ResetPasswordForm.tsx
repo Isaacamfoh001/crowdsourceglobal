@@ -58,10 +58,10 @@ export function ResetPasswordForm() {
   if (success) {
     return (
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+        <div className="flex size-12 items-center justify-center rounded-full bg-champagne-200 text-forest-800">
           <CheckCircle2 className="size-6" strokeWidth={1.75} />
         </div>
-        <h1 className="text-2xl font-medium text-stone-900">Password updated</h1>
+        <h1 className="text-2xl font-medium text-espresso-950">Password updated</h1>
         <FormMessage tone="success">Redirecting you to sign in…</FormMessage>
       </div>
     );
@@ -70,8 +70,8 @@ export function ResetPasswordForm() {
   return (
     <div className="flex flex-col gap-7">
       <div>
-        <h1 className="text-2xl font-medium text-stone-900">Set a new password</h1>
-        <p className="mt-1.5 text-[15px] text-stone-500">
+        <h1 className="text-2xl font-medium text-espresso-950">Set a new password</h1>
+        <p className="mt-1.5 text-[15px] text-espresso-900/50">
           Choose a new password for your CrownSourceGlobal account.
         </p>
       </div>
@@ -101,8 +101,8 @@ export function ResetPasswordForm() {
         </Button>
       </form>
 
-      <p className="text-center text-sm text-stone-500">
-        <Link href="/sign-in" className="font-medium text-brand-700 hover:underline">
+      <p className="text-center text-sm text-espresso-900/50">
+        <Link href="/sign-in" className="font-medium text-forest-800 hover:underline">
           Back to sign in
         </Link>
       </p>

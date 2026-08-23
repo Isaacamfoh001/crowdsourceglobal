@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Clock, Package, ShoppingBag, Store } from "lucide-react";
 import { Container } from "../../../../components/ui/Container";
-import { Badge } from "../../../../components/ui/Badge";
 import { Button } from "../../../../components/ui/Button";
 import { Breadcrumbs } from "../../../../components/catalogue/Breadcrumbs";
 import { ListingImageGallery } from "../../../../components/catalogue/ListingImageGallery";
@@ -41,7 +40,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
   const resumedQuoteQuantity = isSignedIn ? await getPendingQuoteIntent(listing.id) : null;
 
   return (
-    <div className="bg-stone-50 py-10 sm:py-14">
+    <div className="bg-ivory-50 py-8 sm:py-12">
       <Container>
         <Breadcrumbs
           items={[
@@ -54,72 +53,55 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
           ]}
         />
 
-        <div className="mt-6 grid gap-10 lg:grid-cols-2">
+        {/* Editorial split: a plain gallery column against ivory, and a
+            purchase column that carries its own quieter ivory-100 tint —
+            two contrasting surfaces instead of one canvas with cards
+            floated on top of it. */}
+        <div className="mt-6 grid gap-x-12 gap-y-10 lg:grid-cols-[1.1fr_1fr]">
           <ListingImageGallery images={listing.images} categorySlug={listing.category.slug} title={listing.title} />
 
           <div>
             <Link
               href={`/vendors/${listing.vendor.storefrontSlug}`}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 hover:text-brand-700"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.1em] text-espresso-900/50 uppercase hover:text-champagne-700"
             >
-              <Store className="size-4" strokeWidth={1.75} />
+              <Store className="size-3.5" strokeWidth={1.75} />
               {listing.vendor.companyName}
             </Link>
 
-            <h1 className="mt-2 font-display text-2xl font-medium text-stone-900 sm:text-3xl">
+            <h1 className="mt-2 font-display text-3xl font-medium text-espresso-950 sm:text-4xl">
               {listing.title}
             </h1>
 
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <p className="text-2xl font-semibold text-stone-900 sm:text-3xl">
+              <p className="font-display text-3xl font-semibold text-espresso-950 sm:text-4xl">
                 {formatPrice(listing.basePrice, listing.currency)}
               </p>
               <AvailabilityBadge status={listing.availabilityStatus} />
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-4 rounded-2xl border border-stone-200 bg-white p-5 text-sm sm:grid-cols-3">
-              <div>
-                <p className="flex items-center gap-1.5 text-stone-500">
-                  <ShoppingBag className="size-4" strokeWidth={1.75} />
-                  MOQ
-                </p>
-                <p className="mt-1 font-medium text-stone-900">
-                  {listing.moq} {listing.moq === 1 ? "unit" : "units"}
-                </p>
-              </div>
-              {listing.maxOq ? (
-                <div>
-                  <p className="text-stone-500">Max order</p>
-                  <p className="mt-1 font-medium text-stone-900">{listing.maxOq} units</p>
-                </div>
-              ) : null}
+            {/* Quick commerce facts as an inline row, not another card —
+                scannable in one glance before the purchase action. */}
+            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-espresso-900/55">
+              <span className="flex items-center gap-1.5">
+                <ShoppingBag className="size-3.5" strokeWidth={1.75} />
+                MOQ {listing.moq} {listing.moq === 1 ? "unit" : "units"}
+              </span>
               {listing.leadTimeDays ? (
-                <div>
-                  <p className="flex items-center gap-1.5 text-stone-500">
-                    <Clock className="size-4" strokeWidth={1.75} />
-                    Lead time
-                  </p>
-                  <p className="mt-1 font-medium text-stone-900">{listing.leadTimeDays} days</p>
-                </div>
+                <span className="flex items-center gap-1.5">
+                  <Clock className="size-3.5" strokeWidth={1.75} />
+                  {listing.leadTimeDays}-day lead time
+                </span>
               ) : null}
-              <div>
-                <p className="flex items-center gap-1.5 text-stone-500">
-                  <Package className="size-4" strokeWidth={1.75} />
-                  Available
-                </p>
-                <p className="mt-1 font-medium text-stone-900">{listing.availableQuantity} units</p>
-              </div>
+              <span className="flex items-center gap-1.5">
+                <Package className="size-3.5" strokeWidth={1.75} />
+                {listing.availableQuantity} available
+              </span>
             </div>
 
-            {listing.bulkPriceTiers.length > 0 ? (
-              <div className="mt-6">
-                <div className="mb-2 flex items-center gap-2">
-                  <Badge tone="gold">Bulk pricing</Badge>
-                </div>
-                <BulkPricingTable tiers={listing.bulkPriceTiers} currency={listing.currency} />
-              </div>
-            ) : null}
-
+            {/* Purchase controls come right after price, ahead of secondary
+                commerce details, so mobile shoppers reach "add to cart"
+                without scrolling past MOQ/lead-time metadata first. */}
             <AddToCartForm
               listingId={listing.id}
               currentPath={`/listings/${listing.id}`}
@@ -131,6 +113,15 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
               availabilityStatus={listing.availabilityStatus}
               bulkPriceTiers={listing.bulkPriceTiers}
             />
+
+            {listing.bulkPriceTiers.length > 0 ? (
+              <div className="mt-6">
+                <p className="mb-2 text-xs font-semibold tracking-[0.1em] text-champagne-700 uppercase">
+                  Bulk pricing
+                </p>
+                <BulkPricingTable tiers={listing.bulkPriceTiers} currency={listing.currency} />
+              </div>
+            ) : null}
 
             {listing.bulkPriceTiers.length > 0 ? (
               <GetInstantQuoteForm
@@ -145,24 +136,28 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
                 resumedQuantity={resumedQuoteQuantity}
               />
             ) : null}
+
+            {listing.maxOq ? (
+              <p className="mt-4 text-sm text-espresso-900/50">Maximum order quantity: {listing.maxOq} units</p>
+            ) : null}
           </div>
         </div>
 
-        <div className="mt-14 grid gap-10 lg:grid-cols-[2fr_1fr]">
+        <div className="mt-16 grid gap-10 border-t border-ivory-300 pt-12 lg:grid-cols-[2fr_1fr]">
           <div>
-            <h2 className="font-display text-xl font-medium text-stone-900">Description</h2>
-            <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-stone-600">
+            <h2 className="font-display text-xl font-medium text-espresso-950">Description</h2>
+            <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-espresso-900/70">
               {listing.description}
             </p>
 
             {listing.specs && Object.keys(listing.specs).length > 0 ? (
               <div className="mt-8">
-                <h2 className="font-display text-xl font-medium text-stone-900">Specifications</h2>
-                <dl className="mt-3 divide-y divide-stone-200 rounded-2xl border border-stone-200 bg-white">
+                <h2 className="font-display text-xl font-medium text-espresso-950">Specifications</h2>
+                <dl className="mt-3 divide-y divide-ivory-300 border border-ivory-300">
                   {Object.entries(listing.specs).map(([key, value]) => (
-                    <div key={key} className="flex justify-between px-5 py-3 text-sm">
-                      <dt className="text-stone-500">{key}</dt>
-                      <dd className="font-medium text-stone-900">{value}</dd>
+                    <div key={key} className="flex justify-between gap-4 px-5 py-3 text-sm">
+                      <dt className="shrink-0 text-espresso-900/50">{key}</dt>
+                      <dd className="text-right font-medium text-espresso-950">{value}</dd>
                     </div>
                   ))}
                 </dl>
@@ -170,22 +165,34 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
             ) : null}
           </div>
 
-          <div className="rounded-2xl border border-stone-200 bg-white p-6">
-            <h2 className="font-display text-lg font-medium text-stone-900">Sold by</h2>
-            <p className="mt-2 text-[15px] font-medium text-stone-900">
-              {listing.vendor.companyName}
-            </p>
+          <div className="h-fit border border-ivory-300 bg-ivory-100 p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center bg-espresso-950 text-champagne-400">
+                <Store className="size-5" strokeWidth={1.75} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-espresso-900/50">Sold by</p>
+                <p className="truncate text-[15px] font-semibold text-espresso-950">
+                  {listing.vendor.companyName}
+                </p>
+              </div>
+            </div>
             {listing.vendor.description ? (
-              <p className="mt-1.5 text-sm leading-relaxed text-stone-600">
+              <p className="mt-3 text-sm leading-relaxed text-espresso-900/70">
                 {listing.vendor.description}
               </p>
             ) : null}
             <Link href={`/vendors/${listing.vendor.storefrontSlug}`}>
-              <Button variant="outline" size="sm" fullWidth className="mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                fullWidth
+                className="mt-4 !border-espresso-950/25 !text-espresso-950 hover:!bg-espresso-950/5"
+              >
                 Visit storefront
               </Button>
             </Link>
-            <div className="mt-4">
+            <div className="mt-3">
               <AskAboutButton
                 contextType="LISTING"
                 contextRefId={listing.id}

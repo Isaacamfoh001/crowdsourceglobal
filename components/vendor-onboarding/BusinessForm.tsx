@@ -46,7 +46,7 @@ export function BusinessForm({ initial, showRegistrationFields }: { initial: Ini
       ) : null}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="storeDescription" className="text-sm font-medium text-stone-700">
+        <label htmlFor="storeDescription" className="text-sm font-medium text-espresso-800">
           Store description
         </label>
         <textarea
@@ -57,7 +57,7 @@ export function BusinessForm({ initial, showRegistrationFields }: { initial: Ini
           placeholder="What do you sell, and what makes your store worth buying from?"
           required
           disabled={isPending}
-          className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-[15px] text-stone-900 shadow-soft outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+          className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
         />
       </div>
 
@@ -97,8 +97,8 @@ export function BusinessForm({ initial, showRegistrationFields }: { initial: Ini
         />
       </div>
 
-      <div className="mt-2 border-t border-stone-100 pt-4">
-        <p className="text-sm font-medium text-stone-700">Location</p>
+      <div className="mt-2 border-t border-ivory-100 pt-4">
+        <p className="text-sm font-medium text-espresso-800">Location</p>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input label="Country" name="country" defaultValue={initial.country ?? "Ghana"} required disabled={isPending} />
           <Input label="Region" name="region" defaultValue={initial.region ?? ""} required disabled={isPending} />

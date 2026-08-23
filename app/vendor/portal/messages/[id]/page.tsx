@@ -21,10 +21,10 @@ export default async function VendorConversationPage({ params }: { params: Promi
 
   return (
     <div className="flex flex-col gap-4">
-      <Link href="/vendor/portal/messages" className="text-sm font-medium text-brand-700 hover:underline">
+      <Link href="/vendor/portal/messages" className="text-sm font-medium text-forest-800 hover:underline">
         ← All messages
       </Link>
-      <h1 className="font-display text-xl font-medium text-stone-900">CrownSourceGlobal support</h1>
+      <h1 className="font-display text-xl font-medium text-espresso-950">CrownSourceGlobal support</h1>
       <MessageThread
         conversationId={conversation.id}
         messages={conversation.messages}

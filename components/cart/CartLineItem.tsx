@@ -6,6 +6,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { updateCartItemQuantityAction, removeCartItemAction } from "../../lib/actions/cart";
 import { ListingImagePlaceholder } from "../catalogue/ListingImagePlaceholder";
 import { formatPrice } from "../../lib/format";
+import { listingImageUrl } from "../../lib/listing-images";
 import type { CartLineView } from "../../modules/cart/types";
 
 export function CartLineItem({ line }: { line: CartLineView }) {
@@ -20,22 +21,31 @@ export function CartLineItem({ line }: { line: CartLineView }) {
   const dirty = quantity !== line.quantity;
 
   return (
-    <div className="flex flex-wrap gap-4 border-b border-stone-100 py-5 last:border-0">
-      <Link href={`/listings/${line.listingId}`} className="shrink-0">
-        <ListingImagePlaceholder categorySlug={line.categorySlug} className="size-16 rounded-xl sm:size-20" />
+    <div className="flex flex-wrap gap-4 border-b border-ivory-100 py-5 last:border-0">
+      <Link href={`/listings/${line.listingId}`} className="shrink-0 overflow-hidden rounded-2xl">
+        {line.primaryImage ? (
+          // eslint-disable-next-line @next/next/no-img-element -- served through our own storage-backed route, not Next's image optimizer
+          <img
+            src={listingImageUrl(line.primaryImage)}
+            alt={line.title}
+            className="size-20 rounded-2xl object-cover sm:size-28"
+          />
+        ) : (
+          <ListingImagePlaceholder categorySlug={line.categorySlug} className="size-20 rounded-2xl sm:size-28" />
+        )}
       </Link>
 
       <div className="min-w-0 flex-1">
         <Link
           href={`/listings/${line.listingId}`}
-          className="line-clamp-2 font-display text-[15px] font-medium text-stone-900 hover:text-brand-800"
+          className="line-clamp-2 font-display text-[15px] font-medium text-espresso-950 hover:text-forest-900"
         >
           {line.title}
         </Link>
-        <p className="mt-1 text-sm text-stone-500">
+        <p className="mt-1 text-sm text-espresso-900/50">
           {formatPrice(line.unitPrice, line.currency)} / unit
           {line.hasBulkPricing ? (
-            <span className="ml-2 text-xs font-medium text-gold-700">Bulk pricing applied</span>
+            <span className="ml-2 text-xs font-medium text-champagne-700">Bulk pricing applied</span>
           ) : null}
         </p>
 
@@ -49,7 +59,7 @@ export function CartLineItem({ line }: { line: CartLineView }) {
                 onClick={() => setQuantity((q) => Math.max(line.moq, q - 1))}
                 disabled={quantity <= line.moq}
                 aria-label="Decrease quantity"
-                className="flex size-8 items-center justify-center rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex size-8 items-center justify-center rounded-lg border border-ivory-400 text-espresso-800 hover:bg-ivory-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Minus className="size-3.5" />
               </button>
@@ -60,14 +70,14 @@ export function CartLineItem({ line }: { line: CartLineView }) {
                 max={maxSelectable}
                 onChange={(event) => setQuantity(Number(event.target.value) || line.moq)}
                 aria-label="Quantity"
-                className="w-14 rounded-lg border border-stone-300 py-1.5 text-center text-sm font-medium text-stone-900"
+                className="w-14 rounded-lg border border-ivory-400 py-1.5 text-center text-sm font-medium text-espresso-950"
               />
               <button
                 type="button"
                 onClick={() => setQuantity((q) => Math.min(maxSelectable, q + 1))}
                 disabled={quantity >= maxSelectable}
                 aria-label="Increase quantity"
-                className="flex size-8 items-center justify-center rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex size-8 items-center justify-center rounded-lg border border-ivory-400 text-espresso-800 hover:bg-ivory-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Plus className="size-3.5" />
               </button>
@@ -75,7 +85,7 @@ export function CartLineItem({ line }: { line: CartLineView }) {
                 <button
                   type="submit"
                   disabled={updatePending}
-                  className="text-sm font-medium text-brand-700 hover:underline disabled:opacity-50"
+                  className="text-sm font-medium text-forest-800 hover:underline disabled:opacity-50"
                 >
                   {updatePending ? "Updating…" : "Update"}
                 </button>
@@ -88,7 +98,7 @@ export function CartLineItem({ line }: { line: CartLineView }) {
                 type="submit"
                 disabled={removePending}
                 aria-label={`Remove ${line.title}`}
-                className="flex items-center gap-1 text-sm text-stone-400 hover:text-red-600 disabled:opacity-50"
+                className="flex items-center gap-1 text-sm text-espresso-900/35 hover:text-danger-600 disabled:opacity-50"
               >
                 <Trash2 className="size-3.5" />
                 Remove
@@ -96,13 +106,13 @@ export function CartLineItem({ line }: { line: CartLineView }) {
             </form>
           </div>
 
-          <p className="text-right text-[15px] font-semibold text-stone-900">
+          <p className="text-right text-[15px] font-semibold text-espresso-950">
             {formatPrice(line.lineTotal, line.currency)}
           </p>
         </div>
 
         {updateState && !updateState.ok ? (
-          <p className="mt-2 text-sm text-red-600">{updateState.error}</p>
+          <p className="mt-2 text-sm text-danger-600">{updateState.error}</p>
         ) : null}
       </div>
     </div>

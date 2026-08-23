@@ -3,6 +3,7 @@ export type CartLineView = {
   listingId: string;
   title: string;
   categorySlug: string;
+  primaryImage: string | null;
   quantity: number;
   moq: number;
   maxOq: number | null;

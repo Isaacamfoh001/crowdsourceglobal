@@ -13,23 +13,23 @@ export default async function VendorPayoutDestinationPage() {
   return (
     <div className="flex max-w-lg flex-col gap-6">
       <div>
-        <Link href="/vendor/portal/finance" className="text-sm text-stone-500 hover:text-stone-700">
+        <Link href="/vendor/portal/finance" className="text-sm text-espresso-900/50 hover:text-espresso-800">
           ← Finance
         </Link>
-        <h1 className="mt-2 font-display text-2xl font-medium text-stone-900">Payout details</h1>
-        <p className="mt-1 text-[15px] text-stone-500">Where CrownSourceGlobal sends your settlement payouts.</p>
+        <h1 className="mt-2 font-display text-2xl font-medium text-espresso-950">Payout details</h1>
+        <p className="mt-1 text-[15px] text-espresso-900/50">Where CrownSourceGlobal sends your settlement payouts.</p>
       </div>
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-6">
+      <div className="rounded-2xl border border-ivory-300 bg-white p-6">
         {destination ? (
-          <p className="mb-4 text-sm text-stone-600">
+          <p className="mb-4 text-sm text-espresso-900/65">
             Currently:{" "}
             {destination.type === "MOBILE_MONEY"
               ? `${destination.momoNetwork ?? "Mobile Money"} — ${destination.momoPhoneMasked}`
               : `${destination.bankName} — ${destination.bankAccountNumberMasked}`}
           </p>
         ) : (
-          <p className="mb-4 text-sm text-stone-500">No payout details on file yet.</p>
+          <p className="mb-4 text-sm text-espresso-900/50">No payout details on file yet.</p>
         )}
 
         {requireOwnerRole(role) ? (
@@ -47,7 +47,7 @@ export default async function VendorPayoutDestinationPage() {
             }
           />
         ) : (
-          <p className="rounded-lg bg-stone-50 p-4 text-sm text-stone-600">Only the Vendor account owner can change payout details.</p>
+          <p className="rounded-lg bg-ivory-50 p-4 text-sm text-espresso-900/65">Only the Vendor account owner can change payout details.</p>
         )}
       </div>
     </div>

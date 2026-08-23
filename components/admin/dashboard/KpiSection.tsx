@@ -8,14 +8,14 @@ export function KpiSection({ today, current, range }: { today: TodayKpis; curren
     <div className="flex flex-col gap-4">
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-display text-base font-medium text-stone-900">Activity</h2>
+          <h2 className="font-display text-base font-medium text-espresso-950">Activity</h2>
           <div className="flex gap-1.5">
             {(Object.keys(RANGE_LABELS) as DateRange[]).map((r) => (
               <Link
                 key={r}
                 href={r === "today" ? "/admin" : `/admin?range=${r}`}
                 className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  range === r ? "bg-brand-700 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                  range === r ? "bg-forest-800 text-white" : "bg-ivory-100 text-espresso-900/65 hover:bg-ivory-300"
                 }`}
               >
                 {RANGE_LABELS[r]}
@@ -33,7 +33,7 @@ export function KpiSection({ today, current, range }: { today: TodayKpis; curren
       </div>
 
       <div>
-        <h2 className="font-display text-base font-medium text-stone-900">Current</h2>
+        <h2 className="font-display text-base font-medium text-espresso-950">Current</h2>
         <dl className="mt-3 grid grid-cols-3 gap-3">
           <KpiTile label="Active vendors" value={current.activeVendors} />
           <KpiTile label="Active listings" value={current.activeListings} />
@@ -46,9 +46,9 @@ export function KpiSection({ today, current, range }: { today: TodayKpis; curren
 
 function KpiTile({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-stone-200 bg-white p-3.5">
-      <dt className="text-xs text-stone-500">{label}</dt>
-      <dd className="mt-1 font-display text-xl font-medium text-stone-900">{value}</dd>
+    <div className="rounded-xl border border-ivory-300 bg-white p-3.5">
+      <dt className="text-xs text-espresso-900/50">{label}</dt>
+      <dd className="mt-1 font-display text-xl font-medium text-espresso-950">{value}</dd>
     </div>
   );
 }

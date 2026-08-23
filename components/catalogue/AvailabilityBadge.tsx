@@ -6,10 +6,10 @@ const LABELS: Record<string, string> = {
 };
 
 const TONE: Record<string, string> = {
-  IN_STOCK: "bg-brand-100 text-brand-800",
-  LOW_STOCK: "bg-gold-100 text-gold-800",
-  OUT_OF_STOCK: "bg-stone-200 text-stone-600",
-  MADE_TO_ORDER: "bg-stone-100 text-stone-700",
+  IN_STOCK: "bg-forest-900/10 text-forest-800",
+  LOW_STOCK: "bg-champagne-200/70 text-champagne-700",
+  OUT_OF_STOCK: "bg-espresso-950/10 text-espresso-900/70",
+  MADE_TO_ORDER: "bg-ivory-300 text-espresso-900/70",
 };
 
 export function AvailabilityBadge({ status }: { status: string }) {

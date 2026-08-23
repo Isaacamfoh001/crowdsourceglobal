@@ -4,6 +4,8 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import { Minus, Plus, Trash2, UploadCloud } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { Select } from "../ui/Select";
+import { Textarea } from "../ui/Textarea";
 import { MoneyInput, sanitizeMoneyInput as sanitizeMoneyText } from "../ui/MoneyInput";
 import { FormMessage } from "../ui/FormMessage";
 import { saveListingAction } from "../../lib/actions/vendor-listings";
@@ -84,49 +86,39 @@ export function ListingEditorForm({
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
 
       <section className="flex flex-col gap-4">
-        <h2 className="font-display text-lg font-medium text-stone-900">Basic information</h2>
+        <h2 className="font-display text-lg font-medium text-espresso-950">Basic information</h2>
         <Input label="Title" name="title" defaultValue={content.title} required disabled={disabled || isPending} />
+        <Textarea
+          label="Description"
+          id="description"
+          name="description"
+          rows={4}
+          defaultValue={content.description}
+          required
+          disabled={disabled || isPending}
+        />
+        <Select
+          label="Category"
+          id="categoryId"
+          name="categoryId"
+          defaultValue={content.categoryId}
+          required
+          disabled={disabled || isPending}
+        >
+          {categories.map((category) => (
+            <optgroup key={category.id} label={category.name}>
+              <option value={category.id}>{category.name}</option>
+              {category.children.map((child) => (
+                <option key={child.id} value={child.id}>
+                  {category.name} — {child.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </Select>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="description" className="text-sm font-medium text-stone-700">
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            rows={4}
-            defaultValue={content.description}
-            required
-            disabled={disabled || isPending}
-            className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-[15px] text-stone-900 shadow-soft outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100 disabled:bg-stone-50"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="categoryId" className="text-sm font-medium text-stone-700">
-            Category
-          </label>
-          <select
-            id="categoryId"
-            name="categoryId"
-            defaultValue={content.categoryId}
-            required
-            disabled={disabled || isPending}
-            className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-[15px] text-stone-900 shadow-soft outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100 disabled:bg-stone-50"
-          >
-            {categories.map((category) => (
-              <optgroup key={category.id} label={category.name}>
-                <option value={category.id}>{category.name}</option>
-                {category.children.map((child) => (
-                  <option key={child.id} value={child.id}>
-                    {category.name} — {child.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-stone-700">Product images</span>
-          <p className="text-xs text-stone-500">
+          <span className="text-sm font-medium text-espresso-800">Product images</span>
+          <p className="text-xs text-espresso-900/50">
             Up to {MAX_LISTING_IMAGES} images, PNG/JPEG/WEBP, 5MB each. The first image is used as the primary image
             shown on the catalogue and search results.
           </p>
@@ -134,11 +126,11 @@ export function ListingEditorForm({
           {existingImages.length > 0 || newFiles.length > 0 ? (
             <ul className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
               {existingImages.map((key, index) => (
-                <li key={key} className="group relative aspect-square overflow-hidden rounded-lg border border-stone-200">
+                <li key={key} className="group relative aspect-square overflow-hidden rounded-lg border border-ivory-300">
                   {/* eslint-disable-next-line @next/next/no-img-element -- uploaded product photos served through our own storage-backed route, not Next's image optimizer (no sharp installed — see M13.1 report) */}
                   <img src={listingImageUrl(key)} alt="" className="size-full object-cover" />
                   {index === 0 ? (
-                    <span className="absolute left-1.5 top-1.5 rounded bg-stone-900/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    <span className="absolute left-1.5 top-1.5 rounded bg-espresso-950/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
                       Primary
                     </span>
                   ) : null}
@@ -147,20 +139,20 @@ export function ListingEditorForm({
                     onClick={() => setExistingImages((prev) => prev.filter((k) => k !== key))}
                     disabled={disabled || isPending}
                     aria-label="Remove image"
-                    className="absolute right-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-white/90 text-stone-600 opacity-0 shadow-soft transition-opacity group-hover:opacity-100 hover:text-red-600 disabled:opacity-0"
+                    className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-full bg-white/90 text-espresso-900/65 opacity-100 shadow-soft transition-opacity hover:text-danger-600 disabled:opacity-40 sm:size-6 sm:opacity-0 sm:group-hover:opacity-100"
                   >
                     <Trash2 className="size-3.5" />
                   </button>
                 </li>
               ))}
               {newFiles.map((file, index) => (
-                <li key={`${file.name}-${index}`} className="group relative aspect-square overflow-hidden rounded-lg border border-stone-200">
+                <li key={`${file.name}-${index}`} className="group relative aspect-square overflow-hidden rounded-lg border border-ivory-300">
                   {newFilePreviews[index] ? (
                     // eslint-disable-next-line @next/next/no-img-element -- local object-URL preview of a not-yet-uploaded file
                     <img src={newFilePreviews[index]} alt="" className="size-full object-cover" />
                   ) : null}
                   {existingImages.length === 0 && index === 0 ? (
-                    <span className="absolute left-1.5 top-1.5 rounded bg-stone-900/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    <span className="absolute left-1.5 top-1.5 rounded bg-espresso-950/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
                       Primary
                     </span>
                   ) : null}
@@ -169,7 +161,7 @@ export function ListingEditorForm({
                     onClick={() => setNewFiles((prev) => prev.filter((_, i) => i !== index))}
                     disabled={disabled || isPending}
                     aria-label={`Remove ${file.name}`}
-                    className="absolute right-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-white/90 text-stone-600 opacity-0 shadow-soft transition-opacity group-hover:opacity-100 hover:text-red-600 disabled:opacity-0"
+                    className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-full bg-white/90 text-espresso-900/65 opacity-100 shadow-soft transition-opacity hover:text-danger-600 disabled:opacity-40 sm:size-6 sm:opacity-0 sm:group-hover:opacity-100"
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -179,8 +171,8 @@ export function ListingEditorForm({
           ) : null}
 
           {remainingSlots > 0 ? (
-            <label className="mt-1 flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-dashed border-stone-300 bg-stone-50 px-4 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-100">
-              <UploadCloud className="size-4 text-stone-400" strokeWidth={1.75} />
+            <label className="mt-1 flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-lg border border-dashed border-ivory-400 bg-ivory-50 px-4 py-2.5 text-sm font-medium text-espresso-800 hover:bg-ivory-100">
+              <UploadCloud className="size-4 text-espresso-900/35" strokeWidth={1.75} />
               Choose images
               <input
                 type="file"
@@ -192,12 +184,12 @@ export function ListingEditorForm({
               />
             </label>
           ) : null}
-          {imageError ? <p className="text-xs text-red-600">{imageError}</p> : null}
+          {imageError ? <p className="text-xs text-danger-600">{imageError}</p> : null}
         </div>
       </section>
 
-      <section className="flex flex-col gap-4 border-t border-stone-100 pt-6">
-        <h2 className="font-display text-lg font-medium text-stone-900">Pricing &amp; inventory</h2>
+      <section className="flex flex-col gap-4 border-t border-ivory-100 pt-6">
+        <h2 className="font-display text-lg font-medium text-espresso-950">Pricing &amp; inventory</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <MoneyInput
             label="Price"
@@ -235,18 +227,18 @@ export function ListingEditorForm({
         </div>
       </section>
 
-      <section className="flex flex-col gap-3 border-t border-stone-100 pt-6">
+      <section className="flex flex-col gap-3 border-t border-ivory-100 pt-6">
         <div>
-          <h2 className="font-display text-lg font-medium text-stone-900">Bulk pricing (optional)</h2>
-          <p className="mt-1 text-sm text-stone-500">
+          <h2 className="font-display text-lg font-medium text-espresso-950">Bulk pricing (optional)</h2>
+          <p className="mt-1 text-sm text-espresso-900/50">
             Offer a lower unit price at higher quantities. Tiers must not overlap.
           </p>
         </div>
 
         {tiers.map((tier, index) => (
-          <div key={index} className="flex flex-wrap items-end gap-3 rounded-xl border border-stone-200 p-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-stone-500">From qty</label>
+          <div key={index} className="flex flex-wrap items-end gap-3 rounded-xl border border-ivory-300 bg-ivory-50/60 p-3">
+            <div className="flex min-w-[5.5rem] flex-1 flex-col gap-1">
+              <label className="text-xs font-medium text-espresso-900/50">From qty</label>
               <input
                 type="number"
                 name="tierMinQuantity"
@@ -254,11 +246,11 @@ export function ListingEditorForm({
                 value={tier.minQuantity}
                 onChange={(e) => updateTier(index, "minQuantity", e.target.value)}
                 disabled={disabled || isPending}
-                className="w-24 rounded-lg border border-stone-300 px-2.5 py-1.5 text-sm"
+                className="w-full rounded-lg border border-ivory-400 bg-white px-3 py-2.5 text-sm"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-stone-500">To qty (optional)</label>
+            <div className="flex min-w-[5.5rem] flex-1 flex-col gap-1">
+              <label className="text-xs font-medium text-espresso-900/50">To qty (optional)</label>
               <input
                 type="number"
                 name="tierMaxQuantity"
@@ -266,11 +258,11 @@ export function ListingEditorForm({
                 value={tier.maxQuantity}
                 onChange={(e) => updateTier(index, "maxQuantity", e.target.value)}
                 disabled={disabled || isPending}
-                className="w-24 rounded-lg border border-stone-300 px-2.5 py-1.5 text-sm"
+                className="w-full rounded-lg border border-ivory-400 bg-white px-3 py-2.5 text-sm"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-stone-500">Unit price (GH₵)</label>
+            <div className="flex min-w-[6.5rem] flex-1 flex-col gap-1">
+              <label className="text-xs font-medium text-espresso-900/50">Unit price (GH₵)</label>
               <input
                 type="text"
                 inputMode="decimal"
@@ -278,7 +270,7 @@ export function ListingEditorForm({
                 value={tier.unitPrice}
                 onChange={(e) => updateTier(index, "unitPrice", sanitizeMoneyText(e.target.value))}
                 disabled={disabled || isPending}
-                className="w-28 rounded-lg border border-stone-300 px-2.5 py-1.5 text-sm"
+                className="w-full rounded-lg border border-ivory-400 bg-white px-3 py-2.5 text-sm"
               />
             </div>
             <button
@@ -286,7 +278,7 @@ export function ListingEditorForm({
               onClick={() => setTiers((rows) => rows.filter((_, i) => i !== index))}
               disabled={disabled || isPending}
               aria-label="Remove tier"
-              className="flex size-8 items-center justify-center rounded-lg border border-stone-300 text-stone-500 hover:bg-stone-50 disabled:opacity-40"
+              className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-ivory-400 bg-white text-espresso-900/50 hover:bg-ivory-50 disabled:opacity-40"
             >
               <Minus className="size-3.5" />
             </button>
@@ -297,16 +289,19 @@ export function ListingEditorForm({
           type="button"
           onClick={() => setTiers((rows) => [...rows, { minQuantity: "", maxQuantity: "", unitPrice: "" }])}
           disabled={disabled || isPending}
-          className="flex w-fit items-center gap-1.5 text-sm font-medium text-brand-700 hover:underline disabled:opacity-40"
+          className="flex w-fit items-center gap-1.5 text-sm font-medium text-forest-800 hover:underline disabled:opacity-40"
         >
           <Plus className="size-4" />
           Add a tier
         </button>
       </section>
 
-      <Button type="submit" size="lg" disabled={disabled || isPending} className="w-fit">
-        {isPending ? "Saving…" : "Save"}
-      </Button>
+      <div className="flex flex-col gap-1.5">
+        <Button type="submit" variant="outline" size="lg" disabled={disabled || isPending} className="w-fit">
+          {isPending ? "Saving…" : "Save draft"}
+        </Button>
+        <p className="text-xs text-espresso-900/50">Saving keeps this listing as a draft — nothing is sent for review yet.</p>
+      </div>
     </form>
   );
 }

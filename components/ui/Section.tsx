@@ -1,12 +1,14 @@
 import { Container } from "./Container";
 
-type SectionTone = "default" | "muted" | "brand" | "ink";
+type SectionTone = "default" | "muted" | "warm" | "brand" | "ink";
 
 const toneClasses: Record<SectionTone, string> = {
-  default: "bg-stone-50",
+  default: "bg-ivory-50",
   muted: "bg-white",
-  brand: "bg-brand-900 text-brand-50",
-  ink: "bg-stone-950 text-stone-50",
+  /** A deliberately distinct third surface — warm ivory tint — so alternating sections actually read as alternating. */
+  warm: "bg-ivory-100",
+  brand: "bg-forest-950 text-ivory-100",
+  ink: "bg-espresso-950 text-ivory-100",
 };
 
 export function Section({

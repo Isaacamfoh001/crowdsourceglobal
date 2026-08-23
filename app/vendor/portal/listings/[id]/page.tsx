@@ -1,9 +1,12 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { ListingEditorForm } from "../../../../../components/vendor-portal/ListingEditorForm";
 import { InventoryForm } from "../../../../../components/vendor-portal/InventoryForm";
 import { SubmitListingButton, ToggleActiveButton } from "../../../../../components/vendor-portal/SubmitListingButton";
 import { ListingStatusBadge } from "../../../../../components/vendor-portal/ListingStatusBadge";
-import { FormMessage } from "../../../../../components/ui/FormMessage";
+import { Alert } from "../../../../../components/ui/Alert";
+import { Card } from "../../../../../components/ui/Card";
 import { requireVendorPortalContext } from "../../../../../modules/vendors/policy";
 import { vendorListingsService } from "../../../../../modules/vendor-listings/service";
 import { catalogueService } from "../../../../../modules/catalogue/service";
@@ -36,10 +39,20 @@ export default async function VendorListingEditorPage({ params }: { params: Prom
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-medium text-stone-900">{listing.title || "Untitled listing"}</h1>
-          <div className="mt-2 flex items-center gap-2">
+      <Link
+        href="/vendor/portal/listings"
+        className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-espresso-900/50 hover:text-espresso-950"
+      >
+        <ArrowLeft className="size-3.5" strokeWidth={2} />
+        All listings
+      </Link>
+
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-medium break-words text-espresso-950 sm:text-[28px]">
+            {listing.title || "Untitled listing"}
+          </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <ListingStatusBadge listing={{ ...listing, hasPendingChanges }} />
             {listing.approvalStatus === "APPROVED" ? (
               <ToggleActiveButton listingId={listing.id} active={listing.listingStatus === "ACTIVE"} />
@@ -49,29 +62,29 @@ export default async function VendorListingEditorPage({ params }: { params: Prom
       </div>
 
       {listing.approvalStatus === "CHANGES_REQUESTED" && listing.changesRequestedReason ? (
-        <FormMessage tone="error">
-          <span className="font-medium">Admin requested changes:</span> {listing.changesRequestedReason}
-        </FormMessage>
+        <Alert tone="warning" title="Admin requested changes">
+          {listing.changesRequestedReason}
+        </Alert>
       ) : null}
       {listing.approvalStatus === "REJECTED" && listing.changesRequestedReason ? (
-        <FormMessage tone="error">
-          <span className="font-medium">This listing was rejected:</span> {listing.changesRequestedReason}
-        </FormMessage>
+        <Alert tone="danger" title="This listing was rejected">
+          {listing.changesRequestedReason}
+        </Alert>
       ) : null}
       {isLocked ? (
-        <FormMessage tone="success">
+        <Alert tone="info">
           {hasPendingChanges
             ? "Your proposed changes are awaiting admin review. The current live version is still visible to customers."
             : "This listing is awaiting its first review."}
-        </FormMessage>
+        </Alert>
       ) : null}
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-8">
+      <Card>
         <ListingEditorForm listing={listing} categories={categories} disabled={isLocked} />
-      </div>
+      </Card>
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-8">
-        <h2 className="font-display text-lg font-medium text-stone-900">Inventory</h2>
+      <Card>
+        <h2 className="font-display text-lg font-medium text-espresso-950">Inventory</h2>
         <div className="mt-4">
           <InventoryForm
             listingId={listing.id}
@@ -79,13 +92,13 @@ export default async function VendorListingEditorPage({ params }: { params: Prom
             availabilityStatus={listing.availabilityStatus}
           />
         </div>
-      </div>
+      </Card>
 
       {canSubmit && !isLocked ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs text-stone-500">
-            Save your title, description, price, and inventory above before submitting — a complete
-            listing gets reviewed faster.
+        <div className="flex flex-col gap-2 rounded-2xl border border-dashed border-champagne-300 bg-champagne-200/20 p-5">
+          <p className="text-sm text-espresso-800">
+            Save your title, description, price, and inventory above before submitting — a complete listing gets
+            reviewed faster.
           </p>
           <SubmitListingButton
             listingId={listing.id}

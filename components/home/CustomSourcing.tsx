@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { PackageSearch } from "lucide-react";
-import { Section } from "../ui/Section";
-import { Badge } from "../ui/Badge";
+import { Container } from "../ui/Container";
 import { Button } from "../ui/Button";
 
 const examples = [
@@ -11,21 +10,26 @@ const examples = [
   "Specialized or industrial equipment",
 ];
 
+/**
+ * Full-bleed contrasting editorial band (M14.3) — deep forest, not a
+ * gold-gradient card floating on a light section. This is the homepage's
+ * one deliberate deep-forest moment, distinct from the espresso hero.
+ */
 export function CustomSourcing() {
   return (
-    <Section id="custom-sourcing" tone="muted">
-      <div className="overflow-hidden rounded-3xl border border-gold-200 bg-gradient-to-br from-gold-50 to-stone-50 p-10 sm:p-14">
+    <section id="custom-sourcing" className="bg-forest-950 py-16 sm:py-20 lg:py-28">
+      <Container>
         <div className="grid gap-10 lg:grid-cols-[auto_1fr] lg:items-center lg:gap-16">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-gold-400 text-white">
-            <PackageSearch className="size-8" strokeWidth={1.5} />
-          </div>
+          <PackageSearch className="size-14 text-champagne-400" strokeWidth={1} />
 
           <div>
-            <Badge tone="gold">Can&apos;t find what you need?</Badge>
-            <h2 className="mt-5 font-display text-3xl font-medium tracking-tight text-stone-900 sm:text-4xl">
+            <p className="text-xs font-semibold tracking-[0.2em] text-champagne-300 uppercase">
+              Can&apos;t find what you need?
+            </p>
+            <h2 className="mt-4 font-display text-3xl font-medium tracking-tight text-ivory-50 sm:text-4xl">
               Tell us. We&apos;ll source it.
             </h2>
-            <p className="mt-4 max-w-2xl text-lg leading-relaxed text-stone-600">
+            <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ivory-200/70">
               CrownSourceGlobal handles specialized, uncommon, and large-scale sourcing
               requirements. Submit what you&apos;re looking for and we manage the
               sourcing process — you&apos;ll receive a straightforward quotation you can
@@ -34,8 +38,8 @@ export function CustomSourcing() {
 
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
               {examples.map((example) => (
-                <li key={example} className="flex items-center gap-2 text-sm text-stone-600">
-                  <span className="size-1.5 rounded-full bg-gold-500" aria-hidden />
+                <li key={example} className="flex items-center gap-2 text-sm text-ivory-200/60">
+                  <span className="size-1.5 rounded-full bg-champagne-400" aria-hidden />
                   {example}
                 </li>
               ))}
@@ -43,14 +47,14 @@ export function CustomSourcing() {
 
             <div className="mt-8">
               <Link href="/sourcing">
-                <Button variant="primary" size="lg">
+                <Button size="lg" className="!bg-champagne-400 !text-espresso-950 hover:!bg-champagne-300">
                   Request custom sourcing
                 </Button>
               </Link>
             </div>
           </div>
         </div>
-      </div>
-    </Section>
+      </Container>
+    </section>
   );
 }

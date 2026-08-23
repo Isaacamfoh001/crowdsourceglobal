@@ -52,14 +52,14 @@ export function NotificationBell({
         aria-haspopup="true"
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
         className={`relative flex size-10 items-center justify-center rounded-lg transition-colors ${
-          onDark ? "text-stone-300 hover:bg-white/10 hover:text-white" : "text-stone-700 hover:bg-stone-100"
+          onDark ? "text-ivory-200/70 hover:bg-white/10 hover:text-ivory-50" : "text-espresso-800 hover:bg-ivory-100"
         }`}
       >
         <Bell className="size-5" strokeWidth={1.75} />
         {unreadCount > 0 ? (
           <span
             aria-hidden="true"
-            className="absolute -right-0.5 -top-0.5 flex size-4.5 items-center justify-center rounded-full bg-brand-700 text-[10px] font-semibold text-white"
+            className="absolute -right-0.5 -top-0.5 flex size-4.5 items-center justify-center rounded-full bg-forest-800 text-[10px] font-semibold text-ivory-50"
           >
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
@@ -77,15 +77,15 @@ export function NotificationBell({
           />
           <div
             role="menu"
-            className="absolute right-0 z-50 mt-2 w-[calc(100vw-2rem)] max-w-sm rounded-2xl border border-stone-200 bg-white shadow-lg sm:w-96"
+            className="absolute right-0 z-50 mt-2 w-[calc(100vw-2rem)] max-w-sm rounded-2xl border border-ivory-300 bg-white shadow-lifted sm:w-96"
           >
-            <div className="flex items-center justify-between border-b border-stone-100 px-4 py-3">
-              <p className="text-sm font-semibold text-stone-900">Notifications</p>
+            <div className="flex items-center justify-between border-b border-ivory-200 px-4 py-3">
+              <p className="text-sm font-semibold text-espresso-950">Notifications</p>
               {unreadCount > 0 ? (
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
-                  className="text-xs font-medium text-brand-700 hover:underline"
+                  className="text-xs font-medium text-forest-800 hover:underline"
                 >
                   Mark all read
                 </button>
@@ -94,7 +94,7 @@ export function NotificationBell({
 
             <div className="max-h-96 overflow-y-auto">
               {recent.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-stone-500">You&apos;re all caught up.</p>
+                <p className="px-4 py-8 text-center text-sm text-espresso-900/55">You&apos;re all caught up.</p>
               ) : (
                 recent.map((notification) => (
                   <Link
@@ -104,21 +104,21 @@ export function NotificationBell({
                       markReadInBackground(notification.id, notification.readAt);
                       setOpen(false);
                     }}
-                    className={`block border-b border-stone-50 px-4 py-3 last:border-0 hover:bg-stone-50 ${
-                      notification.readAt ? "" : "bg-brand-50/50"
+                    className={`block border-b border-ivory-100 px-4 py-3 last:border-0 hover:bg-ivory-50 ${
+                      notification.readAt ? "" : "bg-champagne-200/20"
                     }`}
                   >
                     <div className="flex items-start gap-2.5">
                       <span
                         aria-hidden="true"
-                        className={`mt-1.5 size-1.5 shrink-0 rounded-full ${notification.readAt ? "bg-transparent" : "bg-brand-600"}`}
+                        className={`mt-1.5 size-1.5 shrink-0 rounded-full ${notification.readAt ? "bg-transparent" : "bg-champagne-600"}`}
                       />
                       <div className="min-w-0">
-                        <p className={`text-sm ${notification.readAt ? "font-medium text-stone-700" : "font-semibold text-stone-900"}`}>
+                        <p className={`text-sm ${notification.readAt ? "font-medium text-espresso-800" : "font-semibold text-espresso-950"}`}>
                           {notification.title}
                           {!notification.readAt ? <span className="sr-only"> (unread)</span> : null}
                         </p>
-                        <p className="mt-0.5 line-clamp-2 text-xs text-stone-500">{notification.body}</p>
+                        <p className="mt-0.5 line-clamp-2 text-xs text-espresso-900/55">{notification.body}</p>
                       </div>
                     </div>
                   </Link>
@@ -126,11 +126,11 @@ export function NotificationBell({
               )}
             </div>
 
-            <div className="border-t border-stone-100 px-4 py-2.5 text-center">
+            <div className="border-t border-ivory-200 px-4 py-2.5 text-center">
               <Link
                 href="/account/notifications"
                 onClick={() => setOpen(false)}
-                className="text-xs font-medium text-brand-700 hover:underline"
+                className="text-xs font-medium text-forest-800 hover:underline"
               >
                 View all notifications
               </Link>

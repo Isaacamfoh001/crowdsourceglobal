@@ -18,8 +18,8 @@ export default async function NewResolutionPage({ searchParams }: { searchParams
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <div>
-        <h1 className="font-display text-2xl font-medium text-stone-900">Report a problem</h1>
-        <p className="mt-1 text-sm text-stone-500">Order {context.orderNumber} — CrownSourceGlobal will review this and get back to you.</p>
+        <h1 className="font-display text-2xl font-medium text-espresso-950">Report a problem</h1>
+        <p className="mt-1 text-sm text-espresso-900/50">Order {context.orderNumber} — CrownSourceGlobal will review this and get back to you.</p>
       </div>
       <ReportProblemForm context={context} defaultFulfilmentId={fulfilmentId} />
     </div>

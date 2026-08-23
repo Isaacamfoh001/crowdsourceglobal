@@ -13,21 +13,21 @@ export function BulkPricingTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-stone-200">
+    <div className="overflow-x-auto border border-ivory-400">
       <table className="w-full min-w-[280px] text-sm">
         <thead>
-          <tr className="bg-stone-50 text-left text-xs font-semibold uppercase tracking-wide text-stone-500">
+          <tr className="bg-ivory-100 text-left text-xs font-semibold uppercase tracking-wide text-espresso-900/50">
             <th className="px-4 py-3">Quantity</th>
             <th className="px-4 py-3 text-right">Unit price</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-stone-100">
+        <tbody className="divide-y divide-ivory-200">
           {tiers.map((tier) => (
             <tr key={tier.id}>
-              <td className="px-4 py-3 text-stone-700">
+              <td className="px-4 py-3 text-espresso-900/80">
                 {tier.maxQuantity ? `${tier.minQuantity}–${tier.maxQuantity}` : `${tier.minQuantity}+`}
               </td>
-              <td className="px-4 py-3 text-right font-semibold text-stone-900">
+              <td className="px-4 py-3 text-right font-semibold text-espresso-950">
                 {formatPrice(tier.unitPrice, currency)}
               </td>
             </tr>

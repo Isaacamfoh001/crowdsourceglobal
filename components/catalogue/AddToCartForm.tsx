@@ -47,7 +47,7 @@ export function AddToCartForm({
 
   if (outOfStock) {
     return (
-      <div className="mt-8 rounded-2xl border border-stone-200 bg-white p-5">
+      <div className="mt-8 border border-ivory-400 bg-ivory-100 p-5">
         <Button size="lg" fullWidth disabled>
           Currently unavailable
         </Button>
@@ -56,21 +56,21 @@ export function AddToCartForm({
   }
 
   return (
-    <form action={formAction} className="mt-8 rounded-2xl border border-stone-200 bg-white p-5">
+    <form action={formAction} className="mt-8 border border-ivory-400 bg-ivory-100 p-6">
       <input type="hidden" name="listingId" value={listingId} />
       <input type="hidden" name="currentPath" value={currentPath} />
       <input type="hidden" name="quantity" value={quantity} />
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-stone-500">Quantity</p>
+          <p className="text-sm font-medium text-espresso-900/50">Quantity</p>
           <div className="mt-1.5 flex items-center gap-2">
             <button
               type="button"
               onClick={() => setQuantity((q) => clamp(q - 1))}
               disabled={quantity <= moq}
               aria-label="Decrease quantity"
-              className="flex size-9 items-center justify-center rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex size-9 items-center justify-center border border-ivory-400 bg-ivory-50 text-espresso-900 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Minus className="size-4" />
             </button>
@@ -80,7 +80,7 @@ export function AddToCartForm({
               min={moq}
               max={maxSelectable}
               onChange={(event) => setQuantity(clamp(Number(event.target.value) || moq))}
-              className="w-16 rounded-lg border border-stone-300 py-2 text-center text-sm font-medium text-stone-900"
+              className="w-16 border border-ivory-400 bg-ivory-50 py-2 text-center text-sm font-medium text-espresso-950"
               aria-label="Quantity"
             />
             <button
@@ -88,7 +88,7 @@ export function AddToCartForm({
               onClick={() => setQuantity((q) => clamp(q + 1))}
               disabled={quantity >= maxSelectable}
               aria-label="Increase quantity"
-              className="flex size-9 items-center justify-center rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex size-9 items-center justify-center border border-ivory-400 bg-ivory-50 text-espresso-900 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus className="size-4" />
             </button>
@@ -96,10 +96,10 @@ export function AddToCartForm({
         </div>
 
         <div className="text-left sm:text-right">
-          <p className="text-sm font-medium text-stone-500">
+          <p className="text-sm font-medium text-espresso-900/50">
             {formatPrice(previewUnitPrice, currency)} / unit
           </p>
-          <p className="text-2xl font-semibold text-stone-900">
+          <p className="font-display text-2xl font-semibold text-espresso-950">
             {formatPrice(previewTotal, currency)}
           </p>
         </div>
@@ -116,7 +116,13 @@ export function AddToCartForm({
         </div>
       ) : null}
 
-      <Button type="submit" size="lg" fullWidth className="mt-4" disabled={isPending}>
+      <Button
+        type="submit"
+        size="lg"
+        fullWidth
+        className="mt-5 !bg-champagne-400 !text-espresso-950 shadow-none hover:!bg-champagne-300"
+        disabled={isPending}
+      >
         {isPending ? "Adding…" : "Add to Cart"}
       </Button>
     </form>

@@ -56,8 +56,8 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
   return (
     <div className="flex flex-col gap-7">
       <div>
-        <h1 className="text-2xl font-medium text-stone-900">Welcome back</h1>
-        <p className="mt-1.5 text-[15px] text-stone-500">
+        <h1 className="text-2xl font-medium text-espresso-950">Welcome back</h1>
+        <p className="mt-1.5 text-[15px] text-espresso-900/50">
           Sign in to your CrownSourceGlobal account.
         </p>
       </div>
@@ -65,10 +65,10 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
       {googleEnabled ? (
         <>
           <GoogleButton label="Continue with Google" callbackURL={redirectTo} />
-          <div className="flex items-center gap-3 text-xs font-medium tracking-wide text-stone-400 uppercase">
-            <div className="h-px flex-1 bg-stone-200" />
+          <div className="flex items-center gap-3 text-xs font-medium tracking-wide text-espresso-900/35 uppercase">
+            <div className="h-px flex-1 bg-ivory-300" />
             or
-            <div className="h-px flex-1 bg-stone-200" />
+            <div className="h-px flex-1 bg-ivory-300" />
           </div>
         </>
       ) : null}
@@ -83,7 +83,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
                   type="button"
                   onClick={handleResend}
                   disabled={resendState !== "idle"}
-                  className="font-medium text-red-700 underline disabled:no-underline"
+                  className="font-medium text-danger-700 underline disabled:no-underline"
                 >
                   {resendState === "sending"
                     ? "Sending…"
@@ -106,12 +106,12 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
         />
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <label htmlFor="password" className="text-sm font-medium text-stone-700">
+            <label htmlFor="password" className="text-sm font-medium text-espresso-800">
               Password
             </label>
             <Link
               href="/forgot-password"
-              className="text-xs font-medium text-brand-700 hover:underline"
+              className="text-xs font-medium text-forest-800 hover:underline"
             >
               Forgot password?
             </Link>
@@ -123,7 +123,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             autoComplete="current-password"
             required
             disabled={isSubmitting}
-            className="w-full rounded-lg border border-stone-300 bg-white px-3.5 py-2.5 text-[15px] text-stone-900 shadow-soft outline-none transition-colors focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none transition-colors focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
           />
         </div>
 
@@ -132,9 +132,9 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
         </Button>
       </form>
 
-      <p className="text-center text-sm text-stone-500">
+      <p className="text-center text-sm text-espresso-900/50">
         Don&apos;t have an account?{" "}
-        <Link href="/sign-up" className="font-medium text-brand-700 hover:underline">
+        <Link href="/sign-up" className="font-medium text-forest-800 hover:underline">
           Create one
         </Link>
       </p>

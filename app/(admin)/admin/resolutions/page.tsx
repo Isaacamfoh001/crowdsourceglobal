@@ -4,6 +4,9 @@ import { resolutionsService } from "../../../../modules/resolutions/service";
 import { CaseStatusBadge } from "../../../../components/resolutions/CaseStatusBadge";
 import { parsePage } from "../../../../lib/pagination";
 import { Pagination } from "../../../../components/shared/Pagination";
+import { PageHeader } from "../../../../components/ui/PageHeader";
+import { Card } from "../../../../components/ui/Card";
+import { EmptyState } from "../../../../components/ui/EmptyState";
 
 export const metadata = { title: "Resolutions — Admin" };
 export const dynamic = "force-dynamic";
@@ -32,7 +35,7 @@ export default async function AdminResolutionsPage({ searchParams }: { searchPar
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-2xl font-medium text-stone-900">Resolutions</h1>
+      <PageHeader title="Resolutions" description={`${total} case${total === 1 ? "" : "s"}.`} />
 
       <div className="flex flex-wrap gap-2">
         {STATUS_FILTERS.map((filter) => (
@@ -40,7 +43,7 @@ export default async function AdminResolutionsPage({ searchParams }: { searchPar
             key={filter.label}
             href={filter.value ? `/admin/resolutions?status=${filter.value}` : "/admin/resolutions"}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
-              activeStatus === filter.value ? "bg-brand-700 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+              activeStatus === filter.value ? "bg-forest-800 text-white" : "bg-white text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
             }`}
           >
             {filter.label}
@@ -49,20 +52,18 @@ export default async function AdminResolutionsPage({ searchParams }: { searchPar
       </div>
 
       {cases.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-          <p className="text-sm text-stone-500">No cases found.</p>
-        </div>
+        <EmptyState title="No cases found" description="Try a different status filter." />
       ) : (
-        <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
+        <Card as="div" padded={false} className="divide-y divide-ivory-100">
           {cases.map((c) => (
             <Link
               key={c.id}
               href={`/admin/resolutions/${c.id}`}
-              className="flex flex-col gap-2 px-5 py-4 hover:bg-stone-50 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 px-5 py-4 hover:bg-ivory-50 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="text-sm font-medium text-stone-900">{c.caseNumber}</p>
-                <p className="text-xs text-stone-500">
+                <p className="text-sm font-medium text-espresso-950">{c.caseNumber}</p>
+                <p className="text-xs text-espresso-900/50">
                   Order {c.orderNumber} · {c.customerName} · {c.issueType.replace(/_/g, " ").toLowerCase()}
                   {c.assignedStaffName ? ` · assigned to ${c.assignedStaffName}` : " · unassigned"}
                 </p>
@@ -70,7 +71,7 @@ export default async function AdminResolutionsPage({ searchParams }: { searchPar
               <CaseStatusBadge status={c.status} label={c.statusLabel} />
             </Link>
           ))}
-        </div>
+        </Card>
       )}
 
       <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/admin/resolutions" extraParams={{ status: activeStatus }} />

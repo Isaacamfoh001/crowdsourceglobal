@@ -34,16 +34,16 @@ export function OperationsForm({
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
 
       <fieldset>
-        <legend className="text-sm font-medium text-stone-700">What do you sell?</legend>
+        <legend className="text-sm font-medium text-espresso-800">What do you sell?</legend>
         <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {categories.map((category) => (
-            <label key={category.id} className="flex items-center gap-2 text-sm text-stone-700">
+            <label key={category.id} className="flex items-center gap-2 text-sm text-espresso-800">
               <input
                 type="checkbox"
                 name="categorySlugs"
                 value={category.slug}
                 defaultChecked={initial.categorySlugs.includes(category.slug)}
-                className="size-4 rounded accent-brand-700"
+                className="size-4 rounded accent-forest-800"
               />
               {category.name}
             </label>
@@ -52,17 +52,17 @@ export function OperationsForm({
       </fieldset>
 
       <fieldset>
-        <legend className="text-sm font-medium text-stone-700">How do you sell?</legend>
+        <legend className="text-sm font-medium text-espresso-800">How do you sell?</legend>
         <div className="mt-2 flex flex-col gap-2">
           {SELLING_MODES.map((mode) => (
-            <label key={mode.value} className="flex items-center gap-2 text-sm text-stone-700">
+            <label key={mode.value} className="flex items-center gap-2 text-sm text-espresso-800">
               <input
                 type="radio"
                 name="sellingMode"
                 value={mode.value}
                 defaultChecked={initial.sellingMode === mode.value}
                 required
-                className="size-4 accent-brand-700"
+                className="size-4 accent-forest-800"
               />
               {mode.label}
             </label>
@@ -70,12 +70,12 @@ export function OperationsForm({
         </div>
       </fieldset>
 
-      <label className="flex items-center gap-2 text-sm text-stone-700">
+      <label className="flex items-center gap-2 text-sm text-espresso-800">
         <input
           type="checkbox"
           name="bulkCapable"
           defaultChecked={initial.bulkCapable}
-          className="size-4 rounded accent-brand-700"
+          className="size-4 rounded accent-forest-800"
         />
         I can fulfil large bulk orders
       </label>

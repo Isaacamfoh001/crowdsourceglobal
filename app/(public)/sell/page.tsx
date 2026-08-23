@@ -55,14 +55,14 @@ const benefits = [
 export default function SellPage() {
   return (
     <>
-      <div className="bg-stone-50 pt-16 pb-8 sm:pt-20 lg:pt-28">
+      <div className="bg-ivory-50 pt-16 pb-8 sm:pt-20 lg:pt-28">
         <Container>
           <div className="mx-auto max-w-2xl text-center">
             <Badge tone="gold">For businesses & suppliers</Badge>
-            <h1 className="mt-6 font-display text-4xl font-medium tracking-tight text-stone-900 sm:text-5xl">
+            <h1 className="mt-6 font-display text-4xl font-medium tracking-tight text-espresso-950 sm:text-5xl">
               Sell through CrownSourceGlobal
             </h1>
-            <p className="mt-5 text-lg leading-relaxed text-stone-600">
+            <p className="mt-5 text-lg leading-relaxed text-espresso-900/65">
               If you supply products and want an easier channel to reach buyers — from
               individual purchases to bulk orders — vendor onboarding starts here. Vendor
               accounts go through a separate review process from ordinary customer
@@ -96,15 +96,15 @@ export default function SellPage() {
           {benefits.map((benefit) => (
             <div
               key={benefit.title}
-              className="rounded-2xl border border-stone-200 bg-stone-50 p-7"
+              className="rounded-2xl border border-ivory-300 bg-ivory-50 p-7"
             >
-              <div className="flex size-11 items-center justify-center rounded-xl bg-brand-100 text-brand-800">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-champagne-200 text-forest-900">
                 <benefit.icon className="size-5" strokeWidth={1.75} />
               </div>
-              <h3 className="mt-5 font-display text-lg font-medium text-stone-900">
+              <h3 className="mt-5 font-display text-lg font-medium text-espresso-950">
                 {benefit.title}
               </h3>
-              <p className="mt-2 text-[15px] leading-relaxed text-stone-600">
+              <p className="mt-2 text-[15px] leading-relaxed text-espresso-900/65">
                 {benefit.description}
               </p>
             </div>
@@ -117,36 +117,36 @@ export default function SellPage() {
           <SectionHeading eyebrow="What to expect" title="Onboarding is a separate process" />
           <ol className="mt-10 flex flex-col gap-8">
             <li className="flex gap-4">
-              <span className="font-display text-2xl font-medium text-brand-300">01</span>
+              <span className="font-display text-2xl font-medium text-champagne-400/70">01</span>
               <div>
-                <h3 className="font-display text-base font-medium text-stone-900">
+                <h3 className="font-display text-base font-medium text-espresso-950">
                   Create or sign in to your account
                 </h3>
-                <p className="mt-1.5 text-[15px] leading-relaxed text-stone-600">
+                <p className="mt-1.5 text-[15px] leading-relaxed text-espresso-900/65">
                   The same CrownSourceGlobal account you&apos;d use to buy — one identity,
                   whichever way you use the marketplace.
                 </p>
               </div>
             </li>
             <li className="flex gap-4">
-              <span className="font-display text-2xl font-medium text-brand-300">02</span>
+              <span className="font-display text-2xl font-medium text-champagne-400/70">02</span>
               <div>
-                <h3 className="font-display text-base font-medium text-stone-900">
+                <h3 className="font-display text-base font-medium text-espresso-950">
                   Tell us about your business
                 </h3>
-                <p className="mt-1.5 text-[15px] leading-relaxed text-stone-600">
+                <p className="mt-1.5 text-[15px] leading-relaxed text-espresso-900/65">
                   Vendor onboarding — including business verification and listing setup —
                   is being built as our next milestone.
                 </p>
               </div>
             </li>
             <li className="flex gap-4">
-              <span className="font-display text-2xl font-medium text-brand-300">03</span>
+              <span className="font-display text-2xl font-medium text-champagne-400/70">03</span>
               <div>
-                <h3 className="font-display text-base font-medium text-stone-900">
+                <h3 className="font-display text-base font-medium text-espresso-950">
                   Get reviewed, then start listing
                 </h3>
-                <p className="mt-1.5 text-[15px] leading-relaxed text-stone-600">
+                <p className="mt-1.5 text-[15px] leading-relaxed text-espresso-900/65">
                   Our team reviews vendor applications before listings go live on the
                   marketplace.
                 </p>

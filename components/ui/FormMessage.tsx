@@ -7,8 +7,8 @@ export function FormMessage({
 }) {
   const classes =
     tone === "error"
-      ? "border-red-200 bg-red-50 text-red-700"
-      : "border-brand-200 bg-brand-50 text-brand-800";
+      ? "border-danger-200 bg-danger-50 text-danger-700"
+      : "border-success-200 bg-success-50 text-success-800";
 
   return (
     <div

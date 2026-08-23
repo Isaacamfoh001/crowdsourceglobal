@@ -44,16 +44,16 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-medium text-stone-900">{request.title}</h1>
-          <p className="mt-1 text-sm text-stone-500">
+          <h1 className="font-display text-2xl font-medium text-espresso-950">{request.title}</h1>
+          <p className="mt-1 text-sm text-espresso-900/50">
             {request.requestNumber} · {request.customerName} ({request.customerEmail})
           </p>
         </div>
         <SourcingStatusBadge status={request.status} label={request.statusLabel} />
       </div>
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-5">
-        <h2 className="font-display text-base font-medium text-stone-900">Assignment</h2>
+      <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+        <h2 className="font-display text-base font-medium text-espresso-950">Assignment</h2>
         <div className="mt-3">
           <AssignStaffForm id={request.id} staff={staff} assignedStaffId={request.assignedStaffId} />
         </div>
@@ -61,43 +61,43 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-6">
-          <div className="rounded-2xl border border-stone-200 bg-white p-5">
-            <h2 className="font-display text-base font-medium text-stone-900">Customer requirement</h2>
-            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-stone-700">{request.description}</p>
+          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <h2 className="font-display text-base font-medium text-espresso-950">Customer requirement</h2>
+            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-espresso-800">{request.description}</p>
             <div className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
               <div>
-                <p className="text-stone-500">Quantity</p>
-                <p className="mt-0.5 font-medium text-stone-900">
+                <p className="text-espresso-900/50">Quantity</p>
+                <p className="mt-0.5 font-medium text-espresso-950">
                   {request.quantity} {request.quantityUnit ?? ""}
                 </p>
               </div>
               <div>
-                <p className="text-stone-500">Destination</p>
-                <p className="mt-0.5 font-medium text-stone-900">
+                <p className="text-espresso-900/50">Destination</p>
+                <p className="mt-0.5 font-medium text-espresso-950">
                   {[request.deliveryCity, request.deliveryRegion, request.deliveryCountry].filter(Boolean).join(", ")}
                 </p>
               </div>
               {request.requiredByDate ? (
                 <div>
-                  <p className="text-stone-500">Required by</p>
-                  <p className="mt-0.5 font-medium text-stone-900">{formatDate(request.requiredByDate)}</p>
+                  <p className="text-espresso-900/50">Required by</p>
+                  <p className="mt-0.5 font-medium text-espresso-950">{formatDate(request.requiredByDate)}</p>
                 </div>
               ) : null}
               {request.budgetAmount ? (
                 <div>
-                  <p className="text-stone-500">Customer budget</p>
-                  <p className="mt-0.5 font-medium text-stone-900">
+                  <p className="text-espresso-900/50">Customer budget</p>
+                  <p className="mt-0.5 font-medium text-espresso-950">
                     {formatPrice(request.budgetAmount, request.budgetCurrency ?? "GHS")}
                   </p>
                 </div>
               ) : null}
             </div>
             {request.specifications && Object.keys(request.specifications).length > 0 ? (
-              <dl className="mt-4 divide-y divide-stone-100 rounded-xl border border-stone-200">
+              <dl className="mt-4 divide-y divide-ivory-100 rounded-xl border border-ivory-300">
                 {Object.entries(request.specifications).map(([key, value]) => (
                   <div key={key} className="flex justify-between px-4 py-2.5 text-sm">
-                    <dt className="text-stone-500">{key}</dt>
-                    <dd className="font-medium text-stone-900">{value}</dd>
+                    <dt className="text-espresso-900/50">{key}</dt>
+                    <dd className="font-medium text-espresso-950">{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -110,7 +110,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
                       href={`/api/sourcing/attachments/${attachment.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm font-medium text-brand-700 hover:underline"
+                      className="flex items-center gap-2 text-sm font-medium text-forest-800 hover:underline"
                     >
                       <Paperclip className="size-3.5" />
                       {attachment.filename}
@@ -121,11 +121,11 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
             ) : null}
           </div>
 
-          <div className="rounded-2xl border border-stone-200 bg-white p-5">
-            <h2 className="font-display text-base font-medium text-stone-900">Customer communication</h2>
-            <p className="mt-1 text-sm text-stone-500">
+          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <h2 className="font-display text-base font-medium text-espresso-950">Customer communication</h2>
+            <p className="mt-1 text-sm text-espresso-900/50">
               Reply from the shared inbox at{" "}
-              <Link href="/admin/messages" className="text-brand-700 hover:underline">
+              <Link href="/admin/messages" className="text-forest-800 hover:underline">
                 Admin → Messages
               </Link>{" "}
               — this request&apos;s thread appears there under &ldquo;About sourcing request {request.requestNumber}&rdquo;.
@@ -138,9 +138,9 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
           </div>
 
           {(request.status === "SOURCING" || request.status === "QUOTED") ? (
-            <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <h2 className="font-display text-base font-medium text-stone-900">Internal sourcing options</h2>
-              <p className="mt-1 text-sm text-stone-500">
+            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+              <h2 className="font-display text-base font-medium text-espresso-950">Internal sourcing options</h2>
+              <p className="mt-1 text-sm text-espresso-900/50">
                 Never visible to the customer — marketplace vendors, listings, or external suppliers under
                 consideration.
               </p>
@@ -148,13 +148,13 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
               {request.options.length > 0 ? (
                 <div className="mt-4 flex flex-col gap-3">
                   {request.options.map((option) => (
-                    <div key={option.id} className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 p-3 text-sm">
+                    <div key={option.id} className="flex items-center justify-between gap-3 rounded-xl border border-ivory-300 p-3 text-sm">
                       <div>
-                        <p className="font-medium text-stone-900">
+                        <p className="font-medium text-espresso-950">
                           {option.vendorName ?? option.vendorListingTitle ?? option.externalSupplierName}
-                          <span className="ml-2 text-xs font-normal text-stone-400">{option.sourceType}</span>
+                          <span className="ml-2 text-xs font-normal text-espresso-900/35">{option.sourceType}</span>
                         </p>
-                        <p className="text-xs text-stone-500">
+                        <p className="text-xs text-espresso-900/50">
                           {formatPrice(option.unitSupplyCost, option.currency)}/unit · proposed {option.proposedQuantity}
                           {option.leadTimeDays ? ` · ${option.leadTimeDays}d lead time` : ""}
                           {option.originCountry ? ` · ${option.originCountry}` : ""}
@@ -172,8 +172,8 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
               </div>
 
               {request.options.length > 0 ? (
-                <div className="mt-6 border-t border-stone-200 pt-4">
-                  <h3 className="text-sm font-medium text-stone-900">Allocate supply</h3>
+                <div className="mt-6 border-t border-ivory-300 pt-4">
+                  <h3 className="text-sm font-medium text-espresso-950">Allocate supply</h3>
                   <div className="mt-3">
                     <AllocationForm id={request.id} options={request.options} quantity={request.quantity} />
                   </div>
@@ -183,11 +183,11 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
           ) : null}
 
           {(request.status === "SOURCING" || request.status === "QUOTED") ? (
-            <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <h2 className="font-display text-base font-medium text-stone-900">
+            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+              <h2 className="font-display text-base font-medium text-espresso-950">
                 {request.status === "QUOTED" ? "Revise commercial offer" : "Prepare commercial offer"}
               </h2>
-              <p className="mt-1 text-sm text-stone-500">
+              <p className="mt-1 text-sm text-espresso-900/50">
                 {request.status === "QUOTED"
                   ? "Issuing a new quote supersedes the current one — history is preserved."
                   : "Allocated quantity must equal the requested quantity before issuing."}
@@ -199,8 +199,8 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
           ) : null}
 
           {["UNDER_REVIEW", "SOURCING", "AWAITING_CUSTOMER"].includes(request.status) ? (
-            <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <h2 className="font-display text-base font-medium text-stone-900">Unable to source</h2>
+            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+              <h2 className="font-display text-base font-medium text-espresso-950">Unable to source</h2>
               <div className="mt-3">
                 <MarkUnableToSourceForm id={request.id} />
               </div>
@@ -209,8 +209,8 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="rounded-2xl border border-stone-200 bg-white p-5">
-            <h2 className="font-display text-base font-medium text-stone-900">Next action</h2>
+          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <h2 className="font-display text-base font-medium text-espresso-950">Next action</h2>
             <div className="mt-3">
               {request.status === "SUBMITTED" ? <MoveToUnderReviewButton id={request.id} /> : null}
               {request.status === "UNDER_REVIEW" ? <MoveToSourcingButton id={request.id} label="Move to sourcing" /> : null}
@@ -218,21 +218,21 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
                 <MoveToSourcingButton id={request.id} label="Resume sourcing" />
               ) : null}
               {["QUOTED", "ACCEPTED", "UNABLE_TO_SOURCE", "CANCELLED"].includes(request.status) ? (
-                <p className="text-sm text-stone-500">No pending action.</p>
+                <p className="text-sm text-espresso-900/50">No pending action.</p>
               ) : null}
             </div>
           </div>
 
           {request.quotations.length > 0 ? (
-            <div className="rounded-2xl border border-stone-200 bg-white p-5">
-              <h2 className="font-display text-base font-medium text-stone-900">Quotation history</h2>
+            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+              <h2 className="font-display text-base font-medium text-espresso-950">Quotation history</h2>
               <ul className="mt-3 flex flex-col gap-2">
                 {request.quotations.map((quotation) => (
                   <li key={quotation.id} className="flex items-center justify-between gap-2 text-sm">
-                    <Link href={`/admin/quotations/${quotation.id}`} className="font-medium text-brand-700 hover:underline">
+                    <Link href={`/admin/quotations/${quotation.id}`} className="font-medium text-forest-800 hover:underline">
                       {quotation.reference}
                     </Link>
-                    <span className="text-xs text-stone-500">
+                    <span className="text-xs text-espresso-900/50">
                       {quotation.status} · {formatPrice(quotation.total, quotation.currency)}
                     </span>
                   </li>
@@ -241,13 +241,13 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-stone-200 bg-white p-5">
-            <h2 className="font-display text-base font-medium text-stone-900">Activity</h2>
+          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <h2 className="font-display text-base font-medium text-espresso-950">Activity</h2>
             <ul className="mt-3 flex flex-col gap-2 text-sm">
               {request.activities.map((activity) => (
-                <li key={activity.id} className="text-stone-600">
-                  <span className="font-medium text-stone-900">{activity.type.replace(/_/g, " ")}</span>
-                  <span className="ml-1.5 text-xs text-stone-400">{formatDate(activity.createdAt)}</span>
+                <li key={activity.id} className="text-espresso-900/65">
+                  <span className="font-medium text-espresso-950">{activity.type.replace(/_/g, " ")}</span>
+                  <span className="ml-1.5 text-xs text-espresso-900/35">{formatDate(activity.createdAt)}</span>
                 </li>
               ))}
             </ul>
@@ -255,7 +255,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
         </div>
       </div>
 
-      <Link href="/admin/sourcing" className="text-sm font-medium text-brand-700 hover:underline">
+      <Link href="/admin/sourcing" className="text-sm font-medium text-forest-800 hover:underline">
         ← Back to sourcing requests
       </Link>
     </div>

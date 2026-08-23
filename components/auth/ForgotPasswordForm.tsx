@@ -38,15 +38,15 @@ export function ForgotPasswordForm() {
   if (success) {
     return (
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+        <div className="flex size-12 items-center justify-center rounded-full bg-champagne-200 text-forest-800">
           <Mail className="size-6" strokeWidth={1.75} />
         </div>
-        <h1 className="text-2xl font-medium text-stone-900">Check your email</h1>
+        <h1 className="text-2xl font-medium text-espresso-950">Check your email</h1>
         <FormMessage tone="success">
           If an account exists for that email, we&apos;ve sent a link to reset your
           password.
         </FormMessage>
-        <Link href="/sign-in" className="text-sm font-medium text-brand-700 hover:underline">
+        <Link href="/sign-in" className="text-sm font-medium text-forest-800 hover:underline">
           Back to sign in
         </Link>
       </div>
@@ -58,13 +58,13 @@ export function ForgotPasswordForm() {
       <div>
         <Link
           href="/sign-in"
-          className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 hover:text-stone-700"
+          className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-espresso-900/50 hover:text-espresso-800"
         >
           <ArrowLeft className="size-4" />
           Back to sign in
         </Link>
-        <h1 className="text-2xl font-medium text-stone-900">Forgot your password?</h1>
-        <p className="mt-1.5 text-[15px] text-stone-500">
+        <h1 className="text-2xl font-medium text-espresso-950">Forgot your password?</h1>
+        <p className="mt-1.5 text-[15px] text-espresso-900/50">
           Enter your email and we&apos;ll send you a reset link.
         </p>
       </div>

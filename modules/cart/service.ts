@@ -118,6 +118,7 @@ export const cartService = {
         listingId: item.listingId,
         title: listing.title,
         categorySlug: listing.category.slug,
+        primaryImage: Array.isArray(listing.images) && listing.images.length > 0 ? (listing.images[0] as string) : null,
         quantity: item.quantity,
         moq: listing.moq,
         maxOq: listing.maxOq,

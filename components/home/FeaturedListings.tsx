@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { Section } from "../ui/Section";
-import { SectionHeading } from "../ui/SectionHeading";
+import { Container } from "../ui/Container";
 import { Button } from "../ui/Button";
 import { ListingCard } from "../catalogue/ListingCard";
 import type { PublicListingSummary } from "../../modules/catalogue/types";
@@ -11,25 +10,39 @@ export function FeaturedListings({ listings }: { listings: PublicListingSummary[
   }
 
   return (
-    <Section tone="muted">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-        <SectionHeading eyebrow="Recently added" title="Listings from our vendors" />
-        <Link href="/shop" className="hidden sm:block">
-          <Button variant="ghost">See all listings</Button>
-        </Link>
-      </div>
+    <section className="bg-ivory-50 py-16 sm:py-20 lg:py-28">
+      <Container>
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold tracking-[0.2em] text-champagne-700 uppercase">Recently added</p>
+            <h2 className="mt-3 font-display text-3xl font-medium tracking-tight text-espresso-950 sm:text-4xl">
+              Listings from our vendors
+            </h2>
+          </div>
+          <Link href="/shop" className="hidden sm:block">
+            <Button variant="ghost" className="!text-espresso-950 hover:!bg-espresso-950/5">
+              See all listings
+            </Button>
+          </Link>
+        </div>
 
-      <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-        {listings.map((listing) => (
-          <ListingCard key={listing.id} listing={listing} />
-        ))}
-      </div>
+        <div className="mt-10 grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-4 xl:grid-cols-6">
+          {listings.map((listing) => (
+            <ListingCard key={listing.id} listing={listing} />
+          ))}
+        </div>
 
-      <div className="mt-8 flex justify-center sm:hidden">
-        <Link href="/shop">
-          <Button variant="outline">See all listings</Button>
-        </Link>
-      </div>
-    </Section>
+        <div className="mt-8 flex justify-center sm:hidden">
+          <Link href="/shop">
+            <Button
+              variant="outline"
+              className="!border-espresso-950/20 !text-espresso-950 hover:!border-espresso-950/40"
+            >
+              See all listings
+            </Button>
+          </Link>
+        </div>
+      </Container>
+    </section>
   );
 }

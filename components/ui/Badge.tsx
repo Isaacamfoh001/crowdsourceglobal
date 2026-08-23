@@ -1,13 +1,27 @@
-type BadgeTone = "brand" | "gold" | "neutral" | "onDark" | "danger";
+export type BadgeTone = "brand" | "gold" | "neutral" | "onDark" | "success" | "warning" | "danger" | "info";
 
-const toneClasses: Record<BadgeTone, string> = {
-  brand: "bg-brand-100 text-brand-800",
-  gold: "bg-gold-100 text-gold-800",
-  neutral: "bg-stone-100 text-stone-700",
+/**
+ * The single source of truth for status/tone color across the app (M14.1).
+ * Domain-specific badges (OrderStatusBadge, FulfilmentStatusBadge, etc. —
+ * see components/ui/StatusBadge.tsx) map their own status vocabulary to one
+ * of these tones rather than hand-rolling className strings — this is what
+ * keeps "success" looking the same on a customer order as it does on a
+ * vendor payout or an admin queue. "brand" and "gold" are the two premium
+ * accent tones (champagne chip / deep forest chip) — never used for
+ * critical/status meaning, only editorial emphasis (eyebrows, feature tags).
+ */
+export const badgeToneClasses: Record<BadgeTone, string> = {
+  brand: "bg-champagne-200 text-espresso-900",
+  gold: "bg-forest-900 text-champagne-300",
+  neutral: "bg-ivory-200 text-espresso-800",
   onDark: "bg-white/10 text-white",
-  danger: "bg-red-100 text-red-800",
+  success: "bg-success-100 text-success-800",
+  warning: "bg-warning-100 text-warning-800",
+  danger: "bg-danger-100 text-danger-800",
+  info: "bg-info-100 text-info-800",
 };
 
+/** Uppercase, tracked "tag" style — eyebrows, category labels, severity chips. */
 export function Badge({
   tone = "brand",
   className = "",
@@ -19,7 +33,7 @@ export function Badge({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase ${toneClasses[tone]} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase ${badgeToneClasses[tone]} ${className}`}
     >
       {children}
     </span>

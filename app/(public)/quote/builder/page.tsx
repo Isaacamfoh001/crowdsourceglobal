@@ -23,17 +23,17 @@ export default async function QuoteBuilderPage() {
   const canGenerate = lines.length > 0 && eligibleLines.length === lines.length;
 
   return (
-    <div className="bg-stone-50 py-10 sm:py-14">
+    <div className="bg-ivory-50 py-10 sm:py-14">
       <Container className="max-w-3xl">
-        <h1 className="font-display text-3xl font-medium text-stone-900">Build your quote</h1>
-        <p className="mt-1.5 text-sm text-stone-500">
+        <h1 className="font-display text-3xl font-medium text-espresso-950">Build your quote</h1>
+        <p className="mt-1.5 text-sm text-espresso-900/50">
           Add bulk quantities from any listing, review pricing, then generate one CrownSourceGlobal
           quotation — even across multiple vendors.
         </p>
 
         {lines.length === 0 ? (
-          <div className="mt-8 rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-            <p className="text-sm text-stone-500">Your quote is empty.</p>
+          <div className="mt-8 rounded-2xl border border-dashed border-ivory-400 bg-white p-10 text-center">
+            <p className="text-sm text-espresso-900/50">Your quote is empty.</p>
             <Link href="/shop">
               <Button variant="outline" className="mt-4">
                 Browse listings
@@ -41,25 +41,25 @@ export default async function QuoteBuilderPage() {
             </Link>
           </div>
         ) : (
-          <div className="mt-8 rounded-2xl border border-stone-200 bg-white p-6 sm:p-8">
-            <div className="divide-y divide-stone-100">
+          <div className="mt-8 rounded-2xl border border-ivory-300 bg-white p-6 sm:p-8">
+            <div className="divide-y divide-ivory-100">
               {lines.map((line) => (
                 <QuoteDraftLineItem key={line.listingId} line={line} />
               ))}
             </div>
 
-            <div className="mt-5 flex items-center justify-between border-t border-stone-200 pt-4">
-              <span className="text-sm font-medium text-stone-600">Estimated subtotal</span>
-              <span className="text-lg font-semibold text-stone-900">
+            <div className="mt-5 flex items-center justify-between border-t border-ivory-300 pt-4">
+              <span className="text-sm font-medium text-espresso-900/65">Estimated subtotal</span>
+              <span className="text-lg font-semibold text-espresso-950">
                 {formatPrice(subtotal, currency)}
               </span>
             </div>
-            <p className="mt-1 text-xs text-stone-400">
+            <p className="mt-1 text-xs text-espresso-900/35">
               Final pricing is confirmed server-side when your quote is generated.
             </p>
 
             {!canGenerate ? (
-              <p className="mt-4 text-sm text-red-600">
+              <p className="mt-4 text-sm text-danger-600">
                 Remove unavailable items before generating your quote.
               </p>
             ) : null}

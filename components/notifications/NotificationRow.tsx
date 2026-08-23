@@ -27,19 +27,19 @@ export function NotificationRow({ notification }: { notification: NotificationVi
     <Link
       href={notification.targetUrl}
       onClick={handleClick}
-      className={`flex items-start gap-3 px-5 py-4 hover:bg-stone-50 ${notification.readAt ? "" : "bg-brand-50/40"}`}
+      className={`flex items-start gap-3 px-5 py-4 hover:bg-ivory-50 ${notification.readAt ? "" : "bg-champagne-200/20"}`}
     >
       <span
         aria-hidden="true"
-        className={`mt-1.5 size-2 shrink-0 rounded-full ${notification.readAt ? "bg-transparent" : "bg-brand-600"}`}
+        className={`mt-1.5 size-2 shrink-0 rounded-full ${notification.readAt ? "bg-transparent" : "bg-forest-700"}`}
       />
       <div className="min-w-0 flex-1">
-        <p className={`text-sm ${notification.readAt ? "font-medium text-stone-700" : "font-semibold text-stone-900"}`}>
+        <p className={`text-sm ${notification.readAt ? "font-medium text-espresso-800" : "font-semibold text-espresso-950"}`}>
           {notification.title}
           {!notification.readAt ? <span className="sr-only"> (unread)</span> : null}
         </p>
-        <p className="mt-1 text-sm text-stone-600">{notification.body}</p>
-        <p className="mt-1.5 text-xs text-stone-400">{formatDate(notification.createdAt)}</p>
+        <p className="mt-1 text-sm text-espresso-900/65">{notification.body}</p>
+        <p className="mt-1.5 text-xs text-espresso-900/35">{formatDate(notification.createdAt)}</p>
       </div>
     </Link>
   );

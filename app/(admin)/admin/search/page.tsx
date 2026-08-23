@@ -28,28 +28,28 @@ export default async function AdminSearchPage({ searchParams }: { searchParams: 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-2xl font-medium text-stone-900">Search</h1>
-        <p className="mt-1 text-sm text-stone-500">
+        <h1 className="font-display text-2xl font-medium text-espresso-950">Search</h1>
+        <p className="mt-1 text-sm text-espresso-900/50">
           {query ? `Results for "${query}"` : "Search by order, quote, sourcing, vendor, customer, listing, or tracking reference."}
         </p>
       </div>
 
       {query.length > 0 && query.length < 2 ? (
-        <p className="text-sm text-stone-500">Enter at least 2 characters.</p>
+        <p className="text-sm text-espresso-900/50">Enter at least 2 characters.</p>
       ) : results.length === 0 && query ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-          <p className="text-sm text-stone-500">No matches for &quot;{query}&quot;.</p>
+        <div className="rounded-2xl border border-dashed border-ivory-400 bg-white p-10 text-center">
+          <p className="text-sm text-espresso-900/50">No matches for &quot;{query}&quot;.</p>
         </div>
       ) : results.length > 0 ? (
-        <ul className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
+        <ul className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
           {results.map((result, index) => (
             <li key={`${result.type}-${result.targetUrl}-${index}`}>
-              <Link href={result.targetUrl} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-stone-50">
+              <Link href={result.targetUrl} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-ivory-50">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-stone-900">{result.label}</p>
-                  <p className="mt-0.5 truncate text-sm text-stone-500">{result.sublabel}</p>
+                  <p className="text-sm font-medium text-espresso-950">{result.label}</p>
+                  <p className="mt-0.5 truncate text-sm text-espresso-900/50">{result.sublabel}</p>
                 </div>
-                <span className="shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600">
+                <span className="shrink-0 rounded-full bg-ivory-100 px-2.5 py-1 text-xs font-medium text-espresso-900/65">
                   {TYPE_LABELS[result.type]}
                 </span>
               </Link>

@@ -21,14 +21,14 @@ export default async function AdminConversationPage({ params }: { params: Promis
 
   return (
     <div className="flex flex-col gap-4">
-      <Link href="/admin/messages" className="text-sm font-medium text-brand-700 hover:underline">
+      <Link href="/admin/messages" className="text-sm font-medium text-forest-800 hover:underline">
         ← All messages
       </Link>
       <div>
-        <h1 className="font-display text-xl font-medium text-stone-900">
+        <h1 className="font-display text-xl font-medium text-espresso-950">
           {conversation.participantType === "CUSTOMER" ? "Customer" : "Vendor"} conversation
         </h1>
-        <p className="text-sm text-stone-500">{conversation.contextLabel}</p>
+        <p className="text-sm text-espresso-900/50">{conversation.contextLabel}</p>
       </div>
       <MessageThread
         conversationId={conversation.id}

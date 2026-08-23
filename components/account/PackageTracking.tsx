@@ -22,19 +22,20 @@ export function PackageTracking({
 }) {
   const lastStep = tracking.steps.at(-1);
   const isDelivered = Boolean(lastStep?.done);
+  const currentStep = tracking.steps.find((step) => step.current);
   const showDerivedBadge = packageStatus && !RAW_PROGRESSION_STATUSES.has(packageStatus.status);
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-5">
+    <div className="rounded-2xl border border-ivory-300 bg-white p-5">
       <div className="flex items-center justify-between">
-        <p className="font-display text-[15px] font-medium text-stone-900">
+        <p className="font-display text-[15px] font-medium text-espresso-950">
           {multiPackage ? `Package ${index + 1} — ` : ""}
           {tracking.vendorName}
         </p>
         <div className="flex items-center gap-2">
           {showDerivedBadge ? <OrderStatusBadge status={packageStatus.status} label={packageStatus.label} /> : null}
           {tracking.hasIssue ? (
-            <span className="flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
+            <span className="flex items-center gap-1 rounded-full bg-danger-100 px-2.5 py-1 text-xs font-semibold text-danger-700">
               <AlertTriangle className="size-3.5" strokeWidth={2} />
               Needs attention
             </span>
@@ -44,25 +45,40 @@ export function PackageTracking({
 
       <ul className="mt-3 flex flex-col gap-1">
         {tracking.items.map((item) => (
-          <li key={item.id} className="text-sm text-stone-600">
+          <li key={item.id} className="text-sm text-espresso-900/65">
             {item.description} × {item.quantity}
           </li>
         ))}
       </ul>
 
-      <ol className="mt-4 flex flex-col gap-2">
-        {tracking.steps.map((step) => (
-          <li key={step.key} className="flex items-center gap-2.5 text-sm">
-            {step.done ? (
-              <CheckCircle2 className="size-4 shrink-0 text-brand-700" strokeWidth={2} />
-            ) : step.current ? (
-              <span className="flex size-4 shrink-0 items-center justify-center">
-                <span className="size-2.5 rounded-full bg-gold-500" />
-              </span>
-            ) : (
-              <Circle className="size-4 shrink-0 text-stone-300" strokeWidth={2} />
-            )}
-            <span className={step.done || step.current ? "font-medium text-stone-900" : "text-stone-400"}>
+      {currentStep && !isDelivered ? (
+        <p className="mt-4 rounded-lg bg-ivory-100 px-3.5 py-2.5 text-sm text-espresso-900/70">
+          <span className="font-medium text-espresso-950">Next: </span>
+          {currentStep.label}
+        </p>
+      ) : null}
+
+      <ol className="mt-4 flex flex-col">
+        {tracking.steps.map((step, stepIndex) => (
+          <li key={step.key} className="relative flex gap-3 pb-5 last:pb-0">
+            {stepIndex < tracking.steps.length - 1 ? (
+              <span
+                aria-hidden="true"
+                className={`absolute left-[7px] top-4 h-full w-px ${step.done ? "bg-forest-700" : "bg-ivory-300"}`}
+              />
+            ) : null}
+            <span className="relative z-10 flex size-4 shrink-0 items-center justify-center bg-white">
+              {step.done ? (
+                <CheckCircle2 className="size-4 shrink-0 text-forest-800" strokeWidth={2} />
+              ) : step.current ? (
+                <span className="flex size-4 shrink-0 items-center justify-center">
+                  <span className="size-2.5 animate-pulse rounded-full bg-champagne-600" />
+                </span>
+              ) : (
+                <Circle className="size-4 shrink-0 text-ivory-400" strokeWidth={2} />
+              )}
+            </span>
+            <span className={`text-sm ${step.done || step.current ? "font-medium text-espresso-950" : "text-espresso-900/35"}`}>
               {step.label}
             </span>
           </li>

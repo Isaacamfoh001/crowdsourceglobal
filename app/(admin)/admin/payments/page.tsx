@@ -4,6 +4,10 @@ import { paymentsService } from "../../../../modules/payments/service";
 import { formatPrice } from "../../../../lib/format";
 import { parsePage } from "../../../../lib/pagination";
 import { Pagination } from "../../../../components/shared/Pagination";
+import { PageHeader } from "../../../../components/ui/PageHeader";
+import { EmptyState } from "../../../../components/ui/EmptyState";
+import { Card } from "../../../../components/ui/Card";
+import { StatusBadge } from "../../../../components/ui/StatusBadge";
 
 export const metadata = { title: "Payments — Admin" };
 export const dynamic = "force-dynamic";
@@ -56,7 +60,7 @@ export default async function AdminPaymentsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-2xl font-medium text-stone-900">Payments</h1>
+      <PageHeader title="Payments" description={`${total} payment${total === 1 ? "" : "s"}.`} />
 
       <div className="flex flex-wrap gap-2">
         {STATUS_FILTERS.map((filter) => (
@@ -65,8 +69,8 @@ export default async function AdminPaymentsPage({
             href={withParam("status", filter.value)}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
               activeStatus === filter.value && !requiresAttention
-                ? "bg-brand-700 text-white"
-                : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+                ? "bg-forest-800 text-white"
+                : "bg-white text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
             }`}
           >
             {filter.label}
@@ -75,7 +79,7 @@ export default async function AdminPaymentsPage({
         <Link
           href="/admin/payments?attention=1"
           className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
-            requiresAttention ? "bg-red-600 text-white" : "bg-white text-red-600 ring-1 ring-red-200 hover:bg-red-50"
+            requiresAttention ? "bg-danger-600 text-white" : "bg-white text-danger-600 ring-1 ring-danger-200 hover:bg-danger-50"
           }`}
         >
           Requires attention
@@ -89,8 +93,8 @@ export default async function AdminPaymentsPage({
             href={withParam("provider", filter.value)}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
               activeProvider === filter.value
-                ? "bg-stone-800 text-white"
-                : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+                ? "bg-espresso-900 text-white"
+                : "bg-white text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
             }`}
           >
             {filter.label}
@@ -99,20 +103,18 @@ export default async function AdminPaymentsPage({
       </div>
 
       {payments.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-          <p className="text-sm text-stone-500">No payments found.</p>
-        </div>
+        <EmptyState title="No payments found" description="Try a different status or provider filter." />
       ) : (
-        <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
+        <Card as="div" padded={false} className="divide-y divide-ivory-100">
           {payments.map((p) => (
             <Link
               key={p.id}
               href={`/admin/payments/${p.id}`}
-              className="flex flex-col gap-2 px-5 py-4 hover:bg-stone-50 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 px-5 py-4 hover:bg-ivory-50 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="text-sm font-medium text-stone-900">{p.reference}</p>
-                <p className="text-xs text-stone-500">
+                <p className="text-sm font-medium text-espresso-950">{p.reference}</p>
+                <p className="text-xs text-espresso-900/50">
                   Order {p.order.orderNumber} · {p.order.customerProfile.displayName} · {p.provider}
                   {" · "}
                   {p.method === "MOBILE_MONEY"
@@ -124,24 +126,24 @@ export default async function AdminPaymentsPage({
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-stone-900">{formatPrice(p.amount.toNumber(), p.currency)}</span>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                <span className="text-sm font-medium text-espresso-950">{formatPrice(p.amount.toNumber(), p.currency)}</span>
+                <StatusBadge
+                  tone={
                     p.exceptionReason
-                      ? "bg-red-100 text-red-700"
+                      ? "danger"
                       : p.status === "SUCCEEDED"
-                        ? "bg-emerald-100 text-emerald-700"
+                        ? "success"
                         : p.status === "FAILED" || p.status === "CANCELLED"
-                          ? "bg-stone-200 text-stone-600"
-                          : "bg-amber-100 text-amber-700"
-                  }`}
+                          ? "neutral"
+                          : "warning"
+                  }
                 >
-                  {p.exceptionReason ? "ATTENTION" : p.status}
-                </span>
+                  {p.exceptionReason ? "Attention" : p.status}
+                </StatusBadge>
               </div>
             </Link>
           ))}
-        </div>
+        </Card>
       )}
 
       <Pagination

@@ -17,13 +17,13 @@ const STEPS = [
 
 export default function SourcingLandingPage() {
   return (
-    <div className="bg-stone-50 py-14 sm:py-20">
+    <div className="bg-ivory-50 py-14 sm:py-20">
       <Container className="max-w-3xl text-center">
-        <p className="text-sm font-semibold uppercase tracking-wide text-gold-700">Can&apos;t find exactly what you need?</p>
-        <h1 className="mt-3 font-display text-4xl font-medium tracking-tight text-stone-900 sm:text-5xl">
+        <p className="text-sm font-semibold uppercase tracking-wide text-champagne-700">Can&apos;t find exactly what you need?</p>
+        <h1 className="mt-3 font-display text-4xl font-medium tracking-tight text-espresso-950 sm:text-5xl">
           Tell us. We&apos;ll source it.
         </h1>
-        <p className="mt-5 text-lg leading-relaxed text-stone-600">
+        <p className="mt-5 text-lg leading-relaxed text-espresso-900/65">
           Custom sourcing is for requirements that don&apos;t exist in our marketplace yet — unusual
           specifications, custom branding, large quantities, or products we don&apos;t currently list.
           CrownSourceGlobal manages the sourcing process for you.
@@ -38,15 +38,15 @@ export default function SourcingLandingPage() {
       <Container className="mt-16 max-w-4xl">
         <div className="grid gap-6 sm:grid-cols-2">
           {STEPS.map((step, index) => (
-            <div key={step.title} className="rounded-2xl border border-stone-200 bg-white p-6">
+            <div key={step.title} className="rounded-2xl border border-ivory-300 bg-white p-6">
               <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-gold-100 text-gold-700">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-champagne-200 text-champagne-700">
                   <step.icon className="size-5" strokeWidth={1.75} />
                 </div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Step {index + 1}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-espresso-900/35">Step {index + 1}</p>
               </div>
-              <h2 className="mt-3 font-display text-base font-medium text-stone-900">{step.title}</h2>
-              <p className="mt-1.5 text-sm leading-relaxed text-stone-600">{step.description}</p>
+              <h2 className="mt-3 font-display text-base font-medium text-espresso-950">{step.title}</h2>
+              <p className="mt-1.5 text-sm leading-relaxed text-espresso-900/65">{step.description}</p>
             </div>
           ))}
         </div>

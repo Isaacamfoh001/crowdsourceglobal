@@ -1,7 +1,7 @@
 import { Container } from "../../../components/ui/Container";
 import { CategoryNav } from "../../../components/catalogue/CategoryNav";
 import { ListingCard } from "../../../components/catalogue/ListingCard";
-import { EmptyState } from "../../../components/catalogue/EmptyState";
+import { EmptyState } from "../../../components/ui/EmptyState";
 import { SearchForm } from "../../../components/catalogue/SearchForm";
 import { Pagination } from "../../../components/shared/Pagination";
 import { parsePage } from "../../../lib/pagination";
@@ -26,31 +26,41 @@ export default async function ShopPage({
   ]);
 
   return (
-    <div className="bg-stone-50 py-10 sm:py-14">
-      <Container>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="font-display text-3xl font-medium text-stone-900">
-              Shop the marketplace
-            </h1>
-            <p className="mt-1.5 text-[15px] text-stone-600">
-              Browse listings from vendors CrownSourceGlobal has approved.
-            </p>
+    <div className="bg-ivory-50">
+      <div className="bg-espresso-950 py-8 sm:py-10">
+        <Container>
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.2em] text-champagne-300 uppercase">
+                Marketplace
+              </p>
+              <h1 className="mt-2 font-display text-3xl font-medium text-ivory-50 sm:text-4xl">
+                Shop the marketplace
+              </h1>
+            </div>
+            <div className="w-full sm:w-96">
+              <SearchForm action="/shop" defaultValue={q} />
+            </div>
           </div>
-          <div className="w-full sm:w-72">
-            <SearchForm action="/shop" defaultValue={q} />
-          </div>
-        </div>
+        </Container>
+      </div>
 
-        <div className="mt-10 grid gap-8 lg:grid-cols-[220px_1fr]">
+      <Container className="py-10 sm:py-14">
+        <div className="grid gap-10 lg:grid-cols-[200px_1fr]">
           <CategoryNav categories={categories} />
 
           <div className="min-w-0">
-            {q ? (
-              <p className="mb-4 text-sm text-stone-500">
-                {total} result{total === 1 ? "" : "s"} for &ldquo;{q}&rdquo;
-              </p>
-            ) : null}
+            <p className="mb-5 text-sm text-espresso-900/60">
+              {q ? (
+                <>
+                  {total} result{total === 1 ? "" : "s"} for &ldquo;{q}&rdquo;
+                </>
+              ) : (
+                <>
+                  {total} listing{total === 1 ? "" : "s"} available
+                </>
+              )}
+            </p>
 
             {listings.length === 0 ? (
               <EmptyState
@@ -60,14 +70,14 @@ export default async function ShopPage({
                 actionLabel="Request custom sourcing"
               />
             ) : (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-x-5 gap-y-9 sm:grid-cols-3 xl:grid-cols-4">
                 {listings.map((listing) => (
                   <ListingCard key={listing.id} listing={listing} />
                 ))}
               </div>
             )}
 
-            <div className="mt-6">
+            <div className="mt-8">
               <Pagination
                 currentPage={page}
                 pageSize={CATALOGUE_PAGE_SIZE}

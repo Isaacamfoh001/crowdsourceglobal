@@ -85,12 +85,12 @@ export function CardPaymentForm({ orderId }: { orderId: string }) {
   if (step === "resuming") {
     return (
       <div className="flex flex-col items-center gap-4 py-4 text-center">
-        <div className="size-10 animate-spin rounded-full border-4 border-stone-200 border-t-stone-600" aria-hidden />
-        <p className="text-sm font-medium text-stone-800" role="status">
+        <div className="size-10 animate-spin rounded-full border-4 border-ivory-300 border-t-espresso-900/65" aria-hidden />
+        <p className="text-sm font-medium text-espresso-900" role="status">
           A card payment is already in progress for this order.
         </p>
-        <p className="text-xs text-stone-500">Complete it in the tab you opened, or wait a moment and check again.</p>
-        <p className="text-xs text-stone-400">Order reference: {payment?.reference}</p>
+        <p className="text-xs text-espresso-900/50">Complete it in the tab you opened, or wait a moment and check again.</p>
+        <p className="text-xs text-espresso-900/35">Order reference: {payment?.reference}</p>
       </div>
     );
   }
@@ -109,7 +109,7 @@ export function CardPaymentForm({ orderId }: { orderId: string }) {
   return (
     <div className="flex flex-col gap-4">
       {error ? <FormMessage tone="error">{error}</FormMessage> : null}
-      <p className="text-sm text-stone-600">
+      <p className="text-sm text-espresso-900/65">
         You&apos;ll be securely redirected to enter your card details. CrownSourceGlobal never sees or
         stores your card number.
       </p>

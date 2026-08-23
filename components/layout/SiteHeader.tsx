@@ -21,11 +21,11 @@ function CartLink({ itemCount }: { itemCount: number }) {
     <Link
       href="/cart"
       aria-label={`Cart, ${itemCount} item${itemCount === 1 ? "" : "s"}`}
-      className="relative flex size-10 items-center justify-center rounded-lg text-stone-700 transition-colors hover:bg-stone-100"
+      className="relative flex size-10 items-center justify-center rounded-lg text-espresso-800 transition-colors hover:bg-ivory-100"
     >
       <ShoppingBag className="size-5" strokeWidth={1.75} />
       {itemCount > 0 ? (
-        <span className="absolute -right-0.5 -top-0.5 flex size-4.5 items-center justify-center rounded-full bg-brand-700 text-[10px] font-semibold text-white">
+        <span className="absolute -right-0.5 -top-0.5 flex size-4.5 items-center justify-center rounded-full bg-forest-800 text-[10px] font-semibold text-ivory-50">
           {itemCount > 99 ? "99+" : itemCount}
         </span>
       ) : null}
@@ -51,8 +51,8 @@ export function SiteHeader({
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-stone-200/80 bg-stone-50/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+    <header className="sticky top-0 z-40 border-b border-ivory-300/80 bg-ivory-50/90 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6 lg:px-8 lg:py-4">
         <Logo />
 
         <nav className="hidden items-center gap-8 lg:flex" aria-label="Primary">
@@ -60,7 +60,7 @@ export function SiteHeader({
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-stone-600 transition-colors hover:text-stone-900"
+              className="text-sm font-medium text-espresso-800/75 transition-colors hover:text-espresso-950"
             >
               {link.label}
             </Link>
@@ -73,7 +73,7 @@ export function SiteHeader({
               {hasVendorPortal ? (
                 <Link
                   href="/vendor/portal"
-                  className="text-sm font-medium text-stone-700 transition-colors hover:text-stone-900"
+                  className="text-sm font-medium text-espresso-800 transition-colors hover:text-espresso-950"
                 >
                   Vendor Portal
                 </Link>
@@ -81,7 +81,7 @@ export function SiteHeader({
               {isAdmin ? (
                 <Link
                   href="/admin"
-                  className="text-sm font-medium text-gold-700 transition-colors hover:text-gold-800"
+                  className="text-sm font-medium text-champagne-700 transition-colors hover:text-champagne-600"
                 >
                   Admin
                 </Link>
@@ -90,7 +90,7 @@ export function SiteHeader({
               <NotificationBell unreadCount={unreadNotificationCount} recent={recentNotifications} />
               <Link
                 href="/account"
-                className="text-sm font-medium text-stone-700 transition-colors hover:text-stone-900"
+                className="text-sm font-medium text-espresso-800 transition-colors hover:text-espresso-950"
               >
                 Account
               </Link>
@@ -100,7 +100,7 @@ export function SiteHeader({
             <>
               <Link
                 href="/sign-in"
-                className="text-sm font-medium text-stone-700 transition-colors hover:text-stone-900"
+                className="text-sm font-medium text-espresso-800 transition-colors hover:text-espresso-950"
               >
                 Sign in
               </Link>
@@ -130,7 +130,7 @@ export function SiteHeader({
       {menuOpen ? (
         <div
           id="mobile-nav"
-          className="border-t border-stone-200 bg-stone-50 px-6 py-4 lg:hidden"
+          className="border-t border-ivory-300 bg-ivory-50 px-4 py-4 sm:px-6 lg:hidden"
         >
           <nav className="flex flex-col gap-1" aria-label="Mobile">
             {NAV_LINKS.map((link) => (
@@ -138,7 +138,7 @@ export function SiteHeader({
                 key={link.href}
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-stone-700 hover:bg-stone-100"
+                className="rounded-lg px-3.5 py-3 text-[15px] font-medium text-espresso-800 hover:bg-ivory-100"
               >
                 {link.label}
               </Link>
@@ -149,7 +149,7 @@ export function SiteHeader({
                   <Link
                     href="/vendor/portal"
                     onClick={() => setMenuOpen(false)}
-                    className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-stone-700 hover:bg-stone-100"
+                    className="rounded-lg px-3.5 py-3 text-[15px] font-medium text-espresso-800 hover:bg-ivory-100"
                   >
                     Vendor Portal
                   </Link>
@@ -158,7 +158,7 @@ export function SiteHeader({
                   <Link
                     href="/admin"
                     onClick={() => setMenuOpen(false)}
-                    className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-gold-700 hover:bg-gold-50"
+                    className="rounded-lg px-3.5 py-3 text-[15px] font-medium text-champagne-700 hover:bg-champagne-200/40"
                   >
                     Admin
                   </Link>
@@ -166,14 +166,14 @@ export function SiteHeader({
                 <Link
                   href="/account"
                   onClick={() => setMenuOpen(false)}
-                  className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-stone-700 hover:bg-stone-100"
+                  className="rounded-lg px-3.5 py-3 text-[15px] font-medium text-espresso-800 hover:bg-ivory-100"
                 >
                   Account
                 </Link>
               </>
             ) : null}
           </nav>
-          <div className="mt-4 flex flex-col gap-2 border-t border-stone-200 pt-4">
+          <div className="mt-4 flex flex-col gap-2 border-t border-ivory-300 pt-4">
             {isSignedIn ? (
               <SignOutButton fullWidth />
             ) : (

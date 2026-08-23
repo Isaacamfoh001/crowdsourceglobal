@@ -14,10 +14,10 @@ export function CategoryNav({
       <div className="flex min-w-0 gap-2 overflow-x-auto pb-2 lg:hidden">
         <Link
           href="/shop"
-          className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium ${
+          className={`shrink-0 rounded-full border px-4 py-2.5 text-sm font-medium ${
             !activeSlug
-              ? "border-brand-700 bg-brand-700 text-white"
-              : "border-stone-300 bg-white text-stone-700"
+              ? "border-espresso-950 bg-espresso-950 text-ivory-50"
+              : "border-ivory-400 bg-ivory-50 text-espresso-950"
           }`}
         >
           All
@@ -26,10 +26,10 @@ export function CategoryNav({
           <Link
             key={category.id}
             href={`/shop/${category.slug}`}
-            className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium ${
+            className={`shrink-0 rounded-full border px-4 py-2.5 text-sm font-medium ${
               activeSlug === category.slug
-                ? "border-brand-700 bg-brand-700 text-white"
-                : "border-stone-300 bg-white text-stone-700"
+                ? "border-espresso-950 bg-espresso-950 text-ivory-50"
+                : "border-ivory-400 bg-ivory-50 text-espresso-950"
             }`}
           >
             {category.name}
@@ -37,11 +37,11 @@ export function CategoryNav({
         ))}
       </div>
 
-      <div className="hidden flex-col gap-1 lg:flex">
+      <div className="hidden flex-col gap-0.5 lg:flex">
         <Link
           href="/shop"
           className={`rounded-lg px-3 py-2 text-sm font-medium ${
-            !activeSlug ? "bg-brand-100 text-brand-800" : "text-stone-700 hover:bg-stone-100"
+            !activeSlug ? "bg-champagne-200/50 text-espresso-950" : "text-espresso-900/70 hover:bg-ivory-200"
           }`}
         >
           All categories
@@ -57,23 +57,23 @@ export function CategoryNav({
                 href={`/shop/${category.slug}`}
                 className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium ${
                   isActiveParent
-                    ? "bg-brand-100 text-brand-800"
-                    : "text-stone-700 hover:bg-stone-100"
+                    ? "bg-champagne-200/50 text-espresso-950"
+                    : "text-espresso-900/70 hover:bg-ivory-200"
                 }`}
               >
-                <Icon className="size-4" strokeWidth={1.75} />
+                <Icon className="size-4" strokeWidth={1.5} />
                 {category.name}
               </Link>
               {category.children.length > 0 && (isActiveParent || hasActiveChild) ? (
-                <div className="ml-6 mt-1 flex flex-col gap-1 border-l border-stone-200 pl-3">
+                <div className="ml-6 mt-1 flex flex-col gap-1 border-l border-ivory-400 pl-3">
                   {category.children.map((child) => (
                     <Link
                       key={child.id}
                       href={`/shop/${child.slug}`}
                       className={`rounded-lg px-2.5 py-1.5 text-sm ${
                         activeSlug === child.slug
-                          ? "font-medium text-brand-800"
-                          : "text-stone-600 hover:text-stone-900"
+                          ? "font-medium text-espresso-950"
+                          : "text-espresso-900/60 hover:text-espresso-950"
                       }`}
                     >
                       {child.name}

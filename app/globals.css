@@ -36,6 +36,85 @@
   --color-gold-900: #573a1e;
   --color-gold-950: #31200f;
 
+  /*
+   * Semantic status scales (M14.1). These formalize colors that were
+   * previously reached for ad hoc and inconsistently (raw emerald/amber/red
+   * at different shades on different pages) into three named, reusable
+   * scales. `danger` intentionally matches Tailwind's built-in red so
+   * existing "bg-red-100 text-red-800" usage and the new "danger-*" tone
+   * render identically — this is a naming/consolidation pass, not a
+   * palette change. `success` formalizes the emerald already used ad hoc
+   * for DELIVERED-type states; `warning` formalizes the amber already used
+   * ad hoc for pending/attention states; `info` is the one new, deliberately
+   * muted secondary accent for informational/verification content only.
+   */
+  --color-success-50: #ecfdf5;
+  --color-success-100: #d1fae5;
+  --color-success-200: #a7f3d0;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
+  --color-success-800: #065f46;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
+  --color-danger-400: #f87171;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+  --color-danger-800: #991b1b;
+
+  --color-info-50: #f0f4f8;
+  --color-info-100: #dde7ee;
+  --color-info-200: #b9cddb;
+  --color-info-600: #3d5a73;
+  --color-info-700: #33475a;
+  --color-info-800: #293a49;
+
+  /*
+   * Premium editorial-commerce palette (M14.3). Additive — the original
+   * brand/gold/stone scales above are untouched so every page not yet
+   * migrated to this identity keeps rendering correctly. This scale is
+   * scoped to Homepage / Shop / Product Detail / ListingCard while the new
+   * visual direction is under review; once approved it propagates and the
+   * old brand/gold usage is retired.
+   *
+   * Relationship: deep espresso (dark brand surface) + warm ivory (page
+   * canvas, replaces sterile white/stone-50) + champagne (restrained
+   * premium accent — never a background fill) + deep forest (secondary
+   * brand, CTAs) + burgundy (very sparing editorial accent).
+   */
+  --color-ivory-50: #fdfbf7;
+  --color-ivory-100: #f7f2e8;
+  --color-ivory-200: #efe7d6;
+  --color-ivory-300: #e8e0d3;
+  --color-ivory-400: #dcd0bc;
+
+  --color-espresso-800: #2a241e;
+  --color-espresso-900: #211f1c;
+  --color-espresso-950: #171512;
+
+  --color-champagne-200: #ecdcb4;
+  --color-champagne-300: #ddc48a;
+  --color-champagne-400: #c6a15b;
+  --color-champagne-600: #a67f3d;
+  --color-champagne-700: #8c6a2f;
+
+  --color-forest-700: #1f4a3f;
+  --color-forest-800: #1b4038;
+  --color-forest-900: #173b32;
+  --color-forest-950: #0f2820;
+
+  --color-burgundy-600: #7a3344;
+  --color-burgundy-700: #5a2632;
+  --color-burgundy-800: #451e27;
+
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 
@@ -45,8 +124,8 @@
 
 @layer base {
   body {
-    background-color: var(--color-stone-50);
-    color: var(--color-stone-900);
+    background-color: var(--color-ivory-50);
+    color: var(--color-espresso-950);
     font-family: var(--font-sans);
   }
 
@@ -58,8 +137,8 @@
   }
 
   ::selection {
-    background-color: var(--color-brand-200);
-    color: var(--color-brand-950);
+    background-color: var(--color-champagne-200);
+    color: var(--color-espresso-950);
   }
 
   @media (prefers-reduced-motion: reduce) {

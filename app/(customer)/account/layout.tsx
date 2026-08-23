@@ -11,21 +11,21 @@ export default async function AccountLayout({ children }: { children: React.Reac
   const bellData = session ? await notificationsService.getBellData(session.user.id) : { unreadCount: 0, recent: [] };
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      <header className="border-b border-stone-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+    <div className="min-h-screen bg-ivory-50">
+      <header className="border-b border-ivory-300 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <Logo />
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
             <NotificationBell unreadCount={bellData.unreadCount} recent={bellData.recent} />
             <SignOutButton size="sm" />
           </div>
         </div>
       </header>
 
-      <Container className="max-w-6xl py-10 sm:py-12">
-        <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
+      <Container className="max-w-6xl py-8 sm:py-12">
+        <div className="grid gap-6 lg:grid-cols-[220px_1fr] lg:gap-8">
           <AccountNav />
-          <div>{children}</div>
+          <div className="min-w-0">{children}</div>
         </div>
       </Container>
     </div>

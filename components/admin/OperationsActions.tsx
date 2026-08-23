@@ -30,7 +30,7 @@ export function AssignReceivingLocationForm({
       <input type="hidden" name="fulfilmentId" value={fulfilmentId} />
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="receivingLocationId" className="text-sm font-medium text-stone-700">
+        <label htmlFor="receivingLocationId" className="text-sm font-medium text-espresso-800">
           Receiving destination
         </label>
         <select
@@ -38,7 +38,7 @@ export function AssignReceivingLocationForm({
           name="receivingLocationId"
           defaultValue={currentLocationId ?? ""}
           disabled={isPending}
-          className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-ivory-400 px-3 py-2 text-sm"
         >
           <option value="" disabled>
             Select a location
@@ -72,28 +72,28 @@ export function ConfirmCollectionForm({ fulfilmentId }: { fulfilmentId: string }
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="carrier" className="text-sm font-medium text-stone-700">
+          <label htmlFor="carrier" className="text-sm font-medium text-espresso-800">
             Courier / provider
           </label>
-          <input id="carrier" name="carrier" disabled={isPending} className="rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+          <input id="carrier" name="carrier" disabled={isPending} className="rounded-lg border border-ivory-400 px-3 py-2 text-sm" />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="trackingReference" className="text-sm font-medium text-stone-700">
+          <label htmlFor="trackingReference" className="text-sm font-medium text-espresso-800">
             Pickup reference
           </label>
           <input
             id="trackingReference"
             name="trackingReference"
             disabled={isPending}
-            className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+            className="rounded-lg border border-ivory-400 px-3 py-2 text-sm"
           />
         </div>
       </div>
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="notes" className="text-sm font-medium text-stone-700">
+        <label htmlFor="notes" className="text-sm font-medium text-espresso-800">
           Notes (optional)
         </label>
-        <textarea id="notes" name="notes" rows={2} disabled={isPending} className="rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+        <textarea id="notes" name="notes" rows={2} disabled={isPending} className="rounded-lg border border-ivory-400 px-3 py-2 text-sm" />
       </div>
       <Button type="submit" size="sm" disabled={isPending} className="w-fit">
         {isPending ? "Confirming…" : "Confirm collection"}
@@ -151,18 +151,18 @@ export function ReportFailureForm({ fulfilmentId }: { fulfilmentId: string }) {
   const [state, formAction, isPending] = useActionState(reportDeliveryFailedAction, null);
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="text-sm font-medium text-red-600 underline">
+      <button type="button" onClick={() => setOpen(true)} className="text-sm font-medium text-danger-600 underline">
         Report failed delivery
       </button>
     );
   }
   return (
-    <form action={formAction} className="flex flex-col gap-2 rounded-xl border border-red-200 bg-red-50 p-3">
+    <form action={formAction} className="flex flex-col gap-2 rounded-xl border border-danger-200 bg-danger-50 p-3">
       <input type="hidden" name="fulfilmentId" value={fulfilmentId} />
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
-      <textarea name="notes" rows={2} required disabled={isPending} placeholder="What happened?" className="rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      <textarea name="notes" rows={2} required disabled={isPending} placeholder="What happened?" className="rounded-lg border border-ivory-400 px-3 py-2 text-sm" />
       <div className="flex gap-2">
-        <Button type="submit" size="sm" variant="outline" disabled={isPending} className="border-red-300 text-red-700">
+        <Button type="submit" size="sm" variant="outline" disabled={isPending} className="border-danger-200 text-danger-700">
           {isPending ? "Saving…" : "Confirm"}
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
@@ -197,7 +197,7 @@ export function ResolveIssueForm({ fulfilmentId, issueId }: { fulfilmentId: stri
         required
         disabled={isPending}
         placeholder="How was this resolved? (the vendor will see this note)"
-        className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+        className="rounded-lg border border-ivory-400 px-3 py-2 text-sm"
       />
       <Button type="submit" size="sm" disabled={isPending} className="w-fit">
         {isPending ? "Resolving…" : "Resolve — resume preparation"}

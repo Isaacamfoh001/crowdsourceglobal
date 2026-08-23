@@ -10,8 +10,8 @@ import { SELLER_TYPES, type VendorApplicationView } from "../../modules/vendor-a
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 py-2.5 text-sm">
-      <dt className="text-stone-500">{label}</dt>
-      <dd className="text-right font-medium text-stone-900">{value || "—"}</dd>
+      <dt className="text-espresso-900/50">{label}</dt>
+      <dd className="text-right font-medium text-espresso-950">{value || "—"}</dd>
     </div>
   );
 }
@@ -24,24 +24,24 @@ export function ReviewForm({ application }: { application: VendorApplicationView
     <div className="flex flex-col gap-6">
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-stone-900">Seller type</h2>
-          <Link href="/vendor/onboarding/seller-type" className="text-xs font-medium text-brand-700 hover:underline">
+          <h2 className="text-sm font-semibold text-espresso-950">Seller type</h2>
+          <Link href="/vendor/onboarding/seller-type" className="text-xs font-medium text-forest-800 hover:underline">
             Edit
           </Link>
         </div>
-        <dl className="mt-1 divide-y divide-stone-100">
+        <dl className="mt-1 divide-y divide-ivory-100">
           <Row label="You sell as" value={sellerTypeLabel} />
         </dl>
       </section>
 
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-stone-900">Contact</h2>
-          <Link href="/vendor/onboarding/details" className="text-xs font-medium text-brand-700 hover:underline">
+          <h2 className="text-sm font-semibold text-espresso-950">Contact</h2>
+          <Link href="/vendor/onboarding/details" className="text-xs font-medium text-forest-800 hover:underline">
             Edit
           </Link>
         </div>
-        <dl className="mt-1 divide-y divide-stone-100">
+        <dl className="mt-1 divide-y divide-ivory-100">
           <Row label="Name" value={application.contactName ?? ""} />
           <Row label="Email" value={application.contactEmail ?? ""} />
           <Row label="Phone" value={application.contactPhone ?? ""} />
@@ -50,12 +50,12 @@ export function ReviewForm({ application }: { application: VendorApplicationView
 
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-stone-900">Business</h2>
-          <Link href="/vendor/onboarding/business" className="text-xs font-medium text-brand-700 hover:underline">
+          <h2 className="text-sm font-semibold text-espresso-950">Business</h2>
+          <Link href="/vendor/onboarding/business" className="text-xs font-medium text-forest-800 hover:underline">
             Edit
           </Link>
         </div>
-        <dl className="mt-1 divide-y divide-stone-100">
+        <dl className="mt-1 divide-y divide-ivory-100">
           <Row label="Store name" value={application.displayName ?? ""} />
           {application.registrationNumber ? (
             <Row label="Registration number" value={application.registrationNumber} />
@@ -69,12 +69,12 @@ export function ReviewForm({ application }: { application: VendorApplicationView
 
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-stone-900">What you sell</h2>
-          <Link href="/vendor/onboarding/operations" className="text-xs font-medium text-brand-700 hover:underline">
+          <h2 className="text-sm font-semibold text-espresso-950">What you sell</h2>
+          <Link href="/vendor/onboarding/operations" className="text-xs font-medium text-forest-800 hover:underline">
             Edit
           </Link>
         </div>
-        <dl className="mt-1 divide-y divide-stone-100">
+        <dl className="mt-1 divide-y divide-ivory-100">
           <Row label="Categories" value={application.categorySlugs.join(", ")} />
           <Row label="Selling mode" value={application.sellingMode ?? ""} />
           <Row label="Bulk orders" value={application.bulkCapable ? "Yes" : "No"} />

@@ -31,7 +31,7 @@ export function InventoryForm({
 
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="availableQuantity" className="text-sm font-medium text-stone-700">
+          <label htmlFor="availableQuantity" className="text-sm font-medium text-espresso-800">
             Available quantity
           </label>
           <input
@@ -40,12 +40,12 @@ export function InventoryForm({
             type="number"
             min={0}
             defaultValue={availableQuantity}
-            className="w-32 rounded-lg border border-stone-300 px-3 py-2 text-sm"
+            className="w-32 rounded-lg border border-ivory-400 px-3 py-2 text-sm"
             disabled={isPending}
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="availabilityStatus" className="text-sm font-medium text-stone-700">
+          <label htmlFor="availabilityStatus" className="text-sm font-medium text-espresso-800">
             Status
           </label>
           <select
@@ -53,7 +53,7 @@ export function InventoryForm({
             name="availabilityStatus"
             defaultValue={availabilityStatus}
             disabled={isPending}
-            className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+            className="rounded-lg border border-ivory-400 px-3 py-2 text-sm"
           >
             {AVAILABILITY_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -66,7 +66,7 @@ export function InventoryForm({
           {isPending ? "Updating…" : "Update"}
         </Button>
       </div>
-      <p className="text-xs text-stone-500">
+      <p className="text-xs text-espresso-900/50">
         Inventory updates apply immediately — no review needed.
       </p>
     </form>

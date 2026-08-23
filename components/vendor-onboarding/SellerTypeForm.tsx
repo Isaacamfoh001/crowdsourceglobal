@@ -18,19 +18,19 @@ export function SellerTypeForm({ initialValue }: { initialValue: SellerType | nu
         {SELLER_TYPES.map((type) => (
           <label
             key={type.value}
-            className="flex cursor-pointer items-start gap-3 rounded-xl border border-stone-200 p-4 transition-colors has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50"
+            className="flex cursor-pointer items-start gap-3 rounded-xl border border-ivory-300 p-4 transition-colors has-[:checked]:border-forest-700 has-[:checked]:bg-champagne-200/20"
           >
             <input
               type="radio"
               name="sellerType"
               value={type.value}
               defaultChecked={initialValue === type.value}
-              className="mt-1 size-4 accent-brand-700"
+              className="mt-1 size-4 accent-forest-800"
               required
             />
             <span>
-              <span className="block text-[15px] font-medium text-stone-900">{type.label}</span>
-              <span className="block text-sm text-stone-500">{type.description}</span>
+              <span className="block text-[15px] font-medium text-espresso-950">{type.label}</span>
+              <span className="block text-sm text-espresso-900/50">{type.description}</span>
             </span>
           </label>
         ))}

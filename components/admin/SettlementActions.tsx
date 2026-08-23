@@ -78,12 +78,12 @@ function RecordPayoutForm({ settlementId }: { settlementId: string }) {
     <form action={formAction} className="flex flex-col gap-3">
       <input type="hidden" name="settlementId" value={settlementId} />
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
-      <p className="text-sm text-stone-600">
+      <p className="text-sm text-espresso-900/65">
         Only record a payout <strong>after</strong> you&apos;ve already sent the money externally (bank transfer or Mobile Money, outside Paystack). This does not move any money itself.
       </p>
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-stone-700" htmlFor="method">
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-espresso-800" htmlFor="method">
         Payout method used
-        <select id="method" name="method" required disabled={isPending} className="rounded-lg border border-stone-300 px-3 py-2 text-sm">
+        <select id="method" name="method" required disabled={isPending} className="rounded-lg border border-ivory-400 px-3 py-2 text-sm">
           {PAYOUT_METHODS.map((m) => (
             <option key={m.value} value={m.value}>
               {m.label}
@@ -91,17 +91,17 @@ function RecordPayoutForm({ settlementId }: { settlementId: string }) {
           ))}
         </select>
       </label>
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-stone-700" htmlFor="externalReference">
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-espresso-800" htmlFor="externalReference">
         External reference
-        <input id="externalReference" name="externalReference" type="text" required placeholder="Bank/MoMo transaction reference" disabled={isPending} className="rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+        <input id="externalReference" name="externalReference" type="text" required placeholder="Bank/MoMo transaction reference" disabled={isPending} className="rounded-lg border border-ivory-400 px-3 py-2 text-sm" />
       </label>
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-stone-700" htmlFor="paidAt">
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-espresso-800" htmlFor="paidAt">
         Date paid
-        <input id="paidAt" name="paidAt" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} disabled={isPending} className="rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+        <input id="paidAt" name="paidAt" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} disabled={isPending} className="rounded-lg border border-ivory-400 px-3 py-2 text-sm" />
       </label>
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-stone-700" htmlFor="note">
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-espresso-800" htmlFor="note">
         Note (optional)
-        <textarea id="note" name="note" rows={2} disabled={isPending} className="rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+        <textarea id="note" name="note" rows={2} disabled={isPending} className="rounded-lg border border-ivory-400 px-3 py-2 text-sm" />
       </label>
       <Button type="submit" disabled={isPending}>
         {isPending ? "Recording…" : "Record external payout"}
@@ -115,13 +115,13 @@ function ManualPayoutFallback({ settlementId }: { settlementId: string }) {
   const [expanded, setExpanded] = useState(false);
   if (!expanded) {
     return (
-      <button type="button" onClick={() => setExpanded(true)} className="text-left text-sm text-stone-500 underline decoration-dotted underline-offset-2 hover:text-stone-700">
+      <button type="button" onClick={() => setExpanded(true)} className="text-left text-sm text-espresso-900/50 underline decoration-dotted underline-offset-2 hover:text-espresso-800">
         Paid this vendor outside Paystack? Record external payout instead.
       </button>
     );
   }
   return (
-    <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+    <div className="rounded-xl border border-ivory-300 bg-ivory-50 p-4">
       <RecordPayoutForm settlementId={settlementId} />
     </div>
   );
@@ -140,15 +140,15 @@ function ReverseForm({ settlementId }: { settlementId: string }) {
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+    <form action={formAction} className="flex flex-col gap-3 rounded-xl border border-danger-200 bg-danger-50 p-4">
       <input type="hidden" name="settlementId" value={settlementId} />
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
-      <p className="text-sm text-red-800">
+      <p className="text-sm text-danger-800">
         This does not un-record the original payout — it stays visible for history. It creates a correction that reduces this Vendor&apos;s future settlements.
       </p>
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-stone-700" htmlFor="reason">
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-espresso-800" htmlFor="reason">
         Reason
-        <textarea id="reason" name="reason" required rows={2} disabled={isPending} className="rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+        <textarea id="reason" name="reason" required rows={2} disabled={isPending} className="rounded-lg border border-ivory-400 px-3 py-2 text-sm" />
       </label>
       <Button type="submit" variant="outline" disabled={isPending}>
         {isPending ? "Reversing…" : "Confirm reversal"}
@@ -186,7 +186,7 @@ export function SettlementActions({ settlementId, status, automatedPayoutsEnable
   if (status === "PROCESSING") {
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-sm text-stone-600">CrownSourceGlobal is waiting for Paystack to confirm this transfer. This can take from a few seconds up to a few minutes.</p>
+        <p className="text-sm text-espresso-900/65">CrownSourceGlobal is waiting for Paystack to confirm this transfer. This can take from a few seconds up to a few minutes.</p>
         <CheckStatusForm settlementId={settlementId} />
       </div>
     );

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "../../../../components/ui/Button";
+import { EmptyState } from "../../../../components/ui/EmptyState";
 import { SourcingStatusBadge } from "../../../../components/sourcing/SourcingStatusBadge";
 import { Pagination } from "../../../../components/shared/Pagination";
 import { requireSession, getCurrentCustomerProfile } from "../../../../modules/identity/policy";
@@ -22,8 +23,8 @@ export default async function SourcingRequestsPage({ searchParams }: { searchPar
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-medium text-stone-900">Your sourcing requests</h1>
-          <p className="mt-1 text-sm text-stone-500">Custom requirements CrownSourceGlobal is sourcing for you.</p>
+          <h1 className="font-display text-2xl font-medium text-espresso-950">Your sourcing requests</h1>
+          <p className="mt-1 text-sm text-espresso-900/50">Custom requirements CrownSourceGlobal is sourcing for you.</p>
         </div>
         <Link href="/sourcing/new">
           <Button size="sm">New request</Button>
@@ -31,25 +32,23 @@ export default async function SourcingRequestsPage({ searchParams }: { searchPar
       </div>
 
       {requests.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-          <p className="text-sm text-stone-500">You haven&apos;t submitted a sourcing request yet.</p>
-          <Link href="/sourcing/new">
-            <Button variant="outline" className="mt-4">
-              Start a request
-            </Button>
-          </Link>
-        </div>
+        <EmptyState
+          title="No sourcing requests yet"
+          description="You haven't submitted a sourcing request yet."
+          actionHref="/sourcing/new"
+          actionLabel="Start a request"
+        />
       ) : (
-        <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
+        <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
           {requests.map((request) => (
             <Link
               key={request.id}
               href={`/account/sourcing/${request.id}`}
-              className="flex flex-col gap-2 px-5 py-4 hover:bg-stone-50 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 px-5 py-4 hover:bg-ivory-50 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="text-sm font-medium text-stone-900">{request.title}</p>
-                <p className="text-xs text-stone-500">
+                <p className="text-sm font-medium text-espresso-950">{request.title}</p>
+                <p className="text-xs text-espresso-900/50">
                   {request.requestNumber} ·{" "}
                   {request.submittedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}{" "}
                   · {request.quantity} {request.quantityUnit ?? "units"}

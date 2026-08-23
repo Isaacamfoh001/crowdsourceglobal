@@ -1,7 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FulfilmentStatusBadge } from "../../../../../components/fulfilment/FulfilmentStatusBadge";
-import { FormMessage } from "../../../../../components/ui/FormMessage";
+import { Card } from "../../../../../components/ui/Card";
+import { Alert } from "../../../../../components/ui/Alert";
+import { PageHeader } from "../../../../../components/ui/PageHeader";
 import {
   StartPreparingButton,
   MarkReadyButton,
@@ -39,48 +40,43 @@ export default async function VendorFulfilmentDetailPage({ params }: { params: P
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-medium text-stone-900">{fulfilment.orderNumber}</h1>
-          <p className="mt-1 text-sm text-stone-500">
-            {fulfilment.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-            {international ? " · International" : " · Domestic collection"}
-          </p>
-        </div>
-        <FulfilmentStatusBadge status={fulfilment.status} />
-      </div>
+      <PageHeader
+        title={fulfilment.orderNumber}
+        description={`${fulfilment.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}${international ? " · International" : " · Domestic collection"}`}
+        actions={<FulfilmentStatusBadge status={fulfilment.status} />}
+      />
 
       {fulfilment.openIssue ? (
-        <FormMessage tone="error">
-          <span className="font-medium">Issue reported:</span> {fulfilment.openIssue.description}
+        <Alert tone="danger" title="Issue reported">
+          {fulfilment.openIssue.description}
           <br />
           <span className="text-xs">CrownSourceGlobal operations has been notified and will follow up.</span>
-        </FormMessage>
+        </Alert>
       ) : null}
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6">
-        <h2 className="font-display text-lg font-medium text-stone-900">What to prepare</h2>
-        <ul className="mt-3 divide-y divide-stone-100">
+      <Card>
+        <h2 className="font-display text-lg font-medium text-espresso-950">What to prepare</h2>
+        <ul className="mt-3 divide-y divide-ivory-100">
           {fulfilment.items.map((item) => (
             <li key={item.id} className="flex justify-between py-2.5 text-sm">
-              <span className="text-stone-700">{item.description}</span>
-              <span className="font-medium text-stone-900">× {item.quantity}</span>
+              <span className="text-espresso-800">{item.description}</span>
+              <span className="font-medium text-espresso-950">× {item.quantity}</span>
             </li>
           ))}
         </ul>
         {fulfilment.leadTimeDaysDefault ? (
-          <p className="mt-3 text-xs text-stone-500">Your typical lead time: {fulfilment.leadTimeDaysDefault} days.</p>
+          <p className="mt-3 text-xs text-espresso-900/50">Your typical lead time: {fulfilment.leadTimeDaysDefault} days.</p>
         ) : null}
-      </div>
+      </Card>
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6">
-        <h2 className="font-display text-lg font-medium text-stone-900">
+      <Card>
+        <h2 className="font-display text-lg font-medium text-espresso-950">
           {international ? "Where to ship" : "How CrownSource will receive it"}
         </h2>
         {international ? (
           fulfilment.shipment?.receivingLocation ? (
-            <div className="mt-3 text-sm text-stone-700">
-              <p className="font-medium text-stone-900">{fulfilment.shipment.receivingLocation.name}</p>
+            <div className="mt-3 text-sm text-espresso-800">
+              <p className="font-medium text-espresso-950">{fulfilment.shipment.receivingLocation.name}</p>
               <p>{fulfilment.shipment.receivingLocation.addressLine1}</p>
               <p>
                 {[fulfilment.shipment.receivingLocation.city, fulfilment.shipment.receivingLocation.region, fulfilment.shipment.receivingLocation.country]
@@ -88,48 +84,48 @@ export default async function VendorFulfilmentDetailPage({ params }: { params: P
                   .join(", ")}
               </p>
               {fulfilment.shipment.receivingLocation.contactName ? (
-                <p className="mt-1 text-stone-500">
+                <p className="mt-1 text-espresso-900/50">
                   Contact: {fulfilment.shipment.receivingLocation.contactName} · {fulfilment.shipment.receivingLocation.contactPhone}
                 </p>
               ) : null}
             </div>
           ) : (
-            <p className="mt-3 text-sm text-stone-500">
+            <p className="mt-3 text-sm text-espresso-900/50">
               CrownSourceGlobal hasn&apos;t assigned a receiving destination yet — check back before shipping.
             </p>
           )
         ) : (
-          <p className="mt-3 text-sm text-stone-700">
+          <p className="mt-3 text-sm text-espresso-800">
             Once you mark this order ready, CrownSourceGlobal operations will arrange collection from your registered
             pickup location. Keep your pickup details up to date in{" "}
-            <a href="/vendor/portal/store" className="text-brand-700 underline">
+            <a href="/vendor/portal/store" className="text-forest-800 underline">
               Store profile
             </a>
             .
           </p>
         )}
-      </div>
+      </Card>
 
       {fulfilment.status === "PENDING" ? (
         <StartPreparingButton fulfilmentId={fulfilment.id} />
       ) : fulfilment.status === "PREPARING" ? (
         <MarkReadyButton fulfilmentId={fulfilment.id} international={international} />
       ) : fulfilment.status === "READY" && international ? (
-        <div className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6">
-          <h2 className="font-display text-lg font-medium text-stone-900">Record your shipment</h2>
-          <p className="mt-1 text-sm text-stone-500">Enter your carrier and tracking details once you&apos;ve shipped it.</p>
+        <Card>
+          <h2 className="font-display text-lg font-medium text-espresso-950">Record your shipment</h2>
+          <p className="mt-1 text-sm text-espresso-900/50">Enter your carrier and tracking details once you&apos;ve shipped it.</p>
           <div className="mt-4">
             <RecordShipmentForm fulfilmentId={fulfilment.id} />
           </div>
-        </div>
+        </Card>
       ) : fulfilment.status === "READY" ? (
-        <FormMessage tone="success">Ready for collection — CrownSourceGlobal will arrange pickup.</FormMessage>
+        <Alert tone="success">Ready for collection — CrownSourceGlobal will arrange pickup.</Alert>
       ) : fulfilment.status === "DISPATCHED" ? (
-        <FormMessage tone="success">
+        <Alert tone="success">
           {international ? "Shipped — awaiting receipt by CrownSourceGlobal." : "Collected — on its way to the customer."}
-        </FormMessage>
+        </Alert>
       ) : fulfilment.status === "DELIVERED" || fulfilment.status === "COMPLETED" ? (
-        <FormMessage tone="success">Delivered to the customer.</FormMessage>
+        <Alert tone="success">Delivered to the customer.</Alert>
       ) : null}
 
       {["PENDING", "PREPARING", "READY"].includes(fulfilment.status) && !fulfilment.openIssue ? (

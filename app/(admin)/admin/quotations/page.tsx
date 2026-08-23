@@ -5,6 +5,9 @@ import { QuoteStatusBadge } from "../../../../components/quotation/QuoteStatusBa
 import { formatPrice } from "../../../../lib/format";
 import { parsePage } from "../../../../lib/pagination";
 import { Pagination } from "../../../../components/shared/Pagination";
+import { PageHeader } from "../../../../components/ui/PageHeader";
+import { Card } from "../../../../components/ui/Card";
+import { EmptyState } from "../../../../components/ui/EmptyState";
 
 export const metadata = { title: "Quotations — Admin" };
 export const dynamic = "force-dynamic";
@@ -30,7 +33,7 @@ export default async function AdminQuotationsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-2xl font-medium text-stone-900">Quotations</h1>
+      <PageHeader title="Quotations" description={`${total} quotation${total === 1 ? "" : "s"}.`} />
 
       <div className="flex flex-wrap gap-2">
         {STATUS_FILTERS.map((filter) => (
@@ -39,8 +42,8 @@ export default async function AdminQuotationsPage({
             href={filter.value ? `/admin/quotations?status=${filter.value}` : "/admin/quotations"}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
               activeStatus === filter.value
-                ? "bg-brand-700 text-white"
-                : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+                ? "bg-forest-800 text-white"
+                : "bg-white text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
             }`}
           >
             {filter.label}
@@ -49,20 +52,18 @@ export default async function AdminQuotationsPage({
       </div>
 
       {quotes.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-          <p className="text-sm text-stone-500">No quotations found.</p>
-        </div>
+        <EmptyState title="No quotations found" description="Try a different status filter." />
       ) : (
-        <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
+        <Card as="div" padded={false} className="divide-y divide-ivory-100">
           {quotes.map((quote) => (
             <Link
               key={quote.id}
               href={`/admin/quotations/${quote.id}`}
-              className="flex flex-col gap-2 px-5 py-4 hover:bg-stone-50 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 px-5 py-4 hover:bg-ivory-50 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="text-sm font-medium text-stone-900">{quote.reference}</p>
-                <p className="text-xs text-stone-500">
+                <p className="text-sm font-medium text-espresso-950">{quote.reference}</p>
+                <p className="text-xs text-espresso-900/50">
                   {quote.customerName} ({quote.customerEmail}) ·{" "}
                   {quote.issuedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} ·
                   expires{" "}
@@ -71,13 +72,13 @@ export default async function AdminQuotationsPage({
               </div>
               <div className="flex items-center gap-3">
                 <QuoteStatusBadge status={quote.status} />
-                <span className="text-sm font-semibold text-stone-900">
+                <span className="text-sm font-semibold text-espresso-950">
                   {formatPrice(quote.total, quote.currency)}
                 </span>
               </div>
             </Link>
           ))}
-        </div>
+        </Card>
       )}
 
       <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/admin/quotations" extraParams={{ status: activeStatus }} />

@@ -4,6 +4,10 @@ import { vendorApplicationsService } from "../../../../modules/vendor-applicatio
 import { SELLER_TYPES } from "../../../../modules/vendor-applications/types";
 import { parsePage } from "../../../../lib/pagination";
 import { Pagination } from "../../../../components/shared/Pagination";
+import { PageHeader } from "../../../../components/ui/PageHeader";
+import { EmptyState } from "../../../../components/ui/EmptyState";
+import { Card } from "../../../../components/ui/Card";
+import { Badge } from "../../../../components/ui/Badge";
 
 export const metadata = { title: "Vendor applications — Admin" };
 export const dynamic = "force-dynamic";
@@ -16,35 +20,32 @@ export default async function AdminVendorApplicationsPage({ searchParams }: { se
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-2xl font-medium text-stone-900">Vendor applications</h1>
+      <PageHeader title="Vendor applications" description={`${total} application${total === 1 ? "" : "s"}.`} />
 
       {applications.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-          <p className="text-sm text-stone-500">No applications awaiting review.</p>
-        </div>
+        <EmptyState title="Nothing to review" description="No applications awaiting review." />
       ) : (
-        <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
+        <Card as="ul" padded={false} className="divide-y divide-ivory-100">
           {applications.map((application) => (
-            <Link
-              key={application.id}
-              href={`/admin/vendor-applications/${application.id}`}
-              className="flex flex-col gap-1 px-5 py-4 hover:bg-stone-50 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <p className="text-sm font-medium text-stone-900">{application.displayName ?? application.applicantName}</p>
-                <p className="text-xs text-stone-500">
-                  {application.applicantName} · {application.applicantEmail}
-                </p>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-stone-500">
-                <span>{SELLER_TYPES.find((t) => t.value === application.sellerType)?.label ?? "—"}</span>
-                <span className="rounded-full bg-gold-100 px-2.5 py-1 font-semibold text-gold-800">
-                  {application.status}
-                </span>
-              </div>
-            </Link>
+            <li key={application.id}>
+              <Link
+                href={`/admin/vendor-applications/${application.id}`}
+                className="flex flex-col gap-1 px-5 py-4 hover:bg-ivory-50 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-espresso-950">{application.displayName ?? application.applicantName}</p>
+                  <p className="text-xs text-espresso-900/50">
+                    {application.applicantName} · {application.applicantEmail}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3 text-xs text-espresso-900/50">
+                  <span>{SELLER_TYPES.find((t) => t.value === application.sellerType)?.label ?? "—"}</span>
+                  <Badge tone="gold">{application.status}</Badge>
+                </div>
+              </Link>
+            </li>
           ))}
-        </div>
+        </Card>
       )}
 
       <Pagination currentPage={currentPage} total={total} pageSize={pageSize} basePath="/admin/vendor-applications" />

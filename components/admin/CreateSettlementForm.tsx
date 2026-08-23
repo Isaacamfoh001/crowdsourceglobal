@@ -50,7 +50,7 @@ export function CreateSettlementForm({
   }
 
   if (earnings.length === 0) {
-    return <p className="text-sm text-stone-500">No eligible earnings to settle right now.</p>;
+    return <p className="text-sm text-espresso-900/50">No eligible earnings to settle right now.</p>;
   }
 
   return (
@@ -58,36 +58,36 @@ export function CreateSettlementForm({
       <input type="hidden" name="vendorId" value={vendorId} />
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
 
-      <div className="divide-y divide-stone-100 rounded-xl border border-stone-200">
+      <div className="divide-y divide-ivory-100 rounded-xl border border-ivory-300">
         {earnings.map((earning) => (
           <label key={earning.id} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm">
             <span className="flex items-center gap-2.5">
               <input type="checkbox" name="earningId" value={earning.id} checked={selected.has(earning.id)} onChange={() => toggle(earning.id)} disabled={isPending} />
               Order {earning.orderNumber}
             </span>
-            <span className="font-medium text-stone-900">{formatPrice(earning.originalPayableAmount, earning.currency)}</span>
+            <span className="font-medium text-espresso-950">{formatPrice(earning.originalPayableAmount, earning.currency)}</span>
           </label>
         ))}
       </div>
 
-      <div className="flex flex-col gap-1 rounded-xl border border-stone-200 bg-stone-50 p-3">
-        <div className="flex items-center justify-between text-sm text-stone-500">
+      <div className="flex flex-col gap-1 rounded-xl border border-ivory-300 bg-ivory-50 p-3">
+        <div className="flex items-center justify-between text-sm text-espresso-900/50">
           <span>Selected earnings</span>
           <span>{formatPrice(grossSelected, currency)}</span>
         </div>
         {unappliedAdjustmentTotal !== 0 ? (
-          <div className="flex items-center justify-between text-sm text-stone-500">
+          <div className="flex items-center justify-between text-sm text-espresso-900/50">
             <span>Outstanding adjustments</span>
-            <span className={unappliedAdjustmentTotal < 0 ? "text-red-700" : "text-emerald-700"}>{formatPrice(unappliedAdjustmentTotal, currency)}</span>
+            <span className={unappliedAdjustmentTotal < 0 ? "text-danger-700" : "text-success-700"}>{formatPrice(unappliedAdjustmentTotal, currency)}</span>
           </div>
         ) : null}
-        <div className="mt-1 flex items-center justify-between border-t border-stone-200 pt-1.5">
-          <span className="text-sm font-medium text-stone-700">Net payable</span>
-          <span className={`font-display text-lg font-medium ${netTotal <= 0 ? "text-red-700" : "text-stone-900"}`}>{formatPrice(netTotal, currency)}</span>
+        <div className="mt-1 flex items-center justify-between border-t border-ivory-300 pt-1.5">
+          <span className="text-sm font-medium text-espresso-800">Net payable</span>
+          <span className={`font-display text-lg font-medium ${netTotal <= 0 ? "text-danger-700" : "text-espresso-950"}`}>{formatPrice(netTotal, currency)}</span>
         </div>
       </div>
       {netTotal <= 0 ? (
-        <p className="text-xs text-red-600">Outstanding adjustments exceed the selected earnings — select more earnings, or wait for future earnings to offset the balance.</p>
+        <p className="text-xs text-danger-600">Outstanding adjustments exceed the selected earnings — select more earnings, or wait for future earnings to offset the balance.</p>
       ) : null}
 
       <Button type="submit" disabled={isPending || selected.size === 0 || netTotal <= 0}>

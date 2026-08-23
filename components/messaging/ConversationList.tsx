@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { MessagesSquare } from "lucide-react";
+import { EmptyState } from "../ui/EmptyState";
 import type { ConversationSummary } from "../../modules/messaging/types";
 
 export function ConversationList({
@@ -13,38 +15,34 @@ export function ConversationList({
   showCounterparty?: boolean;
 }) {
   if (conversations.length === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-        <p className="text-sm text-stone-500">{emptyMessage}</p>
-      </div>
-    );
+    return <EmptyState icon={MessagesSquare} title="No conversations yet" description={emptyMessage} />;
   }
 
   return (
-    <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
+    <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
       {conversations.map((conversation) => (
         <Link
           key={conversation.id}
           href={`${basePath}/${conversation.id}`}
-          className="flex flex-col gap-1 px-5 py-4 hover:bg-stone-50"
+          className="flex flex-col gap-1 px-5 py-4 hover:bg-ivory-50"
         >
           <div className="flex items-center justify-between gap-3">
-            <p className="truncate text-sm font-medium text-stone-900">
+            <p className="truncate text-sm font-medium text-espresso-950">
               {showCounterparty && conversation.counterpartyName ? conversation.counterpartyName : conversation.contextLabel}
             </p>
             {conversation.status === "OPEN" ? (
-              <span className="shrink-0 rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-800">
+              <span className="shrink-0 rounded-full bg-champagne-200 px-2 py-0.5 text-[11px] font-semibold text-forest-900">
                 Open
               </span>
             ) : (
-              <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-stone-500">
+              <span className="shrink-0 rounded-full bg-ivory-100 px-2 py-0.5 text-[11px] font-semibold text-espresso-900/50">
                 Closed
               </span>
             )}
           </div>
-          {showCounterparty ? <p className="text-xs text-stone-400">{conversation.contextLabel}</p> : null}
+          {showCounterparty ? <p className="text-xs text-espresso-900/35">{conversation.contextLabel}</p> : null}
           {conversation.lastMessage ? (
-            <p className="truncate text-sm text-stone-500">{conversation.lastMessage}</p>
+            <p className="truncate text-sm text-espresso-900/50">{conversation.lastMessage}</p>
           ) : null}
         </Link>
       ))}

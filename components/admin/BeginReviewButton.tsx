@@ -8,7 +8,7 @@ export function BeginReviewButton({ applicationId }: { applicationId: string }) 
       <input type="hidden" name="applicationId" value={applicationId} />
       <button
         type="submit"
-        className="w-fit text-sm font-medium text-stone-600 underline decoration-stone-300 hover:text-stone-900"
+        className="w-fit text-sm font-medium text-espresso-900/65 underline decoration-ivory-400 hover:text-espresso-950"
       >
         Mark as under review
       </button>

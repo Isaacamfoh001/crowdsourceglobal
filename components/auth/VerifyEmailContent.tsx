@@ -40,10 +40,10 @@ export function VerifyEmailContent() {
       <div
         className={`flex size-12 items-center justify-center rounded-full ${
           status === "success"
-            ? "bg-brand-100 text-brand-700"
+            ? "bg-champagne-200 text-forest-800"
             : status === "error"
-              ? "bg-red-100 text-red-600"
-              : "bg-stone-100 text-stone-500"
+              ? "bg-danger-100 text-danger-600"
+              : "bg-ivory-100 text-espresso-900/50"
         }`}
       >
         {status === "verifying" ? <Loader2 className="size-6 animate-spin" strokeWidth={1.75} /> : null}
@@ -51,16 +51,16 @@ export function VerifyEmailContent() {
         {status === "error" ? <XCircle className="size-6" strokeWidth={1.75} /> : null}
       </div>
 
-      <h1 className="text-2xl font-medium text-stone-900">Email verification</h1>
+      <h1 className="text-2xl font-medium text-espresso-950">Email verification</h1>
 
       {status === "verifying" ? (
-        <p className="text-[15px] text-stone-500">Verifying your email…</p>
+        <p className="text-[15px] text-espresso-900/50">Verifying your email…</p>
       ) : null}
 
       {status === "success" ? (
         <>
           <FormMessage tone="success">Your email is verified.</FormMessage>
-          <Link href={signInHref} className="text-sm font-medium text-brand-700 hover:underline">
+          <Link href={signInHref} className="text-sm font-medium text-forest-800 hover:underline">
             Continue to sign in
           </Link>
         </>
@@ -71,7 +71,7 @@ export function VerifyEmailContent() {
           <FormMessage tone="error">
             This verification link is invalid or has expired.
           </FormMessage>
-          <Link href="/sign-in" className="text-sm font-medium text-brand-700 hover:underline">
+          <Link href="/sign-in" className="text-sm font-medium text-forest-800 hover:underline">
             Back to sign in
           </Link>
         </>
