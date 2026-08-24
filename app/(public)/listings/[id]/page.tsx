@@ -153,9 +153,9 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
             {listing.specs && Object.keys(listing.specs).length > 0 ? (
               <div className="mt-8">
                 <h2 className="font-display text-xl font-medium text-espresso-950">Specifications</h2>
-                <dl className="mt-3 divide-y divide-ivory-300 border border-ivory-300">
+                <dl className="mt-3 divide-y divide-ivory-300 border-t border-ivory-300">
                   {Object.entries(listing.specs).map(([key, value]) => (
-                    <div key={key} className="flex justify-between gap-4 px-5 py-3 text-sm">
+                    <div key={key} className="flex justify-between gap-4 py-3 text-sm">
                       <dt className="shrink-0 text-espresso-900/50">{key}</dt>
                       <dd className="text-right font-medium text-espresso-950">{value}</dd>
                     </div>
@@ -165,34 +165,26 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
             ) : null}
           </div>
 
-          <div className="h-fit border border-ivory-300 bg-ivory-100 p-6">
-            <div className="flex items-center gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center bg-espresso-950 text-champagne-400">
-                <Store className="size-5" strokeWidth={1.75} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-espresso-900/50">Sold by</p>
-                <p className="truncate text-[15px] font-semibold text-espresso-950">
-                  {listing.vendor.companyName}
-                </p>
-              </div>
-            </div>
+          <div className="h-fit">
+            <p className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Sold by</p>
+            <Link
+              href={`/vendors/${listing.vendor.storefrontSlug}`}
+              className="mt-1.5 flex items-center gap-1.5 font-display text-lg font-medium text-espresso-950 hover:text-forest-800"
+            >
+              <Store className="size-4 shrink-0 text-espresso-900/40" strokeWidth={1.75} />
+              {listing.vendor.companyName}
+            </Link>
             {listing.vendor.description ? (
               <p className="mt-3 text-sm leading-relaxed text-espresso-900/70">
                 {listing.vendor.description}
               </p>
             ) : null}
-            <Link href={`/vendors/${listing.vendor.storefrontSlug}`}>
-              <Button
-                variant="outline"
-                size="sm"
-                fullWidth
-                className="mt-4 !border-espresso-950/25 !text-espresso-950 hover:!bg-espresso-950/5"
-              >
-                Visit storefront
-              </Button>
-            </Link>
-            <div className="mt-3">
+            <div className="mt-5 flex flex-col gap-2.5 border-t border-ivory-300 pt-5">
+              <Link href={`/vendors/${listing.vendor.storefrontSlug}`}>
+                <Button variant="outline" size="sm" fullWidth>
+                  Visit storefront
+                </Button>
+              </Link>
               <AskAboutButton
                 contextType="LISTING"
                 contextRefId={listing.id}

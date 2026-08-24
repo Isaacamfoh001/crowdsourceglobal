@@ -30,19 +30,19 @@ export default async function AdminFinancePage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-ivory-300 bg-white p-4">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-espresso-900/50">Vendor payable — eligible</p>
           <p className="mt-1.5 font-display text-xl font-medium text-success-700">{formatPrice(totals.eligible, "GHS")}</p>
         </div>
-        <div className="rounded-2xl border border-ivory-300 bg-white p-4">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-espresso-900/50">Vendor payable — pending</p>
           <p className="mt-1.5 font-display text-xl font-medium text-espresso-950">{formatPrice(totals.pending, "GHS")}</p>
         </div>
-        <div className="rounded-2xl border border-ivory-300 bg-white p-4">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-espresso-900/50">Vendor payable — waiting period</p>
           <p className="mt-1.5 font-display text-xl font-medium text-warning-700">{formatPrice(totals.waitingPeriod, "GHS")}</p>
         </div>
-        <div className="rounded-2xl border border-ivory-300 bg-white p-4">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-espresso-900/50">Vendor payable — on hold</p>
           <p className="mt-1.5 font-display text-xl font-medium text-danger-700">{formatPrice(totals.onHold, "GHS")}</p>
         </div>
@@ -50,11 +50,11 @@ export default async function AdminFinancePage() {
 
       <h2 className="font-display text-base font-medium text-espresso-950">Vendor payables</h2>
       {vendors.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-ivory-400 bg-white p-10 text-center">
+        <div className="rounded-lg border border-dashed border-ivory-400 bg-ivory-50 p-10 text-center">
           <p className="text-sm text-espresso-900/50">No outstanding vendor payables.</p>
         </div>
       ) : (
-        <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
+        <div className="divide-y divide-ivory-100 rounded-lg border border-ivory-300 bg-ivory-50">
           {vendors.map((v) => (
             <Link key={v.vendorId} href={`/admin/finance/vendors/${v.vendorId}`} className="flex flex-col gap-2 px-5 py-4 hover:bg-ivory-50 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-medium text-espresso-950">{v.vendorName}</p>

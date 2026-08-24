@@ -52,7 +52,7 @@ export function NotificationBell({
         aria-haspopup="true"
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
         className={`relative flex size-10 items-center justify-center rounded-lg transition-colors ${
-          onDark ? "text-ivory-200/70 hover:bg-white/10 hover:text-ivory-50" : "text-espresso-800 hover:bg-ivory-100"
+          onDark ? "text-ivory-200/70 hover:bg-ivory-50/10 hover:text-ivory-50" : "text-espresso-800 hover:bg-ivory-100"
         }`}
       >
         <Bell className="size-5" strokeWidth={1.75} />
@@ -77,7 +77,7 @@ export function NotificationBell({
           />
           <div
             role="menu"
-            className="absolute right-0 z-50 mt-2 w-[calc(100vw-2rem)] max-w-sm rounded-2xl border border-ivory-300 bg-white shadow-lifted sm:w-96"
+            className="absolute right-0 z-50 mt-2 w-[calc(100vw-2rem)] max-w-sm rounded-lg border border-ivory-300 bg-ivory-50 shadow-lifted sm:w-96"
           >
             <div className="flex items-center justify-between border-b border-ivory-200 px-4 py-3">
               <p className="text-sm font-semibold text-espresso-950">Notifications</p>

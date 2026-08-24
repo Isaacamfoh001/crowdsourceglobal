@@ -15,26 +15,21 @@ import { catalogueService } from "../../modules/catalogue/service";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [categories, featuredListings, { rows: heroImagePool }] = await Promise.all([
+  const [categories, featuredListings] = await Promise.all([
     catalogueService.listCategories(),
     catalogueService.listFeaturedListings(6),
-    // Same unfiltered listing query /shop uses, at a small page size — not
-    // a "featured" set, just a real pool to draw the hero's photography
-    // from (the featured set above may legitimately contain items without
-    // photos yet; this doesn't change what counts as "featured").
-    catalogueService.listListings({}, 1, 12),
   ]);
 
   return (
     <>
-      <Hero featuredListings={heroImagePool} />
+      <Hero />
       <PurchasingPaths />
       <MarketplacePreview categories={categories} />
       <FeaturedListings listings={featuredListings} />
-      <BuyerValue />
-      <VendorSection />
-      <HowItWorks />
       <CustomSourcing />
+      <VendorSection />
+      <BuyerValue />
+      <HowItWorks />
       <FinalCta />
     </>
   );

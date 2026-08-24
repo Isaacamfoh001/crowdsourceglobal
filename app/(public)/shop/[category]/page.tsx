@@ -44,7 +44,7 @@ export default async function CategoryPage({
 
   return (
     <div className="bg-ivory-50">
-      <div className="bg-espresso-950 py-7 sm:py-9">
+      <div className="border-b border-ivory-300 py-7 sm:py-9">
         <Container>
           <Breadcrumbs
             items={[
@@ -52,11 +52,10 @@ export default async function CategoryPage({
               ...(parent ? [{ label: parent.name, href: `/shop/${parent.slug}` }] : []),
               { label: category.name },
             ]}
-            dark
           />
 
           <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="font-display text-2xl font-medium text-white sm:text-3xl">{category.name}</h1>
+            <h1 className="font-display text-2xl font-medium text-espresso-950 sm:text-3xl">{category.name}</h1>
             <div className="w-full sm:w-80">
               <SearchForm action={`/shop/${slug}`} defaultValue={q} />
             </div>

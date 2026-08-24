@@ -46,7 +46,7 @@ export function KpiSection({ today, current, range }: { today: TodayKpis; curren
 
 function KpiTile({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-ivory-300 bg-white p-3.5">
+    <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-3.5">
       <dt className="text-xs text-espresso-900/50">{label}</dt>
       <dd className="mt-1 font-display text-xl font-medium text-espresso-950">{value}</dd>
     </div>

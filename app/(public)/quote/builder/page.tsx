@@ -32,7 +32,7 @@ export default async function QuoteBuilderPage() {
         </p>
 
         {lines.length === 0 ? (
-          <div className="mt-8 rounded-2xl border border-dashed border-ivory-400 bg-white p-10 text-center">
+          <div className="mt-8 rounded-lg border border-dashed border-ivory-400 bg-ivory-50 p-10 text-center">
             <p className="text-sm text-espresso-900/50">Your quote is empty.</p>
             <Link href="/shop">
               <Button variant="outline" className="mt-4">
@@ -41,7 +41,7 @@ export default async function QuoteBuilderPage() {
             </Link>
           </div>
         ) : (
-          <div className="mt-8 rounded-2xl border border-ivory-300 bg-white p-6 sm:p-8">
+          <div className="mt-8 rounded-lg border border-ivory-300 bg-ivory-50 p-6 sm:p-8">
             <div className="divide-y divide-ivory-100">
               {lines.map((line) => (
                 <QuoteDraftLineItem key={line.listingId} line={line} />

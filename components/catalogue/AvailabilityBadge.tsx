@@ -14,7 +14,7 @@ const TONE: Record<string, string> = {
 
 export function AvailabilityBadge({ status }: { status: string }) {
   const label = LABELS[status] ?? status;
-  const tone = TONE[status] ?? "bg-stone-100 text-stone-700";
+  const tone = TONE[status] ?? "bg-ivory-200 text-espresso-800";
 
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`}>

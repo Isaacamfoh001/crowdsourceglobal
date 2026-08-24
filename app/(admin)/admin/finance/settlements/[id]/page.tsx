@@ -76,7 +76,7 @@ export default async function AdminSettlementDetailPage({ params }: { params: Pr
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-6">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6">
         <Field label="Status" value={settlement.status} />
         <Field label="Gross" value={formatPrice(settlement.grossPayable, settlement.currency)} />
         {settlement.adjustmentTotal !== 0 ? <Field label="Adjustments" value={formatPrice(settlement.adjustmentTotal, settlement.currency)} /> : null}
@@ -90,7 +90,7 @@ export default async function AdminSettlementDetailPage({ params }: { params: Pr
         {settlement.payoutNote ? <Field label="Note" value={settlement.payoutNote} /> : null}
       </div>
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-6">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6">
         <h2 className="font-display text-base font-medium text-espresso-950">Included orders</h2>
         <div className="mt-3 divide-y divide-ivory-100">
           {settlement.items.map((item) => (
@@ -113,7 +113,7 @@ export default async function AdminSettlementDetailPage({ params }: { params: Pr
       </div>
 
       {canMutate ? (
-        <div className="rounded-2xl border border-ivory-300 bg-white p-6">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6">
           <SettlementActions settlementId={settlement.id} status={settlement.status} automatedPayoutsEnabled={env.PAYMENT_PROVIDER === "paystack"} />
         </div>
       ) : null}

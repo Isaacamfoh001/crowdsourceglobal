@@ -16,7 +16,13 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function ReviewForm({ application }: { application: VendorApplicationView }) {
+export function ReviewForm({
+  application,
+  categoryNameBySlug,
+}: {
+  application: VendorApplicationView;
+  categoryNameBySlug: Record<string, string>;
+}) {
   const [state, formAction, isPending] = useActionState(submitApplicationAction, null);
   const sellerTypeLabel = SELLER_TYPES.find((t) => t.value === application.sellerType)?.label ?? "—";
 
@@ -75,7 +81,10 @@ export function ReviewForm({ application }: { application: VendorApplicationView
           </Link>
         </div>
         <dl className="mt-1 divide-y divide-ivory-100">
-          <Row label="Categories" value={application.categorySlugs.join(", ")} />
+          <Row
+            label="Categories"
+            value={application.categorySlugs.map((slug) => categoryNameBySlug[slug] ?? slug).join(", ")}
+          />
           <Row label="Selling mode" value={application.sellingMode ?? ""} />
           <Row label="Bulk orders" value={application.bulkCapable ? "Yes" : "No"} />
         </dl>

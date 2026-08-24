@@ -22,30 +22,55 @@ type CategorySeed = {
   children?: { name: string; slug: string }[];
 };
 
+/**
+ * Beauty-first catalogue taxonomy (M14.3). CrownSourceGlobal's initial
+ * commercial focus is beauty commerce and beauty-business sourcing — see
+ * PROJECT.md and CLAUDE.md — so the customer-facing category tree reflects
+ * that rather than a generic multi-category marketplace. Kept intentionally
+ * small (7 top-level categories) rather than modelling every possible
+ * beauty subcategory.
+ *
+ * This list also doubles as the discovery allowlist: only these top-level
+ * slugs are surfaced by `listTopLevelCategoriesWithChildren` (see
+ * CANONICAL_TOP_LEVEL_SLUGS below and modules/catalogue/repository.ts). Any
+ * pre-existing Category row from an earlier, broader taxonomy (e.g. a
+ * staging database bootstrapped before this milestone) is left untouched —
+ * bootstrapReferenceData only ever upserts, never deletes — and any listing
+ * still assigned to it stays reachable by direct link; it's simply no
+ * longer offered through top-level navigation or the homepage.
+ */
 export const CATEGORIES: CategorySeed[] = [
   {
-    name: "Hair & Beauty Supplies",
-    slug: "hair-beauty-supplies",
+    name: "Hair & Wigs",
+    slug: "hair-wigs",
     children: [
-      { name: "Hair Extensions & Wigs", slug: "hair-extensions-wigs" },
-      { name: "Skincare & Cosmetics", slug: "skincare-cosmetics" },
+      { name: "Wigs", slug: "wigs" },
+      { name: "Closures & Frontals", slug: "closures-frontals" },
     ],
   },
   {
-    name: "Electronics & Accessories",
-    slug: "electronics-accessories",
+    name: "Bundles & Extensions",
+    slug: "bundles-extensions",
     children: [
-      { name: "Phones & Tablets", slug: "phones-tablets" },
-      { name: "Computer Accessories", slug: "computer-accessories" },
+      { name: "Human Hair Bundles", slug: "human-hair-bundles" },
+      { name: "Clip-Ins & Weaves", slug: "clip-ins-weaves" },
     ],
   },
-  { name: "Office & Business Supplies", slug: "office-business-supplies" },
-  { name: "Textiles & Fabrics", slug: "textiles-fabrics" },
-  { name: "Home & Kitchen", slug: "home-kitchen" },
-  { name: "Industrial & Safety Equipment", slug: "industrial-safety-equipment" },
-  { name: "Packaging & Printing", slug: "packaging-printing" },
-  { name: "Food & Beverage Supplies", slug: "food-beverage-supplies" },
+  { name: "Lashes & Brows", slug: "lashes-brows" },
+  { name: "Makeup & Cosmetics", slug: "makeup-cosmetics" },
+  {
+    name: "Hair & Beauty Care",
+    slug: "hair-beauty-care",
+    children: [
+      { name: "Skincare", slug: "skincare" },
+      { name: "Hair Care", slug: "hair-care" },
+    ],
+  },
+  { name: "Beauty Tools & Accessories", slug: "beauty-tools-accessories" },
+  { name: "Salon & Professional", slug: "salon-professional" },
 ];
+
+export const CANONICAL_TOP_LEVEL_SLUGS = CATEGORIES.map((category) => category.slug);
 
 export type ReferenceDataResult = {
   categoriesCreated: number;

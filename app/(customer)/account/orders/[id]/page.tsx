@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MapPin } from "lucide-react";
 import { Button } from "../../../../../components/ui/Button";
-import { Card } from "../../../../../components/ui/Card";
 import { Alert } from "../../../../../components/ui/Alert";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { OrderStatusBadge } from "../../../../../components/account/OrderStatusBadge";
@@ -118,31 +117,31 @@ export default async function OrderDetailPage({
       ) : null}
 
       {orderCases.length > 0 ? (
-        <Card>
-          <h2 className="font-display text-base font-medium text-espresso-950">Issue reported</h2>
-          <ul className="mt-3 flex flex-col gap-2">
+        <div className="border-t border-ivory-300 pt-4">
+          <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Issue reported</h2>
+          <ul className="mt-2 flex flex-col divide-y divide-ivory-200">
             {orderCases.map((c) => (
               <li key={c.id}>
-                <Link href={`/account/resolutions/${c.id}`} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-ivory-50">
+                <Link href={`/account/resolutions/${c.id}`} className="flex items-center justify-between gap-3 py-2.5 hover:text-forest-800">
                   <span className="text-sm text-espresso-800">{c.caseNumber}</span>
                   <CaseStatusBadge status={c.status} label={c.statusLabel} />
                 </Link>
               </li>
             ))}
           </ul>
-        </Card>
+        </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="flex flex-col gap-4">
+      <div className="grid gap-8 border-t border-ivory-300 pt-6 lg:grid-cols-[1fr_320px]">
+        <div className="flex flex-col divide-y divide-ivory-200">
           {order.vendorGroups.map((group) => (
-            <Card key={group.vendorName}>
-              <p className="font-display text-[15px] font-medium text-espresso-950">
+            <div key={group.vendorName} className="py-5 first:pt-0">
+              <p className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">
                 {group.vendorName}
               </p>
-              <ul className="mt-3 divide-y divide-ivory-100">
+              <ul className="mt-2 flex flex-col gap-2">
                 {group.items.map((item) => (
-                  <li key={item.id} className="flex justify-between py-2.5 text-sm">
+                  <li key={item.id} className="flex justify-between text-sm">
                     <span className="text-espresso-800">
                       {item.description} × {item.quantity}
                     </span>
@@ -152,13 +151,13 @@ export default async function OrderDetailPage({
                   </li>
                 ))}
               </ul>
-            </Card>
+            </div>
           ))}
         </div>
 
-        <div className="flex flex-col gap-4">
-          <Card>
-            <h2 className="font-display text-base font-medium text-espresso-950">Summary</h2>
+        <div className="flex flex-col divide-y divide-ivory-200 lg:border-l lg:border-ivory-200 lg:pl-8">
+          <div className="pb-5 first:pt-0">
+            <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Summary</h2>
             <div className="mt-3 flex justify-between text-sm text-espresso-900/65">
               <span>Subtotal</span>
               <span>{formatPrice(order.subtotal, order.currency)}</span>
@@ -167,11 +166,11 @@ export default async function OrderDetailPage({
               <span>Total</span>
               <span>{formatPrice(order.total, order.currency)}</span>
             </div>
-          </Card>
+          </div>
 
           {order.latestPayment ? (
-            <Card>
-              <h2 className="font-display text-base font-medium text-espresso-950">Payment</h2>
+            <div className="py-5">
+              <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Payment</h2>
               <div className="mt-2 flex flex-col gap-1 text-sm text-espresso-900/65">
                 <p>
                   {order.latestPayment.method === "MOBILE_MONEY"
@@ -184,12 +183,12 @@ export default async function OrderDetailPage({
                 <p>{formatPrice(order.latestPayment.amount, order.latestPayment.currency)}</p>
                 <p className="text-xs text-espresso-900/35">Ref: {order.latestPayment.reference}</p>
               </div>
-            </Card>
+            </div>
           ) : null}
 
-          <Card>
-            <h2 className="flex items-center gap-1.5 font-display text-base font-medium text-espresso-950">
-              <MapPin className="size-4 text-espresso-900/35" strokeWidth={1.75} />
+          <div className="pt-5 last:pb-0">
+            <h2 className="flex items-center gap-1.5 text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">
+              <MapPin className="size-3.5 text-espresso-900/40" strokeWidth={1.75} />
               Delivery to
             </h2>
             <div className="mt-2 text-sm leading-relaxed text-espresso-900/65">
@@ -204,7 +203,7 @@ export default async function OrderDetailPage({
                 <p className="mt-2 text-espresso-900/50">Note: {order.deliveryInfo.notes}</p>
               ) : null}
             </div>
-          </Card>
+          </div>
         </div>
       </div>
 

@@ -53,7 +53,7 @@ export default async function AdminOperationsPage({
               key={filter.label}
               href={qs(filter.value)}
               className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium ${
-                status === filter.value ? "border-forest-800 bg-forest-800 text-white" : "border-ivory-400 bg-white text-espresso-800"
+                status === filter.value ? "border-forest-800 bg-forest-800 text-white" : "border-ivory-400 bg-ivory-50 text-espresso-800"
               }`}
             >
               {filter.label}
@@ -64,7 +64,7 @@ export default async function AdminOperationsPage({
           <Link
             href={origin === "INTERNATIONAL_INBOUND" ? qs(status) : `/admin/operations?${status ? `status=${status}&` : ""}origin=INTERNATIONAL_INBOUND`}
             className={`rounded-full border px-3.5 py-1.5 text-sm font-medium ${
-              origin === "INTERNATIONAL_INBOUND" ? "border-champagne-600 bg-champagne-200 text-espresso-900" : "border-ivory-400 bg-white text-espresso-800"
+              origin === "INTERNATIONAL_INBOUND" ? "border-champagne-600 bg-champagne-200 text-espresso-900" : "border-ivory-400 bg-ivory-50 text-espresso-800"
             }`}
           >
             International only
@@ -73,11 +73,11 @@ export default async function AdminOperationsPage({
       </div>
 
       {fulfilments.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-ivory-400 bg-white p-10 text-center">
+        <div className="rounded-lg border border-dashed border-ivory-400 bg-ivory-50 p-10 text-center">
           <p className="text-sm text-espresso-900/50">No fulfilments match this filter.</p>
         </div>
       ) : (
-        <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
+        <div className="divide-y divide-ivory-100 rounded-lg border border-ivory-300 bg-ivory-50">
           {fulfilments.map((f) => (
             <Link
               key={f.id}

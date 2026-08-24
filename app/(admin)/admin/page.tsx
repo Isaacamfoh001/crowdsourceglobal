@@ -71,7 +71,7 @@ export default async function AdminHomePage({ searchParams }: { searchParams: Pr
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-full border border-ivory-400 bg-white px-3.5 py-1.5 text-sm font-medium text-espresso-800 hover:bg-ivory-50"
+              className="rounded-full border border-ivory-400 bg-ivory-50 px-3.5 py-1.5 text-sm font-medium text-espresso-800 hover:bg-ivory-100"
             >
               {link.label}
             </Link>

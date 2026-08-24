@@ -36,12 +36,12 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
           actionLabel="Browse bulk pricing"
         />
       ) : (
-        <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
+        <div className="divide-y divide-ivory-200 border-t border-ivory-300">
           {quotes.map((quote) => (
             <Link
               key={quote.id}
               href={`/account/quotes/${quote.id}`}
-              className="flex flex-col gap-2 px-5 py-4 hover:bg-ivory-50 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 py-4 transition-colors hover:bg-ivory-100/60 sm:flex-row sm:items-center sm:justify-between sm:px-2"
             >
               <div>
                 <p className="text-sm font-medium text-espresso-950">{quote.reference}</p>

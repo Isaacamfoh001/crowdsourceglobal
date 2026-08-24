@@ -70,7 +70,7 @@ export default async function AdminPaymentsPage({
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
               activeStatus === filter.value && !requiresAttention
                 ? "bg-forest-800 text-white"
-                : "bg-white text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
+                : "bg-ivory-50 text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
             }`}
           >
             {filter.label}
@@ -79,7 +79,7 @@ export default async function AdminPaymentsPage({
         <Link
           href="/admin/payments?attention=1"
           className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
-            requiresAttention ? "bg-danger-600 text-white" : "bg-white text-danger-600 ring-1 ring-danger-200 hover:bg-danger-50"
+            requiresAttention ? "bg-danger-600 text-white" : "bg-ivory-50 text-danger-600 ring-1 ring-danger-200 hover:bg-danger-50"
           }`}
         >
           Requires attention
@@ -94,7 +94,7 @@ export default async function AdminPaymentsPage({
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
               activeProvider === filter.value
                 ? "bg-espresso-900 text-white"
-                : "bg-white text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
+                : "bg-ivory-50 text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
             }`}
           >
             {filter.label}

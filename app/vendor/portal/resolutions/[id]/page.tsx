@@ -33,7 +33,7 @@ export default async function VendorResolutionDetailPage({ params }: { params: P
         <CaseStatusBadge status={detail.status} label={detail.statusLabel} />
       </div>
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
         <h2 className="font-display text-base font-medium text-espresso-950">Affected item(s)</h2>
         <ul className="mt-3 divide-y divide-ivory-100">
           {detail.items.map((item, index) => (
@@ -44,7 +44,7 @@ export default async function VendorResolutionDetailPage({ params }: { params: P
         </ul>
       </div>
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
         <h2 className="font-display text-base font-medium text-espresso-950">CrownSourceGlobal</h2>
         <p className="mt-1 text-sm text-espresso-900/50">If CrownSourceGlobal needs information from you about this, it&apos;ll appear here.</p>
         <div className="mt-3">

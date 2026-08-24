@@ -139,7 +139,7 @@ export function ListingEditorForm({
                     onClick={() => setExistingImages((prev) => prev.filter((k) => k !== key))}
                     disabled={disabled || isPending}
                     aria-label="Remove image"
-                    className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-full bg-white/90 text-espresso-900/65 opacity-100 shadow-soft transition-opacity hover:text-danger-600 disabled:opacity-40 sm:size-6 sm:opacity-0 sm:group-hover:opacity-100"
+                    className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-full bg-ivory-50/90 text-espresso-900/65 opacity-100 shadow-soft transition-opacity hover:text-danger-600 disabled:opacity-40 sm:size-6 sm:opacity-0 sm:group-hover:opacity-100"
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -161,7 +161,7 @@ export function ListingEditorForm({
                     onClick={() => setNewFiles((prev) => prev.filter((_, i) => i !== index))}
                     disabled={disabled || isPending}
                     aria-label={`Remove ${file.name}`}
-                    className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-full bg-white/90 text-espresso-900/65 opacity-100 shadow-soft transition-opacity hover:text-danger-600 disabled:opacity-40 sm:size-6 sm:opacity-0 sm:group-hover:opacity-100"
+                    className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-full bg-ivory-50/90 text-espresso-900/65 opacity-100 shadow-soft transition-opacity hover:text-danger-600 disabled:opacity-40 sm:size-6 sm:opacity-0 sm:group-hover:opacity-100"
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -246,7 +246,7 @@ export function ListingEditorForm({
                 value={tier.minQuantity}
                 onChange={(e) => updateTier(index, "minQuantity", e.target.value)}
                 disabled={disabled || isPending}
-                className="w-full rounded-lg border border-ivory-400 bg-white px-3 py-2.5 text-sm"
+                className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-2.5 text-sm"
               />
             </div>
             <div className="flex min-w-[5.5rem] flex-1 flex-col gap-1">
@@ -258,7 +258,7 @@ export function ListingEditorForm({
                 value={tier.maxQuantity}
                 onChange={(e) => updateTier(index, "maxQuantity", e.target.value)}
                 disabled={disabled || isPending}
-                className="w-full rounded-lg border border-ivory-400 bg-white px-3 py-2.5 text-sm"
+                className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-2.5 text-sm"
               />
             </div>
             <div className="flex min-w-[6.5rem] flex-1 flex-col gap-1">
@@ -270,7 +270,7 @@ export function ListingEditorForm({
                 value={tier.unitPrice}
                 onChange={(e) => updateTier(index, "unitPrice", sanitizeMoneyText(e.target.value))}
                 disabled={disabled || isPending}
-                className="w-full rounded-lg border border-ivory-400 bg-white px-3 py-2.5 text-sm"
+                className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-2.5 text-sm"
               />
             </div>
             <button
@@ -278,7 +278,7 @@ export function ListingEditorForm({
               onClick={() => setTiers((rows) => rows.filter((_, i) => i !== index))}
               disabled={disabled || isPending}
               aria-label="Remove tier"
-              className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-ivory-400 bg-white text-espresso-900/50 hover:bg-ivory-50 disabled:opacity-40"
+              className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-ivory-400 bg-ivory-50 text-espresso-900/50 hover:bg-ivory-50 disabled:opacity-40"
             >
               <Minus className="size-3.5" />
             </button>

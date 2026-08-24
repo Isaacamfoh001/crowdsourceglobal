@@ -78,7 +78,7 @@ export function DeliveryAddressFields({ addresses, disabled }: { addresses: Addr
             rows={3}
             disabled={disabled}
             placeholder="Gate code, preferred delivery time, etc."
-            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
           />
         </div>
       </div>
@@ -103,7 +103,7 @@ export function DeliveryAddressFields({ addresses, disabled }: { addresses: Addr
           rows={3}
           disabled={disabled}
           placeholder="Gate code, preferred delivery time, etc."
-          className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+          className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
         />
       </div>
       <label className="flex items-center gap-2 text-sm text-espresso-900/65">

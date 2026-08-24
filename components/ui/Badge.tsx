@@ -14,7 +14,7 @@ export const badgeToneClasses: Record<BadgeTone, string> = {
   brand: "bg-champagne-200 text-espresso-900",
   gold: "bg-forest-900 text-champagne-300",
   neutral: "bg-ivory-200 text-espresso-800",
-  onDark: "bg-white/10 text-white",
+  onDark: "bg-ivory-50/10 text-white",
   success: "bg-success-100 text-success-800",
   warning: "bg-warning-100 text-warning-800",
   danger: "bg-danger-100 text-danger-800",

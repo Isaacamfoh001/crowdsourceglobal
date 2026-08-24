@@ -51,7 +51,7 @@ export default async function VendorEarningDetailPage({ params }: { params: Prom
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-6">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6">
         <Field label="Item" value={earning.orderItemDescription} />
         <Field label="Quantity" value={earning.quantity} />
         <Field label="Original amount" value={formatPrice(earning.originalPayableAmount, earning.currency)} />
@@ -62,7 +62,7 @@ export default async function VendorEarningDetailPage({ params }: { params: Prom
       </div>
 
       {earning.adjustments.length > 0 ? (
-        <div className="rounded-2xl border border-ivory-300 bg-white p-6">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6">
           <h2 className="font-display text-base font-medium text-espresso-950">Adjustments</h2>
           <div className="mt-3 divide-y divide-ivory-100">
             {earning.adjustments.map((adjustment) => (

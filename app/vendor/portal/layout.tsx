@@ -13,7 +13,7 @@ export default async function VendorPortalLayout({ children }: { children: React
 
   return (
     <div className="min-h-screen bg-ivory-50">
-      <header className="border-b border-ivory-300 bg-white">
+      <header className="border-b border-ivory-300">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <Logo />

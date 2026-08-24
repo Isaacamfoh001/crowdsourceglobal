@@ -67,7 +67,7 @@ export default async function AdminFulfilmentDetailPage({ params }: { params: Pr
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
           <h2 className="font-display text-base font-medium text-espresso-950">Items</h2>
           <ul className="mt-2 divide-y divide-ivory-100">
             {fulfilment.items.map((item) => (
@@ -79,7 +79,7 @@ export default async function AdminFulfilmentDetailPage({ params }: { params: Pr
           </ul>
         </div>
 
-        <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
           <h2 className="font-display text-base font-medium text-espresso-950">Customer delivery destination</h2>
           <dl className="mt-2 divide-y divide-ivory-100">
             <Row label="Recipient" value={fulfilment.deliveryInfo.recipientName} />
@@ -90,7 +90,7 @@ export default async function AdminFulfilmentDetailPage({ params }: { params: Pr
       </div>
 
       {!international ? (
-        <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
           <h2 className="font-display text-base font-medium text-espresso-950">Vendor pickup details</h2>
           <dl className="mt-2 divide-y divide-ivory-100">
             <Row label="Address" value={fulfilment.vendorPickup.addressLine1 ?? "Not provided"} />
@@ -102,7 +102,7 @@ export default async function AdminFulfilmentDetailPage({ params }: { params: Pr
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
         <h2 className="font-display text-base font-medium text-espresso-950">Logistics</h2>
 
         {international && awaitingHandoff && !vendorHasShipped ? (

@@ -46,7 +46,7 @@ export function ReportProblemForm({ context, defaultFulfilmentId }: { context: O
             <label
               key={option.value}
               className={`flex cursor-pointer flex-col gap-0.5 rounded-lg border px-3.5 py-2.5 text-sm ${
-                issueType === option.value ? "border-forest-700 bg-champagne-200/20" : "border-ivory-400 bg-white hover:bg-ivory-50"
+                issueType === option.value ? "border-forest-700 bg-champagne-200/20" : "border-ivory-400 bg-ivory-50 hover:bg-ivory-50"
               }`}
             >
               <span className="flex items-center gap-2 font-medium text-espresso-950">

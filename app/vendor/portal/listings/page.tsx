@@ -55,14 +55,14 @@ export default async function VendorListingsPage({ searchParams }: { searchParam
           actionLabel="Create your first listing"
         />
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col divide-y divide-ivory-200 border-t border-ivory-300">
           {listings.map((listing) => (
             <li key={listing.id}>
               <Link
                 href={`/vendor/portal/listings/${listing.id}`}
-                className="flex items-center gap-4 rounded-2xl border border-ivory-300 bg-white p-3 transition-shadow hover:shadow-lifted sm:p-4"
+                className="flex items-center gap-4 py-3.5 transition-colors hover:bg-ivory-100/60 sm:px-2"
               >
-                <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-ivory-100 sm:size-20">
+                <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-ivory-100 sm:size-20">
                   {listing.primaryImage ? (
                     // eslint-disable-next-line @next/next/no-img-element -- storage-backed product photo, not Next's image optimizer (see M13.1)
                     <img src={listingImageUrl(listing.primaryImage)} alt="" className="size-full object-cover" />

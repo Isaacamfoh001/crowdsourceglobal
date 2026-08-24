@@ -32,7 +32,7 @@ export function PreferencesForm({ preferences }: { preferences: PreferencesView 
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
       {state && state.ok ? <FormMessage tone="success">Preferences saved.</FormMessage> : null}
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-6">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6">
         <h2 className="font-display text-base font-medium text-espresso-950">Email me about</h2>
         <div className="mt-4 flex flex-col gap-4">
           {OPTIONS.map((option) => (
@@ -53,7 +53,7 @@ export function PreferencesForm({ preferences }: { preferences: PreferencesView 
         </div>
       </div>
 
-      <div className="rounded-2xl border border-ivory-300 bg-ivory-50 p-6">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6">
         <h2 className="font-display text-base font-medium text-espresso-950">Always sent</h2>
         <p className="mt-1.5 text-sm text-espresso-900/65">
           Account security emails (verification, password reset), order confirmations, vendor/listing moderation

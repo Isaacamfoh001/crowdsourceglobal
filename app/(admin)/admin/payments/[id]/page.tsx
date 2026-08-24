@@ -42,7 +42,7 @@ export default async function AdminPaymentDetailPage({ params }: { params: Promi
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-6">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6">
         <Field label="Order" value={payment.order.orderNumber} />
         <Field label="Customer" value={payment.order.customerProfile.displayName} />
         <Field label="Amount" value={formatPrice(payment.amount.toNumber(), payment.currency)} />

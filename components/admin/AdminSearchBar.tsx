@@ -28,8 +28,8 @@ export function AdminSearchBar({ onDark = false }: { onDark?: boolean }) {
         placeholder="Search orders, vendors, customers…"
         className={`w-full rounded-lg py-2.5 pr-3 pl-9 text-sm outline-none ${
           onDark
-            ? "border border-white/15 bg-white/10 text-white placeholder:text-ivory-200/40 focus:border-white/30"
-            : "border border-ivory-400 bg-white text-espresso-950 placeholder:text-espresso-900/35 focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+            ? "border border-white/15 bg-ivory-50/10 text-white placeholder:text-ivory-200/40 focus:border-white/30"
+            : "border border-ivory-400 bg-ivory-50 text-espresso-950 placeholder:text-espresso-900/35 focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
         }`}
       />
     </form>

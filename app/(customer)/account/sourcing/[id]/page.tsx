@@ -85,10 +85,10 @@ export default async function SourcingRequestDetailPage({
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="flex flex-col gap-4">
-          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
-            <h2 className="font-display text-base font-medium text-espresso-950">Requirement</h2>
+      <div className="grid gap-8 border-t border-ivory-300 pt-6 lg:grid-cols-[1fr_320px]">
+        <div className="flex flex-col divide-y divide-ivory-200">
+          <div className="pb-6 first:pt-0">
+            <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Requirement</h2>
             <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-espresso-800">{request.description}</p>
             <div className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
               <div>
@@ -114,9 +114,9 @@ export default async function SourcingRequestDetailPage({
             </div>
 
             {request.specifications && Object.keys(request.specifications).length > 0 ? (
-              <dl className="mt-4 divide-y divide-ivory-100 rounded-xl border border-ivory-300">
+              <dl className="mt-4 divide-y divide-ivory-200 border-t border-ivory-200">
                 {Object.entries(request.specifications).map(([key, value]) => (
-                  <div key={key} className="flex justify-between px-4 py-2.5 text-sm">
+                  <div key={key} className="flex justify-between py-2.5 text-sm">
                     <dt className="text-espresso-900/50">{key}</dt>
                     <dd className="font-medium text-espresso-950">{value}</dd>
                   </div>
@@ -126,8 +126,8 @@ export default async function SourcingRequestDetailPage({
           </div>
 
           {request.attachments.length > 0 ? (
-            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
-              <h2 className="font-display text-base font-medium text-espresso-950">Attachments</h2>
+            <div className="py-6">
+              <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Attachments</h2>
               <ul className="mt-3 flex flex-col gap-2">
                 {request.attachments.map((attachment) => (
                   <li key={attachment.id}>
@@ -146,7 +146,7 @@ export default async function SourcingRequestDetailPage({
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+          <div className="pt-6 last:pb-0">
             <AskAboutButton
               contextType="SOURCING_REQUEST"
               contextRefId={request.id}
@@ -159,16 +159,16 @@ export default async function SourcingRequestDetailPage({
           </div>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
-            <h2 className="font-display text-base font-medium text-espresso-950">Delivery</h2>
+        <div className="flex flex-col divide-y divide-ivory-200 lg:border-l lg:border-ivory-200 lg:pl-8">
+          <div className="pb-5 first:pt-0">
+            <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Delivery</h2>
             <p className="mt-2 text-sm text-espresso-900/65">
               {[request.deliveryCity, request.deliveryRegion, request.deliveryCountry].filter(Boolean).join(", ")}
             </p>
           </div>
 
           {CANCELLABLE.has(request.status) ? (
-            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <div className="pt-5 last:pb-0">
               <p className="text-sm text-espresso-900/50">No longer need this?</p>
               <div className="mt-3">
                 <CancelSourcingRequestButton id={request.id} />

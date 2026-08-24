@@ -52,7 +52,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
         <SourcingStatusBadge status={request.status} label={request.statusLabel} />
       </div>
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
         <h2 className="font-display text-base font-medium text-espresso-950">Assignment</h2>
         <div className="mt-3">
           <AssignStaffForm id={request.id} staff={staff} assignedStaffId={request.assignedStaffId} />
@@ -61,7 +61,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-6">
-          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+          <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
             <h2 className="font-display text-base font-medium text-espresso-950">Customer requirement</h2>
             <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-espresso-800">{request.description}</p>
             <div className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
@@ -121,7 +121,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
             ) : null}
           </div>
 
-          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+          <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
             <h2 className="font-display text-base font-medium text-espresso-950">Customer communication</h2>
             <p className="mt-1 text-sm text-espresso-900/50">
               Reply from the shared inbox at{" "}
@@ -138,7 +138,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
           </div>
 
           {(request.status === "SOURCING" || request.status === "QUOTED") ? (
-            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
               <h2 className="font-display text-base font-medium text-espresso-950">Internal sourcing options</h2>
               <p className="mt-1 text-sm text-espresso-900/50">
                 Never visible to the customer — marketplace vendors, listings, or external suppliers under
@@ -183,7 +183,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
           ) : null}
 
           {(request.status === "SOURCING" || request.status === "QUOTED") ? (
-            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
               <h2 className="font-display text-base font-medium text-espresso-950">
                 {request.status === "QUOTED" ? "Revise commercial offer" : "Prepare commercial offer"}
               </h2>
@@ -199,7 +199,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
           ) : null}
 
           {["UNDER_REVIEW", "SOURCING", "AWAITING_CUSTOMER"].includes(request.status) ? (
-            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
               <h2 className="font-display text-base font-medium text-espresso-950">Unable to source</h2>
               <div className="mt-3">
                 <MarkUnableToSourceForm id={request.id} />
@@ -209,7 +209,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+          <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
             <h2 className="font-display text-base font-medium text-espresso-950">Next action</h2>
             <div className="mt-3">
               {request.status === "SUBMITTED" ? <MoveToUnderReviewButton id={request.id} /> : null}
@@ -224,7 +224,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
           </div>
 
           {request.quotations.length > 0 ? (
-            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
               <h2 className="font-display text-base font-medium text-espresso-950">Quotation history</h2>
               <ul className="mt-3 flex flex-col gap-2">
                 {request.quotations.map((quotation) => (
@@ -241,7 +241,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+          <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
             <h2 className="font-display text-base font-medium text-espresso-950">Activity</h2>
             <ul className="mt-3 flex flex-col gap-2 text-sm">
               {request.activities.map((activity) => (

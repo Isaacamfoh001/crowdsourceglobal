@@ -48,15 +48,16 @@ export default async function ResolutionDetailPage({ params, searchParams }: { p
         <CaseStatusBadge status={detail.status} label={detail.statusLabel} />
       </div>
 
+      <div className="flex flex-col divide-y divide-ivory-200 border-t border-ivory-300">
       {detail.customerSafeDecisionReason ? (
-        <div className="rounded-2xl border border-ivory-300 bg-white p-5">
-          <h2 className="font-display text-base font-medium text-espresso-950">CrownSourceGlobal&apos;s response</h2>
+        <div className="py-6 first:pt-0">
+          <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">CrownSourceGlobal&apos;s response</h2>
           <p className="mt-2 text-sm text-espresso-800">{detail.customerSafeDecisionReason}</p>
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-5">
-        <h2 className="font-display text-base font-medium text-espresso-950">What you reported</h2>
+      <div className="py-6 first:pt-0">
+        <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">What you reported</h2>
         <p className="mt-2 text-sm text-espresso-800">{detail.customerDescription}</p>
         <ul className="mt-4 divide-y divide-ivory-100">
           {detail.items.map((item) => (
@@ -73,8 +74,8 @@ export default async function ResolutionDetailPage({ params, searchParams }: { p
       </div>
 
       {detail.attachments.length > 0 || detail.status === "OPEN" || detail.status === "UNDER_REVIEW" || detail.status === "AWAITING_CUSTOMER" ? (
-        <div className="rounded-2xl border border-ivory-300 bg-white p-5">
-          <h2 className="font-display text-base font-medium text-espresso-950">Evidence</h2>
+        <div className="py-6">
+          <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Evidence</h2>
           {detail.attachments.length > 0 ? (
             <ul className="mt-3 flex flex-col gap-1.5">
               {detail.attachments.map((a) => (
@@ -93,8 +94,8 @@ export default async function ResolutionDetailPage({ params, searchParams }: { p
       ) : null}
 
       {detail.refunds.length > 0 ? (
-        <div className="rounded-2xl border border-ivory-300 bg-white p-5">
-          <h2 className="font-display text-base font-medium text-espresso-950">Refund</h2>
+        <div className="py-6">
+          <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Refund</h2>
           {detail.refunds.map((r) => {
             const label =
               r.status === "COMPLETED"
@@ -128,8 +129,8 @@ export default async function ResolutionDetailPage({ params, searchParams }: { p
       ) : null}
 
       {detail.returns.length > 0 ? (
-        <div className="rounded-2xl border border-ivory-300 bg-white p-5">
-          <h2 className="font-display text-base font-medium text-espresso-950">Return</h2>
+        <div className="py-6">
+          <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Return</h2>
           {detail.returns.map((r) => (
             <p key={r.id} className="mt-1 text-sm text-espresso-900/65">
               Status: {r.status.replace(/_/g, " ").toLowerCase()}
@@ -140,8 +141,8 @@ export default async function ResolutionDetailPage({ params, searchParams }: { p
       ) : null}
 
       {detail.replacements.length > 0 ? (
-        <div className="rounded-2xl border border-ivory-300 bg-white p-5">
-          <h2 className="font-display text-base font-medium text-espresso-950">Replacement</h2>
+        <div className="py-6">
+          <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Replacement</h2>
           {detail.replacements.map((r) => (
             <p key={r.id} className="mt-1 text-sm text-espresso-900/65">
               {r.replacementFulfilmentId ? (
@@ -160,8 +161,8 @@ export default async function ResolutionDetailPage({ params, searchParams }: { p
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-5">
-        <h2 className="font-display text-base font-medium text-espresso-950">Messages</h2>
+      <div className="py-6 last:pb-0">
+        <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Messages</h2>
         <div className="mt-3">
           <AskAboutButton
             contextType="RESOLUTION_CASE"
@@ -172,6 +173,7 @@ export default async function ResolutionDetailPage({ params, searchParams }: { p
             placeholder="Add more detail or ask a question…"
           />
         </div>
+      </div>
       </div>
 
       <Link href="/account/resolutions" className="text-sm font-medium text-forest-800 hover:underline">

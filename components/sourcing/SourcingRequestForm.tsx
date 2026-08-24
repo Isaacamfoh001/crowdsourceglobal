@@ -5,6 +5,8 @@ import { Plus, Trash2, UploadCloud } from "lucide-react";
 import { submitSourcingRequestAction } from "../../lib/actions/sourcing";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { Select } from "../ui/Select";
+import { Textarea } from "../ui/Textarea";
 import { FormMessage } from "../ui/FormMessage";
 import type { PublicCategoryWithChildren } from "../../modules/catalogue/types";
 
@@ -40,7 +42,6 @@ export function SourcingRequestForm({ categories }: { categories: PublicCategory
     >
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-6 sm:p-8">
       <section>
         <p className="text-xs font-semibold tracking-[0.15em] text-champagne-700 uppercase">Basics</p>
         <h2 className="mt-1 font-display text-lg font-medium text-espresso-950">What do you need?</h2>
@@ -52,20 +53,15 @@ export function SourcingRequestForm({ categories }: { categories: PublicCategory
             required
             disabled={isPending}
           />
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="description" className="text-sm font-medium text-espresso-800">
-              Describe what you&apos;re looking for
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              rows={4}
-              required
-              disabled={isPending}
-              placeholder="Include as much detail as you can — style, use case, quality expectations, anything that helps us source the right thing."
-              className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
-            />
-          </div>
+          <Textarea
+            label="Describe what you're looking for"
+            id="description"
+            name="description"
+            rows={4}
+            required
+            disabled={isPending}
+            placeholder="Include as much detail as you can — style, use case, quality expectations, anything that helps us source the right thing."
+          />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input label="Quantity" name="quantity" type="number" min={1} required disabled={isPending} />
             <Input
@@ -76,25 +72,14 @@ export function SourcingRequestForm({ categories }: { categories: PublicCategory
             />
           </div>
           {categories.length > 0 ? (
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="categoryId" className="text-sm font-medium text-espresso-800">
-                Closest category (optional)
-              </label>
-              <select
-                id="categoryId"
-                name="categoryId"
-                disabled={isPending}
-                defaultValue=""
-                className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
-              >
-                <option value="">Not sure / other</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select label="Closest category (optional)" id="categoryId" name="categoryId" disabled={isPending} defaultValue="">
+              <option value="">Not sure / other</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </Select>
           ) : null}
         </div>
       </section>
@@ -126,7 +111,7 @@ export function SourcingRequestForm({ categories }: { categories: PublicCategory
                   onChange={(e) => updateSpec(index, "key", e.target.value)}
                   placeholder="e.g. Color"
                   disabled={isPending}
-                  className="w-1/3 rounded-lg border border-ivory-400 bg-white px-3 py-2 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+                  className="w-1/3 rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-2 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
                 />
                 <input
                   name="specValue"
@@ -134,7 +119,7 @@ export function SourcingRequestForm({ categories }: { categories: PublicCategory
                   onChange={(e) => updateSpec(index, "value", e.target.value)}
                   placeholder="e.g. Navy blue"
                   disabled={isPending}
-                  className="flex-1 rounded-lg border border-ivory-400 bg-white px-3 py-2 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+                  className="flex-1 rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-2 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
                 />
                 <button
                   type="button"
@@ -219,7 +204,6 @@ export function SourcingRequestForm({ categories }: { categories: PublicCategory
           </ul>
         ) : null}
       </section>
-      </div>
 
       <Button type="submit" size="lg" fullWidth disabled={isPending}>
         {isPending ? "Submitting…" : "Submit request"}

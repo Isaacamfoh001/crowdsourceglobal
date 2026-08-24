@@ -19,7 +19,7 @@ export default async function AddressesPage() {
         <h1 className="font-display text-2xl font-medium text-espresso-950">Saved addresses</h1>
         <p className="mt-1 text-[15px] text-espresso-900/50">Manage the delivery addresses you can select at checkout.</p>
       </div>
-      <div className="max-w-xl rounded-2xl border border-ivory-300 bg-white p-6">
+      <div className="max-w-xl rounded-lg border border-ivory-300 bg-ivory-50 p-6">
         <AddressManager addresses={addresses} />
       </div>
     </div>

@@ -26,7 +26,7 @@ export function PackageTracking({
   const showDerivedBadge = packageStatus && !RAW_PROGRESSION_STATUSES.has(packageStatus.status);
 
   return (
-    <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+    <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
       <div className="flex items-center justify-between">
         <p className="font-display text-[15px] font-medium text-espresso-950">
           {multiPackage ? `Package ${index + 1} — ` : ""}
@@ -67,7 +67,7 @@ export function PackageTracking({
                 className={`absolute left-[7px] top-4 h-full w-px ${step.done ? "bg-forest-700" : "bg-ivory-300"}`}
               />
             ) : null}
-            <span className="relative z-10 flex size-4 shrink-0 items-center justify-center bg-white">
+            <span className="relative z-10 flex size-4 shrink-0 items-center justify-center bg-ivory-50">
               {step.done ? (
                 <CheckCircle2 className="size-4 shrink-0 text-forest-800" strokeWidth={2} />
               ) : step.current ? (

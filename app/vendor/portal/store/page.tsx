@@ -26,7 +26,7 @@ export default async function VendorStoreProfilePage() {
           What customers see on your storefront, plus how CrownSourceGlobal reaches you.
         </p>
       </div>
-      <div className="rounded-2xl border border-ivory-300 bg-white p-5 sm:p-8">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5 sm:p-8">
         <StoreProfileForm profile={profile} categories={categories} />
       </div>
     </div>

@@ -48,8 +48,8 @@ export function SiteFooter() {
           <div className="col-span-2 sm:col-span-1">
             <Logo onDark />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-ivory-200/55">
-              A managed marketplace connecting buyers with approved vendors — for single
-              purchases, bulk orders, and custom sourcing.
+              Premium beauty commerce and global sourcing — connecting buyers with
+              approved vendors, suppliers, and manufacturers.
             </p>
           </div>
           <FooterColumn title="Marketplace" links={marketplaceLinks} />

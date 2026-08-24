@@ -14,9 +14,9 @@ export function FeaturedListings({ listings }: { listings: PublicListingSummary[
       <Container>
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold tracking-[0.2em] text-champagne-700 uppercase">Recently added</p>
+            <p className="text-xs font-semibold tracking-[0.2em] text-champagne-700 uppercase">Curated on CrownSource</p>
             <h2 className="mt-3 font-display text-3xl font-medium tracking-tight text-espresso-950 sm:text-4xl">
-              Listings from our vendors
+              Worth discovering
             </h2>
           </div>
           <Link href="/shop" className="hidden sm:block">

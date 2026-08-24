@@ -27,15 +27,15 @@ export default async function ShopPage({
 
   return (
     <div className="bg-ivory-50">
-      <div className="bg-espresso-950 py-8 sm:py-10">
+      <div className="border-b border-ivory-300 py-8 sm:py-10">
         <Container>
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-semibold tracking-[0.2em] text-champagne-300 uppercase">
-                Marketplace
+              <p className="text-xs font-semibold tracking-[0.2em] text-champagne-700 uppercase">
+                Everything beauty
               </p>
-              <h1 className="mt-2 font-display text-3xl font-medium text-ivory-50 sm:text-4xl">
-                Shop the marketplace
+              <h1 className="mt-2 font-display text-3xl font-medium text-espresso-950 sm:text-4xl">
+                Shop
               </h1>
             </div>
             <div className="w-full sm:w-96">

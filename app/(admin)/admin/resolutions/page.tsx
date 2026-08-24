@@ -43,7 +43,7 @@ export default async function AdminResolutionsPage({ searchParams }: { searchPar
             key={filter.label}
             href={filter.value ? `/admin/resolutions?status=${filter.value}` : "/admin/resolutions"}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
-              activeStatus === filter.value ? "bg-forest-800 text-white" : "bg-white text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
+              activeStatus === filter.value ? "bg-forest-800 text-white" : "bg-ivory-50 text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
             }`}
           >
             {filter.label}

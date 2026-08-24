@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { Layers, MapPin, ShieldCheck, Store } from "lucide-react";
 import { Container } from "../../../../components/ui/Container";
 import { Badge } from "../../../../components/ui/Badge";
-import { Card } from "../../../../components/ui/Card";
 import { ListingCard } from "../../../../components/catalogue/ListingCard";
 import { EmptyState } from "../../../../components/ui/EmptyState";
 import { Breadcrumbs } from "../../../../components/catalogue/Breadcrumbs";
@@ -47,81 +46,73 @@ export default async function VendorStorefrontPage({
 
   return (
     <div className="bg-ivory-50 pb-14">
-      {/* Dark editorial cover band — replaces the plain white identity card
-          with a real "business page" opening, echoing the VendorSection
-          treatment on the homepage rather than another white card. A large
-          low-opacity initial gives the band texture even with no cover
-          photo field on the vendor model. */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-espresso-950 via-espresso-950 to-forest-950 pt-8 pb-20 sm:pt-10 sm:pb-28">
-        <p
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-6 -top-10 select-none font-display text-[9rem] font-medium leading-none text-white/[0.05] sm:text-[13rem]"
-        >
-          {vendor.companyName.charAt(0).toUpperCase()}
-        </p>
-        <Container className="relative">
-          <Breadcrumbs items={[{ label: "Shop", href: "/shop" }, { label: vendor.companyName }]} dark />
-          <p className="mt-6 text-xs font-semibold tracking-[0.2em] text-champagne-300 uppercase">
-            Vendor storefront
-          </p>
+      {/* Light editorial identity block (M14.4) — replaces the dark
+          gradient cover band and giant watermark initial, which read as
+          decoration rather than brand identity once a store has no real
+          cover photo. A vendor's own product photography (via their
+          listings below) now does the work of "branding" the page. */}
+      <div className="border-b border-ivory-300 pt-8 pb-10 sm:pt-10 sm:pb-12">
+        <Container>
+          <Breadcrumbs items={[{ label: "Shop", href: "/shop" }, { label: vendor.companyName }]} />
+
+          <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-center">
+            {vendor.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- vendor-supplied external logo URL, not our optimized image pipeline
+              <img
+                src={vendor.logoUrl}
+                alt=""
+                className="size-16 shrink-0 rounded-full border border-ivory-300 object-cover sm:size-20"
+              />
+            ) : (
+              <div className="flex size-16 shrink-0 items-center justify-center rounded-full border border-ivory-300 bg-ivory-100 text-espresso-900/50 sm:size-20">
+                <Store className="size-7" strokeWidth={1.5} />
+              </div>
+            )}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-2xl font-medium text-espresso-950 sm:text-[28px]">
+                  {vendor.companyName}
+                </h1>
+                <Badge tone="neutral" className="normal-case">
+                  <ShieldCheck className="size-3.5" strokeWidth={2} />
+                  Approved vendor
+                </Badge>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-espresso-900/55">
+                {vendor.city || vendor.region || vendor.country ? (
+                  <p className="flex items-center gap-1.5">
+                    <MapPin className="size-3.5 shrink-0" strokeWidth={1.75} />
+                    {[vendor.city, vendor.region, vendor.country].filter(Boolean).join(", ")}
+                  </p>
+                ) : null}
+                <p className="flex items-center gap-1.5">
+                  <Layers className="size-3.5 shrink-0" strokeWidth={1.75} />
+                  {total} listing{total === 1 ? "" : "s"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {vendor.description ? (
+            <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-espresso-900/70">
+              {vendor.description}
+            </p>
+          ) : null}
+          <div className="mt-4">
+            <AskAboutButton
+              contextType="VENDOR"
+              contextRefId={vendor.id}
+              currentPath={`/vendors/${vendor.storefrontSlug}`}
+              isSignedIn={isSignedIn}
+              resumedBody={resumedMessage}
+              label="Ask about this vendor"
+              placeholder={`Ask CrownSourceGlobal about ${vendor.companyName}…`}
+            />
+          </div>
         </Container>
       </div>
 
-      <Container className="-mt-14 sm:-mt-20">
-        <Card elevated className="flex flex-col gap-6 sm:flex-row sm:items-center sm:p-8">
-          {vendor.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- vendor-supplied external logo URL, not our optimized image pipeline
-            <img
-              src={vendor.logoUrl}
-              alt=""
-              className="size-20 shrink-0 rounded-2xl border border-ivory-300 object-cover sm:size-24"
-            />
-          ) : (
-            <div className="flex size-20 shrink-0 items-center justify-center rounded-2xl bg-champagne-200 text-forest-900 sm:size-24">
-              <Store className="size-9" strokeWidth={1.5} />
-            </div>
-          )}
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-display text-2xl font-medium text-espresso-950 sm:text-[28px]">
-                {vendor.companyName}
-              </h1>
-              <Badge tone="brand" className="normal-case">
-                <ShieldCheck className="size-3.5" strokeWidth={2} />
-                Approved vendor
-              </Badge>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-espresso-900/55">
-              {vendor.city || vendor.region || vendor.country ? (
-                <p className="flex items-center gap-1.5">
-                  <MapPin className="size-3.5 shrink-0" strokeWidth={1.75} />
-                  {[vendor.city, vendor.region, vendor.country].filter(Boolean).join(", ")}
-                </p>
-              ) : null}
-              <p className="flex items-center gap-1.5">
-                <Layers className="size-3.5 shrink-0" strokeWidth={1.75} />
-                {total} listing{total === 1 ? "" : "s"}
-              </p>
-            </div>
-            {vendor.description ? (
-              <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-espresso-900/65">
-                {vendor.description}
-              </p>
-            ) : null}
-            <div className="mt-4">
-              <AskAboutButton
-                contextType="VENDOR"
-                contextRefId={vendor.id}
-                currentPath={`/vendors/${vendor.storefrontSlug}`}
-                isSignedIn={isSignedIn}
-                resumedBody={resumedMessage}
-                label="Ask about this vendor"
-                placeholder={`Ask CrownSourceGlobal about ${vendor.companyName}…`}
-              />
-            </div>
-          </div>
-        </Card>
-
+      <Container>
         <div className="mt-10">
           <div className="flex items-baseline justify-between gap-4 border-b border-ivory-300 pb-3">
             <h2 className="font-display text-xl font-medium text-espresso-950">

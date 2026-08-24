@@ -55,7 +55,7 @@ export default async function PaymentCallbackPage({
   return (
     <div className="bg-ivory-50 py-10 sm:py-14">
       <Container className="max-w-xl">
-        <div className="rounded-2xl border border-ivory-300 bg-white p-6 text-center sm:p-8">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6 text-center sm:p-8">
           <h1 className="font-display text-2xl font-medium text-espresso-950">Confirming your payment</h1>
           <p className="mt-2 text-sm text-espresso-900/50">This should only take a moment. Please don&apos;t close this page.</p>
           <CardReturnPoller orderId={orderId} paymentId={result.value.paymentId} />

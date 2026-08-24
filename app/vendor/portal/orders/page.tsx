@@ -44,7 +44,7 @@ export default async function VendorOrdersPage({
             className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium ${
               status === filter.value
                 ? "border-forest-800 bg-forest-800 text-white"
-                : "border-ivory-400 bg-white text-espresso-800"
+                : "border-ivory-400 bg-ivory-50 text-espresso-800"
             }`}
           >
             {filter.label}

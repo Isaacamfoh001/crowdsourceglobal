@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { FormMessage } from "../ui/FormMessage";
+import { getCategoryIcon } from "../catalogue/categoryIcons";
 import { saveOperationsAction } from "../../lib/actions/vendor-application";
 
 type Category = { id: string; name: string; slug: string };
@@ -35,19 +36,28 @@ export function OperationsForm({
 
       <fieldset>
         <legend className="text-sm font-medium text-espresso-800">What do you sell?</legend>
-        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {categories.map((category) => (
-            <label key={category.id} className="flex items-center gap-2 text-sm text-espresso-800">
-              <input
-                type="checkbox"
-                name="categorySlugs"
-                value={category.slug}
-                defaultChecked={initial.categorySlugs.includes(category.slug)}
-                className="size-4 rounded accent-forest-800"
-              />
-              {category.name}
-            </label>
-          ))}
+        <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          {categories.map((category) => {
+            const Icon = getCategoryIcon(category.slug);
+            return (
+              <label
+                key={category.id}
+                className="flex min-h-[4.5rem] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-ivory-300 p-3 text-center transition-colors has-[:checked]:border-forest-700 has-[:checked]:bg-champagne-200/20"
+              >
+                <input
+                  type="checkbox"
+                  name="categorySlugs"
+                  value={category.slug}
+                  defaultChecked={initial.categorySlugs.includes(category.slug)}
+                  className="sr-only"
+                />
+                <Icon className="size-5 text-forest-800" strokeWidth={1.5} />
+                <span className="text-[13px] leading-snug font-medium text-espresso-900">
+                  {category.name}
+                </span>
+              </label>
+            );
+          })}
         </div>
       </fieldset>
 

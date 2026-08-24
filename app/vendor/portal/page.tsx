@@ -38,7 +38,7 @@ function GlanceStat({
   return (
     <Link
       href={href}
-      className="flex min-w-[9.5rem] shrink-0 items-center gap-3 rounded-xl border border-ivory-300 bg-white px-4 py-3 transition-colors hover:border-ivory-400 hover:bg-ivory-50"
+      className="flex min-w-[9.5rem] shrink-0 items-center gap-3 rounded-xl border border-ivory-300 bg-ivory-50 px-4 py-3 transition-colors hover:border-ivory-400 hover:bg-ivory-50"
     >
       <div
         className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
@@ -160,7 +160,7 @@ export default async function VendorDashboardPage() {
               View all
             </Link>
           </div>
-          <div className="mt-3 divide-y divide-ivory-100 overflow-hidden rounded-2xl border border-ivory-300 bg-white">
+          <div className="mt-3 divide-y divide-ivory-100 overflow-hidden rounded-lg border border-ivory-300 bg-ivory-50">
             {newOrders.slice(0, 4).map((order) => (
               <Link
                 key={order.id}
@@ -210,7 +210,7 @@ export default async function VendorDashboardPage() {
 
       <Link
         href="/vendor/portal/listings/new"
-        className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-ivory-400 bg-white p-6 text-sm font-medium text-forest-800 transition-colors hover:border-champagne-400/70 hover:bg-champagne-200/20"
+        className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-ivory-400 bg-ivory-50 p-6 text-sm font-medium text-forest-800 transition-colors hover:border-champagne-400/70 hover:bg-champagne-200/20"
       >
         <Plus className="size-4.5" strokeWidth={2} />
         Create a new listing

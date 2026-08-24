@@ -37,11 +37,11 @@ export default async function AdminSearchPage({ searchParams }: { searchParams: 
       {query.length > 0 && query.length < 2 ? (
         <p className="text-sm text-espresso-900/50">Enter at least 2 characters.</p>
       ) : results.length === 0 && query ? (
-        <div className="rounded-2xl border border-dashed border-ivory-400 bg-white p-10 text-center">
+        <div className="rounded-lg border border-dashed border-ivory-400 bg-ivory-50 p-10 text-center">
           <p className="text-sm text-espresso-900/50">No matches for &quot;{query}&quot;.</p>
         </div>
       ) : results.length > 0 ? (
-        <ul className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
+        <ul className="divide-y divide-ivory-100 rounded-lg border border-ivory-300 bg-ivory-50">
           {results.map((result, index) => (
             <li key={`${result.type}-${result.targetUrl}-${index}`}>
               <Link href={result.targetUrl} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-ivory-50">

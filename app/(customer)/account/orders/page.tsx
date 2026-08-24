@@ -26,16 +26,16 @@ export default async function OrdersPage() {
           actionLabel="Start shopping"
         />
       ) : (
-        <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
+        <div className="divide-y divide-ivory-200 border-t border-ivory-300">
           {orders.map((order) => (
             <Link
               key={order.id}
               href={`/account/orders/${order.id}`}
-              className="flex flex-col gap-2 px-5 py-4 hover:bg-ivory-50 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 py-4 transition-colors hover:bg-ivory-100/60 sm:flex-row sm:items-center sm:justify-between sm:px-2"
             >
               <div>
-                <p className="text-sm font-medium text-espresso-950">{order.orderNumber}</p>
-                <p className="text-xs text-espresso-900/50">
+                <p className="text-[15px] font-medium text-espresso-950">{order.orderNumber}</p>
+                <p className="mt-0.5 text-xs text-espresso-900/50">
                   {order.createdAt.toLocaleDateString("en-GB", {
                     day: "numeric",
                     month: "short",

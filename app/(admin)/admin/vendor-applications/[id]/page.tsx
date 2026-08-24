@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { ApplicationDecisionForms } from "../../../../../components/admin/ApplicationDecisionForms";
 import { requireAdminSession } from "../../../../../modules/administration/policy";
 import { vendorApplicationsService } from "../../../../../modules/vendor-applications/service";
+import { catalogueService } from "../../../../../modules/catalogue/service";
 import { BeginReviewButton } from "../../../../../components/admin/BeginReviewButton";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { Card } from "../../../../../components/ui/Card";
@@ -24,11 +25,16 @@ function Row({ label, value }: { label: string; value: string }) {
 export default async function AdminVendorApplicationDetailPage({ params }: { params: Promise<Params> }) {
   const { id } = await params;
   await requireAdminSession("/admin/vendor-applications");
-  const application = await vendorApplicationsService.getForAdmin(id);
+  const [application, categories] = await Promise.all([
+    vendorApplicationsService.getForAdmin(id),
+    catalogueService.listCategories(),
+  ]);
 
   if (!application) {
     notFound();
   }
+
+  const categoryNameBySlug = Object.fromEntries(categories.map((category) => [category.slug, category.name]));
 
   const reviewable = ["SUBMITTED", "UNDER_REVIEW"].includes(application.status);
 
@@ -54,7 +60,10 @@ export default async function AdminVendorApplicationDetailPage({ params }: { par
             value={[application.city, application.region, application.country].filter(Boolean).join(", ")}
           />
           <Row label="Address" value={application.addressLine1 ?? ""} />
-          <Row label="Categories" value={application.categorySlugs.join(", ")} />
+          <Row
+            label="Categories"
+            value={application.categorySlugs.map((slug) => categoryNameBySlug[slug] ?? slug).join(", ")}
+          />
           <Row label="Selling mode" value={application.sellingMode ?? ""} />
           <Row label="Bulk capable" value={application.bulkCapable ? "Yes" : "No"} />
           <Row label="Service areas" value={application.serviceAreas ?? ""} />

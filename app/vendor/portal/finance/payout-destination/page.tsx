@@ -20,7 +20,7 @@ export default async function VendorPayoutDestinationPage() {
         <p className="mt-1 text-[15px] text-espresso-900/50">Where CrownSourceGlobal sends your settlement payouts.</p>
       </div>
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-6">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6">
         {destination ? (
           <p className="mb-4 text-sm text-espresso-900/65">
             Currently:{" "}

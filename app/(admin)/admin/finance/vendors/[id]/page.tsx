@@ -32,23 +32,23 @@ export default async function AdminVendorFinanceDetailPage({ params }: { params:
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <div className="rounded-2xl border border-ivory-300 bg-white p-4">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-espresso-900/50">Eligible</p>
           <p className="mt-1.5 font-display text-lg font-medium text-success-700">{formatPrice(detail.eligible, detail.currency)}</p>
         </div>
-        <div className="rounded-2xl border border-ivory-300 bg-white p-4">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-espresso-900/50">Pending</p>
           <p className="mt-1.5 font-display text-lg font-medium text-espresso-950">{formatPrice(detail.pending, detail.currency)}</p>
         </div>
-        <div className="rounded-2xl border border-ivory-300 bg-white p-4">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-espresso-900/50">Waiting period</p>
           <p className="mt-1.5 font-display text-lg font-medium text-warning-700">{formatPrice(detail.waitingPeriod, detail.currency)}</p>
         </div>
-        <div className="rounded-2xl border border-ivory-300 bg-white p-4">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-espresso-900/50">On hold</p>
           <p className="mt-1.5 font-display text-lg font-medium text-danger-700">{formatPrice(detail.onHold, detail.currency)}</p>
         </div>
-        <div className="rounded-2xl border border-ivory-300 bg-white p-4">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-espresso-900/50">Paid to date</p>
           <p className="mt-1.5 font-display text-lg font-medium text-espresso-950">{formatPrice(detail.paidToDate, detail.currency)}</p>
         </div>
@@ -60,7 +60,7 @@ export default async function AdminVendorFinanceDetailPage({ params }: { params:
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-6">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6">
         <h2 className="font-display text-base font-medium text-espresso-950">Payout destination</h2>
         {detail.destination ? (
           <p className="mt-2 text-sm text-espresso-900/65">
@@ -74,7 +74,7 @@ export default async function AdminVendorFinanceDetailPage({ params }: { params:
       </div>
 
       {canMutate ? (
-        <div className="rounded-2xl border border-ivory-300 bg-white p-6">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6">
           <h2 className="font-display text-base font-medium text-espresso-950">Create settlement</h2>
           <p className="mt-1 text-sm text-espresso-900/50">Select the eligible earnings to include. Outstanding adjustments are applied automatically.</p>
           <div className="mt-4">
@@ -84,7 +84,7 @@ export default async function AdminVendorFinanceDetailPage({ params }: { params:
       ) : null}
 
       {detail.recentSettlements.length > 0 ? (
-        <div className="rounded-2xl border border-ivory-300 bg-white">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50">
           <h2 className="px-6 pt-6 font-display text-base font-medium text-espresso-950">Recent settlements</h2>
           <div className="mt-3 divide-y divide-ivory-100">
             {detail.recentSettlements.map((s) => (
@@ -98,7 +98,7 @@ export default async function AdminVendorFinanceDetailPage({ params }: { params:
       ) : null}
 
       {canMutate ? (
-        <div className="rounded-2xl border border-ivory-300 bg-white p-6">
+        <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6">
           <h2 className="font-display text-base font-medium text-espresso-950">Manual correction</h2>
           <p className="mt-1 text-sm text-espresso-900/50">For a wrongly-recorded payout or another one-off correction. Never edits an original earning — always an additive adjustment.</p>
           <div className="mt-4">

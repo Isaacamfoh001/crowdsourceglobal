@@ -61,7 +61,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
         <CaseStatusBadge status={detail.status} label={detail.statusLabel} />
       </div>
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
         <h2 className="font-display text-base font-medium text-espresso-950">Assignment</h2>
         <div className="mt-3">
           <AssignResolutionStaffForm id={detail.id} staff={staff} assignedStaffId={detail.assignedStaffId} />
@@ -70,7 +70,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-6">
-          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+          <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
             <h2 className="font-display text-base font-medium text-espresso-950">Customer report</h2>
             <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-espresso-800">{detail.customerDescription}</p>
             <ul className="mt-4 divide-y divide-ivory-100">
@@ -97,7 +97,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
             ) : null}
           </div>
 
-          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+          <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
             <h2 className="font-display text-base font-medium text-espresso-950">Customer communication</h2>
             <p className="mt-1 text-sm text-espresso-900/50">
               Reply from{" "}
@@ -114,7 +114,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
           </div>
 
           {detail.affectedVendors.length > 0 ? (
-            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
               <h2 className="font-display text-base font-medium text-espresso-950">Vendor coordination</h2>
               <p className="mt-1 text-sm text-espresso-900/50">Vendors never see customer contact details or this conversation with the customer.</p>
               <div className="mt-3 flex flex-col gap-4">
@@ -133,7 +133,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
           ) : null}
 
           {detail.status === "UNDER_REVIEW" ? (
-            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
               <h2 className="font-display text-base font-medium text-espresso-950">Resolution decision</h2>
               <p className="mt-1 text-sm text-espresso-900/50">Choose an outcome per item. This creates the refund/return/replacement records and notifies the customer.</p>
               <div className="mt-4">
@@ -146,7 +146,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
           ) : null}
 
           {detail.refunds.length > 0 ? (
-            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
               <h2 className="font-display text-base font-medium text-espresso-950">Refund</h2>
               <div className="mt-3 flex flex-col gap-4">
                 {detail.refunds.map((r) => {
@@ -172,7 +172,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
           ) : null}
 
           {detail.returns.length > 0 ? (
-            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
               <h2 className="font-display text-base font-medium text-espresso-950">Return</h2>
               <div className="mt-3 flex flex-col gap-4">
                 {detail.returns.map((r) => (
@@ -208,7 +208,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
           ) : null}
 
           {detail.replacements.length > 0 ? (
-            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
               <h2 className="font-display text-base font-medium text-espresso-950">Replacement</h2>
               <div className="mt-3 flex flex-col gap-3">
                 {detail.replacements.map((r) => (
@@ -227,7 +227,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-champagne-300 bg-champagne-200/15 p-5">
+          <div className="rounded-lg border border-champagne-300 bg-champagne-200/15 p-5">
             <h2 className="font-display text-base font-medium text-espresso-950">Internal CrownSource notes</h2>
             <p className="mt-1 text-xs text-espresso-900/50">Never visible to the customer or vendor.</p>
             <div className="mt-3">
@@ -237,7 +237,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+          <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
             <h2 className="font-display text-base font-medium text-espresso-950">Next action</h2>
             <div className="mt-3 flex flex-col gap-2">
               {detail.status === "OPEN" ? <MoveToReviewButton id={detail.id} /> : null}
@@ -249,14 +249,14 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
           </div>
 
           {detail.customerSafeDecisionReason ? (
-            <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+            <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
               <h2 className="font-display text-base font-medium text-espresso-950">Customer-facing decision</h2>
               <p className="mt-2 text-sm text-espresso-800">{detail.customerSafeDecisionReason}</p>
               {detail.responsibility ? <p className="mt-2 text-xs text-espresso-900/35">Internal: responsibility = {detail.responsibility.toLowerCase()}</p> : null}
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+          <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
             <h2 className="font-display text-base font-medium text-espresso-950">Activity</h2>
             <ul className="mt-3 flex flex-col gap-2 text-sm">
               {detail.activities.map((activity) => (

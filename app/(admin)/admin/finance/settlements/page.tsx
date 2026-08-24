@@ -47,7 +47,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
             key={filter.label}
             href={filter.value ? `/admin/finance/settlements?status=${filter.value}` : "/admin/finance/settlements"}
             className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium ${
-              status === filter.value ? "bg-forest-800 text-white" : "bg-white text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
+              status === filter.value ? "bg-forest-800 text-white" : "bg-ivory-50 text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
             }`}
           >
             {filter.label}
@@ -56,11 +56,11 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-ivory-400 bg-white p-10 text-center">
+        <div className="rounded-lg border border-dashed border-ivory-400 bg-ivory-50 p-10 text-center">
           <p className="text-sm text-espresso-900/50">No settlements found.</p>
         </div>
       ) : (
-        <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
+        <div className="divide-y divide-ivory-100 rounded-lg border border-ivory-300 bg-ivory-50">
           {rows.map((s) => (
             <Link key={s.id} href={`/admin/finance/settlements/${s.id}`} className="flex flex-col gap-2 px-5 py-4 hover:bg-ivory-50 sm:flex-row sm:items-center sm:justify-between">
               <div>

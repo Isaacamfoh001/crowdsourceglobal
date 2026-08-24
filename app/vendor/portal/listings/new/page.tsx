@@ -15,7 +15,7 @@ export default async function NewListingPage() {
         <h1 className="font-display text-2xl font-medium text-espresso-950">New listing</h1>
         <p className="mt-1 text-[15px] text-espresso-900/50">Start with a category — you&apos;ll fill in the rest next.</p>
       </div>
-      <div className="max-w-md rounded-2xl border border-ivory-300 bg-white p-6">
+      <div className="max-w-md rounded-lg border border-ivory-300 bg-ivory-50 p-6">
         <NewListingForm categories={categories} />
       </div>
     </div>

@@ -28,21 +28,17 @@ export default async function CheckoutPage() {
 
   return (
     <div className="bg-ivory-50">
-      <div className="bg-espresso-950 py-7 sm:py-9">
+      <div className="border-b border-ivory-300 py-7 sm:py-9">
         <Container>
-          <PageHeader
-            title="Checkout"
-            description="Review your order and confirm delivery details."
-            className="[&_h1]:text-white [&_p]:text-ivory-200/55"
-          />
-          <div className="mt-5 flex items-center gap-2 text-xs font-semibold tracking-wide text-champagne-300 uppercase">
-            <span className="flex items-center gap-1.5">
-              <span className="flex size-5 items-center justify-center rounded-full bg-champagne-400 text-[11px] text-espresso-950">1</span>
+          <PageHeader title="Checkout" description="Review your order and confirm delivery details." />
+          <div className="mt-5 flex items-center gap-2 text-xs font-semibold tracking-wide uppercase">
+            <span className="flex items-center gap-1.5 text-espresso-950">
+              <span className="flex size-5 items-center justify-center rounded-full bg-forest-800 text-[11px] text-ivory-50">1</span>
               Delivery
             </span>
-            <span className="h-px w-6 bg-white/15" aria-hidden="true" />
-            <span className="flex items-center gap-1.5 text-white/35">
-              <span className="flex size-5 items-center justify-center rounded-full border border-white/20 text-[11px]">2</span>
+            <span className="h-px w-6 bg-ivory-300" aria-hidden="true" />
+            <span className="flex items-center gap-1.5 text-espresso-900/35">
+              <span className="flex size-5 items-center justify-center rounded-full border border-ivory-400 text-[11px]">2</span>
               Payment
             </span>
           </div>

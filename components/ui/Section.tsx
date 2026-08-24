@@ -4,7 +4,7 @@ type SectionTone = "default" | "muted" | "warm" | "brand" | "ink";
 
 const toneClasses: Record<SectionTone, string> = {
   default: "bg-ivory-50",
-  muted: "bg-white",
+  muted: "bg-ivory-50",
   /** A deliberately distinct third surface — warm ivory tint — so alternating sections actually read as alternating. */
   warm: "bg-ivory-100",
   brand: "bg-forest-950 text-ivory-100",

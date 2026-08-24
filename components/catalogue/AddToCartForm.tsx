@@ -70,7 +70,7 @@ export function AddToCartForm({
               onClick={() => setQuantity((q) => clamp(q - 1))}
               disabled={quantity <= moq}
               aria-label="Decrease quantity"
-              className="flex size-9 items-center justify-center border border-ivory-400 bg-ivory-50 text-espresso-900 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex size-9 items-center justify-center border border-ivory-400 bg-ivory-50 text-espresso-900 hover:bg-ivory-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Minus className="size-4" />
             </button>
@@ -88,7 +88,7 @@ export function AddToCartForm({
               onClick={() => setQuantity((q) => clamp(q + 1))}
               disabled={quantity >= maxSelectable}
               aria-label="Increase quantity"
-              className="flex size-9 items-center justify-center border border-ivory-400 bg-ivory-50 text-espresso-900 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex size-9 items-center justify-center border border-ivory-400 bg-ivory-50 text-espresso-900 hover:bg-ivory-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus className="size-4" />
             </button>

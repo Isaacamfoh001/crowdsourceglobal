@@ -70,7 +70,7 @@ export function ReportIssueForm({ fulfilmentId }: { fulfilmentId: string }) {
           required
           disabled={isPending}
           defaultValue=""
-          className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm"
+          className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm"
         >
           <option value="" disabled>
             Select a reason
@@ -92,7 +92,7 @@ export function ReportIssueForm({ fulfilmentId }: { fulfilmentId: string }) {
           rows={3}
           required
           disabled={isPending}
-          className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm"
+          className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm"
         />
       </div>
       <p className="text-xs text-espresso-900/50">
@@ -128,7 +128,7 @@ export function RecordShipmentForm({ fulfilmentId }: { fulfilmentId: string }) {
             required
             disabled={isPending}
             placeholder="e.g. DHL, FedEx"
-            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm"
+            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -140,7 +140,7 @@ export function RecordShipmentForm({ fulfilmentId }: { fulfilmentId: string }) {
             name="trackingReference"
             required
             disabled={isPending}
-            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm"
+            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -153,7 +153,7 @@ export function RecordShipmentForm({ fulfilmentId }: { fulfilmentId: string }) {
             type="date"
             required
             disabled={isPending}
-            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm"
+            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -165,7 +165,7 @@ export function RecordShipmentForm({ fulfilmentId }: { fulfilmentId: string }) {
             name="expectedArrivalAt"
             type="date"
             disabled={isPending}
-            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm"
+            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm"
           />
         </div>
       </div>

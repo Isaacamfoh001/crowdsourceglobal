@@ -40,7 +40,7 @@ export default async function QuoteCheckoutPage({ params }: { params: Promise<Pa
         <p className="mt-1 text-sm text-espresso-900/50">From quotation {quote.reference}</p>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
-          <div className="rounded-2xl border border-ivory-300 bg-white p-6 sm:p-8">
+          <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-6 sm:p-8">
             <h2 className="font-display text-lg font-medium text-espresso-950">Delivery information</h2>
             <p className="mt-1 text-sm text-espresso-900/50">
               We&apos;ll pass this to the vendors fulfilling your order.
@@ -50,7 +50,7 @@ export default async function QuoteCheckoutPage({ params }: { params: Promise<Pa
             </div>
           </div>
 
-          <div className="h-fit rounded-2xl border border-ivory-300 bg-white p-6">
+          <div className="h-fit rounded-lg border border-ivory-300 bg-ivory-50 p-6">
             <h2 className="font-display text-lg font-medium text-espresso-950">Quote summary</h2>
 
             <ul className="mt-4 flex flex-col gap-1.5">

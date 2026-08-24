@@ -26,7 +26,7 @@ export function SummaryCards({ summary, operationalAllowed }: { summary: Summary
         <Link
           key={card.label}
           href={card.href}
-          className={`rounded-2xl border bg-white p-4 transition-colors hover:bg-ivory-50 ${
+          className={`rounded-lg border bg-ivory-50 p-4 transition-colors hover:bg-ivory-100 ${
             card.emphasize ? "border-danger-200 bg-danger-50/50" : "border-ivory-300"
           }`}
         >

@@ -19,7 +19,7 @@ export function ConversationList({
   }
 
   return (
-    <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
+    <div className="divide-y divide-ivory-100 rounded-lg border border-ivory-300 bg-ivory-50">
       {conversations.map((conversation) => (
         <Link
           key={conversation.id}

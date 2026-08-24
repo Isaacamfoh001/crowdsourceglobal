@@ -83,10 +83,10 @@ export default async function QuoteDetailPage({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="rounded-2xl border border-ivory-300 bg-white p-5">
-          <h2 className="font-display text-base font-medium text-espresso-950">Items</h2>
-          <ul className="mt-3 divide-y divide-ivory-100">
+      <div className="grid gap-8 border-t border-ivory-300 pt-6 lg:grid-cols-[1fr_320px]">
+        <div>
+          <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Items</h2>
+          <ul className="mt-2 divide-y divide-ivory-200">
             {quote.items.map((item) => (
               <li key={item.id} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -105,9 +105,9 @@ export default async function QuoteDetailPage({
           </ul>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
-            <h2 className="font-display text-base font-medium text-espresso-950">Summary</h2>
+        <div className="flex flex-col divide-y divide-ivory-200 lg:border-l lg:border-ivory-200 lg:pl-8">
+          <div className="pb-5 first:pt-0">
+            <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Summary</h2>
             <div className="mt-3 flex justify-between text-sm text-espresso-900/65">
               <span>Subtotal</span>
               <span>{formatPrice(quote.subtotal, quote.currency)}</span>
@@ -122,7 +122,7 @@ export default async function QuoteDetailPage({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-ivory-300 bg-white p-5">
+          <div className="pt-5 last:pb-0">
             {quote.status === "ISSUED" ? (
               <Link href={`/checkout/quote/${quote.id}`}>
                 <Button size="lg" fullWidth>

@@ -44,7 +44,7 @@ export function AssignStaffForm({ id, staff, assignedStaffId }: { id: string; st
         name="staffId"
         defaultValue={assignedStaffId ?? ""}
         disabled={isPending}
-        className="rounded-lg border border-ivory-400 bg-white px-3 py-2 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+        className="rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-2 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
       >
         <option value="">Unassigned</option>
         {staff.map((s) => (
@@ -102,7 +102,7 @@ export function RequestClarificationForm({ id }: { id: string }) {
         required
         placeholder="What do you need from the customer?"
         disabled={isPending}
-        className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+        className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
       />
       <Button type="submit" size="sm" disabled={isPending} className="self-start">
         {isPending ? "Sending…" : "Request clarification"}
@@ -137,7 +137,7 @@ export function AddSourcingOptionForm({
           value={sourceType}
           onChange={(e) => setSourceType(e.target.value as SourcingOptionSourceType)}
           disabled={isPending}
-          className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+          className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
         >
           <option value="VENDOR_LISTING">Existing vendor listing</option>
           <option value="VENDOR">Marketplace vendor (no matching listing)</option>
@@ -161,7 +161,7 @@ export function AddSourcingOptionForm({
               if (vendorField && listing) vendorField.value = listing.vendorId;
             }}
             defaultValue=""
-            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
           >
             <option value="" disabled>
               Select a listing
@@ -187,7 +187,7 @@ export function AddSourcingOptionForm({
             required
             disabled={isPending}
             defaultValue=""
-            className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
           >
             <option value="" disabled>
               Select a vendor
@@ -266,7 +266,7 @@ export function AllocationForm({ id, options, quantity }: { id: string; options:
             value={values[option.id] ?? 0}
             onChange={(e) => setValues((prev) => ({ ...prev, [option.id]: Number(e.target.value) }))}
             disabled={isPending}
-            className="w-24 rounded-lg border border-ivory-400 bg-white px-3 py-1.5 text-right text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+            className="w-24 rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-1.5 text-right text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
           />
         </div>
       ))}
@@ -310,7 +310,7 @@ export function PrepareQuoteForm({
           required
           placeholder="e.g. 500 Custom Embroidered Polo Shirts, navy blue, 220gsm cotton, left-chest logo"
           disabled={isPending}
-          className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+          className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
         />
       </div>
 
@@ -326,7 +326,7 @@ export function PrepareQuoteForm({
             onChange={(e) => setOtherCosts(Number(e.target.value) || 0)}
             disabled={isPending}
             placeholder="0.00"
-            className="mt-1.5 w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+            className="mt-1.5 w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
           />
         </div>
         <div>
@@ -341,7 +341,7 @@ export function PrepareQuoteForm({
             onChange={(e) => setUnitPrice(Number(e.target.value) || 0)}
             disabled={isPending}
             placeholder="0.00"
-            className="mt-1.5 w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+            className="mt-1.5 w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
           />
         </div>
       </div>
@@ -380,7 +380,7 @@ export function MarkUnableToSourceForm({ id }: { id: string }) {
         required
         placeholder="Customer-safe explanation — this is shown to the customer."
         disabled={isPending}
-        className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+        className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
       />
       <Button type="submit" variant="outline" size="sm" disabled={isPending} className="self-start">
         {isPending ? "Saving…" : "Mark unable to source"}

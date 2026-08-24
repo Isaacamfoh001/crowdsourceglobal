@@ -57,7 +57,7 @@ export function BusinessForm({ initial, showRegistrationFields }: { initial: Ini
           placeholder="What do you sell, and what makes your store worth buying from?"
           required
           disabled={isPending}
-          className="w-full rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+          className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
         />
       </div>
 

@@ -143,7 +143,7 @@ export function RejectCaseForm({ id }: { id: string }) {
         minLength={3}
         placeholder="Explain the decision — the customer will see this."
         disabled={isPending}
-        className="w-full rounded-lg border border-danger-200 bg-white px-3.5 py-2.5 text-sm outline-none"
+        className="w-full rounded-lg border border-danger-200 bg-ivory-50 px-3.5 py-2.5 text-sm outline-none"
       />
       <Button type="submit" variant="outline" size="sm" disabled={isPending} className="w-fit border-danger-200 text-danger-700">
         {isPending ? "Saving…" : "Reject case"}

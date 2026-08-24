@@ -47,11 +47,11 @@ export default async function VendorSettlementsPage({ searchParams }: { searchPa
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-ivory-400 bg-white p-10 text-center">
+        <div className="rounded-lg border border-dashed border-ivory-400 bg-ivory-50 p-10 text-center">
           <p className="text-sm text-espresso-900/50">No settlements yet.</p>
         </div>
       ) : (
-        <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
+        <div className="divide-y divide-ivory-100 rounded-lg border border-ivory-300 bg-ivory-50">
           {rows.map((settlement) => (
             <Link
               key={settlement.id}

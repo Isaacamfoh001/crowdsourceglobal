@@ -12,24 +12,22 @@ export default async function ProfilePage() {
     <div className="flex flex-col gap-6">
       <h1 className="font-display text-2xl font-medium text-espresso-950">Your profile</h1>
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-6 shadow-soft">
-        <dl className="divide-y divide-ivory-100">
-          <div className="flex justify-between py-3">
-            <dt className="text-sm font-medium text-espresso-900/50">Name</dt>
-            <dd className="text-sm text-espresso-950">
-              {customerProfile?.displayName ?? session.user.name}
-            </dd>
-          </div>
-          <div className="flex justify-between py-3">
-            <dt className="text-sm font-medium text-espresso-900/50">Email</dt>
-            <dd className="text-sm text-espresso-950">{session.user.email}</dd>
-          </div>
-          <div className="flex justify-between py-3">
-            <dt className="text-sm font-medium text-espresso-900/50">Email verified</dt>
-            <dd className="text-sm text-espresso-950">{session.user.emailVerified ? "Yes" : "No"}</dd>
-          </div>
-        </dl>
-      </div>
+      <dl className="max-w-md divide-y divide-ivory-200 border-t border-ivory-300">
+        <div className="flex justify-between py-3.5">
+          <dt className="text-sm font-medium text-espresso-900/50">Name</dt>
+          <dd className="text-sm text-espresso-950">
+            {customerProfile?.displayName ?? session.user.name}
+          </dd>
+        </div>
+        <div className="flex justify-between py-3.5">
+          <dt className="text-sm font-medium text-espresso-900/50">Email</dt>
+          <dd className="text-sm text-espresso-950">{session.user.email}</dd>
+        </div>
+        <div className="flex justify-between py-3.5">
+          <dt className="text-sm font-medium text-espresso-900/50">Email verified</dt>
+          <dd className="text-sm text-espresso-950">{session.user.emailVerified ? "Yes" : "No"}</dd>
+        </div>
+      </dl>
 
       <p className="text-sm text-espresso-900/35">
         Profile editing, saved addresses, and business details will appear here in a later

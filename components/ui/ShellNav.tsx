@@ -14,12 +14,14 @@ export type ShellNavItem = {
 };
 
 /**
- * Shared shell sidebar navigation (M14.1) — the horizontal-scroll-on-mobile
+ * Shared shell sidebar navigation (M14.4) — the horizontal-scroll-on-mobile
  * / vertical-sidebar-on-desktop pattern used identically by the customer
- * account, vendor portal, and admin shells. `tone` gives each surface a
- * distinct active-state accent without duplicating the whole component:
- * "brand" for commerce-forward surfaces (account, vendor), "neutral" for
- * the denser admin operations console.
+ * account, vendor portal, and admin shells. The active state is a left
+ * accent rule plus weight change, not a filled pill — a solid champagne (or
+ * any solid) chip repeated down every sidebar, on every page load, reads as
+ * decoration rather than wayfinding. `tone` only changes the accent color:
+ * "brand" (forest) for commerce-forward surfaces (account, vendor),
+ * "neutral" (ivory) for the denser admin operations console.
  */
 export function ShellNav({
   items,
@@ -29,10 +31,13 @@ export function ShellNav({
   tone?: "brand" | "neutral";
 }) {
   const pathname = usePathname();
-  const activeClasses = tone === "brand" ? "bg-champagne-200 text-espresso-950" : "bg-espresso-900 text-ivory-50";
+  const activeClasses =
+    tone === "brand"
+      ? "text-forest-900 font-semibold lg:border-l-forest-800 lg:bg-ivory-100"
+      : "text-espresso-950 font-semibold lg:border-l-espresso-800 lg:bg-ivory-100";
 
   return (
-    <nav className="flex gap-2 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0" aria-label="Section">
+    <nav className="flex gap-2 overflow-x-auto pb-2 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:pb-0" aria-label="Section">
       {items.map((item, index) => {
         const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
         const showGroupHeading = Boolean(item.group) && item.group !== items[index - 1]?.group;
@@ -46,8 +51,10 @@ export function ShellNav({
             ) : null}
             <Link
               href={item.href}
-              className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
-                isActive ? activeClasses : "text-espresso-800/70 hover:bg-ivory-100"
+              className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-full border border-transparent px-3.5 py-2.5 text-sm whitespace-nowrap transition-colors lg:rounded-none lg:border-l-2 lg:pl-3 ${
+                isActive
+                  ? `bg-ivory-100 ${activeClasses}`
+                  : "text-espresso-800/70 hover:bg-ivory-100 lg:border-transparent"
               }`}
             >
               <item.icon className="size-4 shrink-0" strokeWidth={1.75} />

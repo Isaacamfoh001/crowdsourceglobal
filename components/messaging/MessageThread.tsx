@@ -23,7 +23,7 @@ export function MessageThread({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 rounded-2xl border border-ivory-300 bg-white p-4 sm:p-5">
+      <div className="flex flex-col gap-3 rounded-lg border border-ivory-300 bg-ivory-50 p-4 sm:p-5">
         {messages.length === 0 ? (
           <p className="py-6 text-center text-sm text-espresso-900/35">No messages yet.</p>
         ) : (
@@ -58,7 +58,7 @@ export function MessageThread({
             placeholder={placeholder}
             required
             disabled={isPending}
-            className="w-full min-w-0 flex-1 rounded-lg border border-ivory-400 bg-white px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+            className="w-full min-w-0 flex-1 rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
           />
           <Button type="submit" disabled={isPending} className="shrink-0">
             {isPending ? "Sending…" : "Send"}

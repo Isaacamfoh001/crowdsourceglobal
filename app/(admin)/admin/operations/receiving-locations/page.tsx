@@ -24,14 +24,14 @@ export default async function ReceivingLocationsPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-ivory-300 bg-white p-5 sm:p-6">
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5 sm:p-6">
         <h2 className="font-display text-base font-medium text-espresso-950">Add a location</h2>
         <div className="mt-3">
           <ReceivingLocationForm />
         </div>
       </div>
 
-      <div className="divide-y divide-ivory-100 rounded-2xl border border-ivory-300 bg-white">
+      <div className="divide-y divide-ivory-100 rounded-lg border border-ivory-300 bg-ivory-50">
         {locations.map((location) => (
           <div key={location.id} className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>

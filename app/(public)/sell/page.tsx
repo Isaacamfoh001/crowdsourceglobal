@@ -16,7 +16,7 @@ import { Button } from "../../../components/ui/Button";
 export const metadata = {
   title: "Sell on CrownSourceGlobal",
   description:
-    "Vendor onboarding for businesses and suppliers who want to sell through CrownSourceGlobal.",
+    "Vendor onboarding for beauty businesses and suppliers who want to sell through CrownSourceGlobal.",
 };
 
 const benefits = [
@@ -58,15 +58,16 @@ export default function SellPage() {
       <div className="bg-ivory-50 pt-16 pb-8 sm:pt-20 lg:pt-28">
         <Container>
           <div className="mx-auto max-w-2xl text-center">
-            <Badge tone="gold">For businesses & suppliers</Badge>
+            <Badge tone="gold">For beauty businesses & suppliers</Badge>
             <h1 className="mt-6 font-display text-4xl font-medium tracking-tight text-espresso-950 sm:text-5xl">
               Sell through CrownSourceGlobal
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-espresso-900/65">
-              If you supply products and want an easier channel to reach buyers — from
-              individual purchases to bulk orders — vendor onboarding starts here. Vendor
-              accounts go through a separate review process from ordinary customer
-              accounts, so we can keep the marketplace trustworthy for buyers.
+              If you supply hair, beauty, or cosmetics products and want an easier
+              channel to reach buyers — from individual purchases to bulk orders —
+              vendor onboarding starts here. Vendor accounts go through a separate
+              review process from ordinary customer accounts, so we can keep the
+              marketplace trustworthy for buyers.
             </p>
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <Link href="/vendor/onboarding">
@@ -96,7 +97,7 @@ export default function SellPage() {
           {benefits.map((benefit) => (
             <div
               key={benefit.title}
-              className="rounded-2xl border border-ivory-300 bg-ivory-50 p-7"
+              className="rounded-lg border border-ivory-300 bg-ivory-50 p-7"
             >
               <div className="flex size-11 items-center justify-center rounded-xl bg-champagne-200 text-forest-900">
                 <benefit.icon className="size-5" strokeWidth={1.75} />
@@ -135,8 +136,8 @@ export default function SellPage() {
                   Tell us about your business
                 </h3>
                 <p className="mt-1.5 text-[15px] leading-relaxed text-espresso-900/65">
-                  Vendor onboarding — including business verification and listing setup —
-                  is being built as our next milestone.
+                  A short guided form covers what you sell, how you sell it, and your
+                  business details — a few minutes on a phone or a laptop.
                 </p>
               </div>
             </li>

@@ -1,77 +1,58 @@
 import Link from "next/link";
-import { ArrowRight, Handshake, MessagesSquare, PackageCheck, Radar } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Container } from "../ui/Container";
 import { Button } from "../ui/Button";
 
 const benefits = [
-  {
-    icon: Radar,
-    title: "Exposure to buyers",
-    description: "Reach ordinary and bulk demand in one place, without building your own storefront.",
-  },
-  {
-    icon: MessagesSquare,
-    title: "Managed buyer communication",
-    description: "CrownSourceGlobal handles buyer-facing conversations tied to your listings and orders.",
-  },
-  {
-    icon: PackageCheck,
-    title: "Structured ordering",
-    description: "Orders arrive ready to fulfil, with the details you need — not scattered across channels.",
-  },
-  {
-    icon: Handshake,
-    title: "Sourcing opportunities",
-    description: "Get matched to custom sourcing requests that fit what you already supply.",
-  },
+  "Reach ordinary and bulk demand in one place, without building your own storefront",
+  "CrownSourceGlobal handles buyer-facing conversations tied to your listings and orders",
+  "Orders arrive ready to fulfil, with the details you need — not scattered across channels",
+  "Get matched to custom sourcing requests — wholesale hair, beauty supplies, and more",
 ];
 
+/**
+ * Light, typography-led business section (M14.4) — replaces the previous
+ * dark espresso band + four bordered icon tiles. Homepage dark moments are
+ * now deliberately rationed (Hero, CustomSourcing); this is the "warm
+ * business story" beat and reads as ivory/espresso like the rest of the
+ * page, with the benefit list carried by a simple divided list rather than
+ * another card grid.
+ */
 export function VendorSection() {
   return (
-    <section id="sell" className="bg-espresso-900 py-16 sm:py-20 lg:py-28">
+    <section id="sell" className="bg-ivory-50 py-16 sm:py-20 lg:py-28">
       <Container>
-        <div className="grid gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+        <div className="grid gap-12 lg:grid-cols-[1fr_0.9fr] lg:gap-20">
           <div>
-            <p className="text-xs font-semibold tracking-[0.2em] text-champagne-300 uppercase">For vendors</p>
-            <h2 className="mt-3 font-display text-3xl font-medium tracking-tight text-ivory-50 sm:text-4xl">
+            <p className="text-xs font-semibold tracking-[0.2em] text-champagne-700 uppercase">
+              Building a beauty business?
+            </p>
+            <h2 className="mt-3 max-w-md font-display text-3xl font-medium tracking-tight text-espresso-950 sm:text-4xl">
               You focus on selling. We handle what&apos;s around it.
             </h2>
-            <p className="mt-4 text-lg leading-relaxed text-ivory-200/70">
-              List your products, keep availability and pricing accurate, and fulfil the
-              orders that come through. CrownSourceGlobal manages buyer communication,
-              structured ordering, and payment collection — so you&apos;re not running a
-              full ecommerce operation on your own.
+            <p className="mt-5 max-w-md text-lg leading-relaxed text-espresso-900/70">
+              List your hair, beauty, or cosmetics products, keep availability and
+              pricing accurate, and fulfil the orders that come through. CrownSourceGlobal
+              manages buyer communication, structured ordering, and payment collection —
+              so you&apos;re not running a full ecommerce operation on your own.
             </p>
-            <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="mt-8">
               <Link href="/sell">
-                <Button
-                  size="lg"
-                  fullWidth
-                  className="!bg-champagne-400 !text-espresso-950 hover:!bg-champagne-300 sm:w-auto"
-                >
-                  Become a Vendor
+                <Button size="lg">
+                  Become a vendor
                   <ArrowRight className="size-4" strokeWidth={2} />
                 </Button>
               </Link>
-              <p className="text-sm text-ivory-200/50">
-                See what&apos;s involved and how onboarding works.
-              </p>
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <ul className="flex flex-col divide-y divide-ivory-300 border-t border-ivory-300 lg:pt-1">
             {benefits.map((benefit) => (
-              <div key={benefit.title} className="border border-white/10 p-6">
-                <benefit.icon className="size-6 text-champagne-400" strokeWidth={1.25} />
-                <h3 className="mt-4 font-display text-base font-medium text-ivory-50">
-                  {benefit.title}
-                </h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ivory-200/60">
-                  {benefit.description}
-                </p>
-              </div>
+              <li key={benefit} className="py-5 text-[15px] leading-relaxed text-espresso-900/75 first:pt-0">
+                {benefit}
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </Container>
     </section>

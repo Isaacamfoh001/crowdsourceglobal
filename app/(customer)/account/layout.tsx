@@ -12,7 +12,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
 
   return (
     <div className="min-h-screen bg-ivory-50">
-      <header className="border-b border-ivory-300 bg-white">
+      <header className="border-b border-ivory-300">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <Logo />
           <div className="flex shrink-0 items-center gap-1.5">
@@ -23,7 +23,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
       </header>
 
       <Container className="max-w-6xl py-8 sm:py-12">
-        <div className="grid gap-6 lg:grid-cols-[220px_1fr] lg:gap-8">
+        <div className="grid gap-8 lg:grid-cols-[200px_1fr] lg:gap-10">
           <AccountNav />
           <div className="min-w-0">{children}</div>
         </div>

@@ -36,7 +36,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <ul className="mt-8 flex flex-col gap-5">
             {reassurances.map((item) => (
               <li key={item.text} className="flex items-start gap-3">
-                <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-champagne-400">
+                <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-ivory-50/10 text-champagne-400">
                   <item.icon className="size-4" strokeWidth={1.75} />
                 </div>
                 <p className="text-[15px] leading-relaxed text-champagne-200/90">{item.text}</p>

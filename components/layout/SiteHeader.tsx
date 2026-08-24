@@ -11,9 +11,8 @@ import type { NotificationView } from "../../modules/notifications/types";
 
 const NAV_LINKS = [
   { href: "/shop", label: "Shop" },
-  { href: "/sourcing", label: "Custom Sourcing" },
-  { href: "/sell", label: "Sell with Us" },
-  { href: "/#how-it-works", label: "How It Works" },
+  { href: "/sourcing", label: "Source" },
+  { href: "/sell", label: "Sell" },
 ];
 
 function CartLink({ itemCount }: { itemCount: number }) {
@@ -120,7 +119,7 @@ export function SiteHeader({
             aria-expanded={menuOpen}
             aria-controls="mobile-nav"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
-            className="flex size-10 items-center justify-center rounded-lg text-stone-700 hover:bg-stone-100"
+            className="flex size-10 items-center justify-center rounded-lg text-espresso-800 hover:bg-ivory-100"
           >
             {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>

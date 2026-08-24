@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/db";
 import { paginationSkip } from "../../lib/pagination";
+import { CANONICAL_TOP_LEVEL_SLUGS } from "../../prisma/reference-data";
 import type {
   ListingFilter,
   PublicCategory,
@@ -63,13 +64,37 @@ const listingDetailSelect = {
   },
 } as const;
 
+/**
+ * The general, unscoped marketplace feed — /shop's "All" tab, search, and
+ * the homepage — is restricted to the canonical beauty-first taxonomy
+ * (M14.3), same allowlist as listTopLevelCategoriesWithChildren. This is
+ * what actually keeps pre-existing non-beauty demo/test listings
+ * (electronics, textiles, ad hoc test fixtures under dynamically created
+ * categories, etc.) out of general discovery without deleting anything.
+ *
+ * Deliberately NOT applied when the caller already scoped the query:
+ * `filter.categoryIds` (a direct link to a legacy category, or a canonical
+ * one, from /shop/[category]) and `filter.vendorId` (a vendor's own
+ * storefront, which must show that vendor's real active catalogue
+ * regardless of category — see modules/catalogue/repository.test.ts) both
+ * carry their own, more specific scoping and are exempt.
+ */
+function canonicalCategoryWhere() {
+  return {
+    OR: [
+      { slug: { in: CANONICAL_TOP_LEVEL_SLUGS } },
+      { parent: { slug: { in: CANONICAL_TOP_LEVEL_SLUGS } } },
+    ],
+  };
+}
+
 function listingWhere(filter: ListingFilter) {
+  const hasCategoryIds = Boolean(filter.categoryIds && filter.categoryIds.length > 0);
   return {
     ...PUBLIC_LISTING_WHERE,
-    ...(filter.categoryIds && filter.categoryIds.length > 0
-      ? { categoryId: { in: filter.categoryIds } }
-      : {}),
+    ...(hasCategoryIds ? { categoryId: { in: filter.categoryIds } } : {}),
     ...(filter.vendorId ? { vendorId: filter.vendorId } : {}),
+    ...(!hasCategoryIds && !filter.vendorId ? { category: canonicalCategoryWhere() } : {}),
     ...(filter.search
       ? {
           OR: [
@@ -125,9 +150,17 @@ function toSummary(row: SummaryRow): PublicListingSummary {
 }
 
 export const catalogueRepository = {
+  /**
+   * Restricted to the canonical beauty-first taxonomy (M14.3) — see
+   * prisma/reference-data.ts. A pre-existing top-level Category outside
+   * that list (e.g. from an earlier, broader taxonomy on a previously
+   * bootstrapped database) is never deleted, just no longer offered
+   * through top-level discovery; direct links to it and its listings keep
+   * working via findCategoryBySlug.
+   */
   async listTopLevelCategoriesWithChildren(): Promise<PublicCategoryWithChildren[]> {
     const categories = await prisma.category.findMany({
-      where: { parentCategoryId: null },
+      where: { parentCategoryId: null, slug: { in: CANONICAL_TOP_LEVEL_SLUGS } },
       select: { ...categorySelect, children: { select: categorySelect } },
       orderBy: { name: "asc" },
     });
