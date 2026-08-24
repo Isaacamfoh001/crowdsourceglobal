@@ -75,9 +75,13 @@ export function NotificationBell({
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-40 cursor-default"
           />
-          <div
+          {/* <div
             role="menu"
             className="absolute right-0 z-50 mt-2 w-[calc(100vw-2rem)] max-w-sm rounded-lg border border-ivory-300 bg-ivory-50 shadow-lifted sm:w-96"
+          > */}
+          <div
+            role="menu"
+            className="fixed left-4 right-4 top-16 z-50 rounded-lg border border-ivory-300 bg-ivory-50 shadow-lifted sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96"
           >
             <div className="flex items-center justify-between border-b border-ivory-200 px-4 py-3">
               <p className="text-sm font-semibold text-espresso-950">Notifications</p>
