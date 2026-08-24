@@ -4,6 +4,7 @@ import { CheckCircle2, Clock } from "lucide-react";
 import { Button } from "../../../../../components/ui/Button";
 import { QuoteStatusBadge } from "../../../../../components/quotation/QuoteStatusBadge";
 import { ReissueQuoteButton } from "../../../../../components/quotation/ReissueQuoteButton";
+import { DownloadQuoteButton } from "../../../../../components/quotation/DownloadQuoteButton";
 import { formatPrice } from "../../../../../lib/format";
 import { requireSession, getCurrentCustomerProfile } from "../../../../../modules/identity/policy";
 import { quotationService } from "../../../../../modules/quotation/service";
@@ -122,7 +123,7 @@ export default async function QuoteDetailPage({
             </p>
           </div>
 
-          <div className="pt-5 last:pb-0">
+          <div className="flex flex-col gap-3 pt-5 last:pb-0">
             {quote.status === "ISSUED" ? (
               <Link href={`/checkout/quote/${quote.id}`}>
                 <Button size="lg" fullWidth>
@@ -143,6 +144,7 @@ export default async function QuoteDetailPage({
                 </Button>
               </Link>
             ) : null}
+            <DownloadQuoteButton quotationId={quote.id} reference={quote.reference} />
           </div>
         </div>
       </div>
