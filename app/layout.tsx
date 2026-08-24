@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import { ServiceWorkerRegistration } from "../components/pwa/ServiceWorkerRegistration";
+import { InstallPrompt } from "../components/pwa/InstallPrompt";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -55,6 +56,7 @@ export default function RootLayout({
       <body className="min-h-screen antialiased">
         {children}
         <ServiceWorkerRegistration />
+        <InstallPrompt />
       </body>
     </html>
   );
