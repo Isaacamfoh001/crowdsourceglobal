@@ -1566,6 +1566,9 @@ model AdminUser {
   assignedSourcingRequests CustomSourcingRequest[]
   assignedResolutionCases  ResolutionCase[]
 
+  talentApplicationStatusUpdates TalentApplication[]     @relation("TalentStatusUpdatedBy")
+  talentApplicationNotes         TalentApplicationNote[]
+
   @@map("admin_user")
 }
 
@@ -1928,6 +1931,7 @@ enum NotificationType {
   VENDOR_EARNING_ON_HOLD
   VENDOR_SETTLEMENT_APPROVED
   VENDOR_SETTLEMENT_PAID
+  ADMIN_NEW_TALENT_APPLICATION
 }
 
 /// A structured, typed in-app notification. `title`/`body` are plain text
@@ -2347,4 +2351,211 @@ model VendorPayoutDestination {
   updatedAt DateTime @updatedAt
 
   @@map("vendor_payout_destination")
+}
+
+// ---------------------------------------------------------------------------
+// M15 — Beauty Talent / Careers
+//
+// A guest-accessible (no Better Auth session, no CustomerProfile) applicant
+// flow — deliberately not modeled as a CustomerProfile-owned entity like
+// CustomSourcingRequest. "Show us your work" over a CV: the applicant tells
+// us who they are, what beauty skills they have, and uploads photographs of
+// work they personally completed. Admin reviews and moves the application
+// through a small, sequential status workflow (mirrors the fulfilment/
+// sourcing "one next valid action" philosophy) — never a public/ATS-scale
+// state machine.
+// ---------------------------------------------------------------------------
+
+enum TalentApplicationStatus {
+  NEW
+  REVIEWING
+  SHORTLISTED
+  REFERRED
+  CLOSED
+}
+
+/// Context recorded only when status = CLOSED — never implies REFERRED means
+/// hired, and CLOSED alone never claims an outcome without one of these.
+enum TalentCloseOutcome {
+  PLACED
+  NOT_SELECTED
+  WITHDRAWN
+  OTHER
+}
+
+/// Fixed, small taxonomy — not free text — so Admin can filter by skill.
+/// OTHER pairs with TalentApplication.otherSkillDescription.
+enum TalentSkill {
+  HAIRDRESSING
+  WIG_MAKING
+  WIG_INSTALLATION
+  BRAIDING
+  HAIR_COLOURING_TREATMENT
+  MAKEUP_ARTISTRY
+  LASH_EXTENSIONS
+  BROWS
+  MANICURE_PEDICURE
+  NAIL_TECHNOLOGY
+  BARBERING
+  SKINCARE_BEAUTY_THERAPY
+  SALON_ASSISTANT
+  BEAUTY_RETAIL_SALES
+  OTHER
+}
+
+enum TalentExperienceLevel {
+  JUST_STARTING
+  UNDER_1_YEAR
+  ONE_TO_TWO_YEARS
+  THREE_TO_FIVE_YEARS
+  FIVE_PLUS_YEARS
+}
+
+enum TalentAvailability {
+  IMMEDIATELY
+  WITHIN_2_WEEKS
+  WITHIN_1_MONTH
+  JUST_EXPLORING
+}
+
+/// Native Postgres enum array on TalentApplication — deliberately NOT a join
+/// table like TalentApplicationSkill: there is no cross-application
+/// filtering value dense enough to justify one (unlike skills, which the
+/// brief explicitly wants relationally filterable), and `hasSome`/`has`
+/// query the array directly for Admin filtering.
+enum TalentOpportunityType {
+  FULL_TIME
+  PART_TIME
+  APPRENTICESHIP
+  CONTRACT_FREELANCE
+  OPEN_TO_ANY
+}
+
+enum TalentWorkStatus {
+  NOT_WORKING
+  FULL_TIME_EMPLOYED
+  PART_TIME_EMPLOYED
+  FREELANCE_SELF_EMPLOYED
+  APPRENTICE_TRAINEE
+  OTHER
+}
+
+/// The guest applicant's submission. No userId/CustomerProfile — phone is
+/// the primary contact method (required); email is optional, since a
+/// WhatsApp-first applicant may not check email. `region`/
+/// `preferredWorkLocation` are free text, matching this codebase's existing
+/// convention (Ghana regions are never modeled as a fixed enum elsewhere —
+/// see modules/addresses).
+model TalentApplication {
+  id                String @id @default(cuid())
+  applicationNumber String @unique
+
+  fullName String
+  phone    String
+  email    String?
+  city     String
+  region   String?
+
+  currentWorkStatus TalentWorkStatus
+  experienceLevel   TalentExperienceLevel
+  availability      TalentAvailability
+
+  opportunityTypes      TalentOpportunityType[]
+  willingToRelocate     Boolean                 @default(false)
+  preferredWorkLocation String?
+
+  /// Set only when a skill of OTHER was selected in `skills`.
+  otherSkillDescription String?
+
+  /// Short practical statement, not a cover letter — length-capped at the
+  /// application layer (modules/talent/service.ts), not the DB.
+  statement String
+
+  /// Optional Instagram/TikTok/portfolio URL — stored and linked out to
+  /// exactly as given (safe `rel`/`target` at render time), never fetched
+  /// or embedded server-side (no social API integration in scope).
+  portfolioUrl String?
+
+  /// Must be true to submit (enforced in modules/talent/service.ts) — kept
+  /// as a persisted field, not just a client-side gate, so the confirmation
+  /// the applicant made is part of the durable record.
+  ownershipConfirmed Boolean @default(false)
+
+  status       TalentApplicationStatus @default(NEW)
+  closeOutcome TalentCloseOutcome?
+
+  /// Minimal status-change audit (CLAUDE.md §36 — "at minimum track who
+  /// changed status and when"), not a full activity/event log — this
+  /// feature's status workflow is small enough that one pair of columns is
+  /// sufficient without a dedicated TalentApplicationActivity table.
+  statusUpdatedAt        DateTime?
+  statusUpdatedByAdminId String?
+  statusUpdatedByAdmin   AdminUser? @relation("TalentStatusUpdatedBy", fields: [statusUpdatedByAdminId], references: [id])
+
+  submittedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  skills      TalentApplicationSkill[]
+  workSamples TalentWorkSample[]
+  notes       TalentApplicationNote[]
+
+  @@index([status, submittedAt])
+  @@index([submittedAt])
+  @@map("talent_application")
+}
+
+/// One row per selected skill — a normalized relation (not a scalar array)
+/// specifically because skill is the one dimension the brief calls out for
+/// good Admin filtering (CLAUDE.md M15 §16).
+model TalentApplicationSkill {
+  id String @id @default(cuid())
+
+  applicationId String
+  application   TalentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  skill         TalentSkill
+
+  @@unique([applicationId, skill])
+  @@index([skill])
+  @@map("talent_application_skill")
+}
+
+/// Metadata only — actual bytes live behind the StorageProvider abstraction
+/// (lib/storage.ts), same convention as SourcingRequestAttachment/
+/// ResolutionCaseAttachment. Never publicly readable — served only via an
+/// admin-authenticated route (app/api/talent/work-samples/[id]/route.ts).
+model TalentWorkSample {
+  id String @id @default(cuid())
+
+  applicationId String
+  application   TalentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  storageKey String
+  mimeType   String
+  sizeBytes  Int
+  caption    String?
+  sortOrder  Int
+
+  createdAt DateTime @default(now())
+
+  @@index([applicationId, sortOrder])
+  @@map("talent_work_sample")
+}
+
+/// Staff-only internal notes — never visible to the applicant (there is no
+/// applicant-facing account/page for them to see it from) or publicly.
+model TalentApplicationNote {
+  id String @id @default(cuid())
+
+  applicationId String
+  application   TalentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  authorAdminId String
+  authorAdmin   AdminUser @relation(fields: [authorAdminId], references: [id])
+  note          String
+
+  createdAt DateTime @default(now())
+
+  @@index([applicationId, createdAt])
+  @@map("talent_application_note")
 }

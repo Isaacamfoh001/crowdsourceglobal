@@ -68,6 +68,8 @@ const POLICY: Record<NotificationType, Policy> = {
   VENDOR_EARNING_ON_HOLD: { required: true },
   VENDOR_SETTLEMENT_APPROVED: { required: true },
   VENDOR_SETTLEMENT_PAID: { required: true },
+  // M15 — narrow, low-volume admin event, same reasoning as the other ADMIN_* rows above.
+  ADMIN_NEW_TALENT_APPLICATION: { required: true },
 };
 
 const CATEGORY_FIELD: Record<NotificationCategory, keyof PreferencesView> = {

@@ -5,6 +5,7 @@ const marketplaceLinks = [
   { href: "/shop", label: "Shop" },
   { href: "/#custom-sourcing", label: "Custom sourcing" },
   { href: "/#how-it-works", label: "How it works" },
+  { href: "/careers", label: "Careers" },
 ];
 
 const vendorLinks = [

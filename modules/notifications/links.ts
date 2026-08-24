@@ -27,4 +27,5 @@ export const notificationLinks = {
   adminFinance: () => "/admin/finance",
   adminFinanceVendor: (vendorId: string) => `/admin/finance/vendors/${vendorId}`,
   adminSettlement: (settlementId: string) => `/admin/finance/settlements/${settlementId}`,
+  adminTalentApplication: (applicationId: string) => `/admin/talent/${applicationId}`,
 };

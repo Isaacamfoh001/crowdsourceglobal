@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, ClipboardCheck, CreditCard, FileText, LayoutDashboard, MessagesSquare, PackageSearch, RotateCcw, Search, Truck, Wallet } from "lucide-react";
+import { AlertCircle, ClipboardCheck, CreditCard, FileText, LayoutDashboard, MessagesSquare, PackageSearch, RotateCcw, Search, Sparkles, Truck, Wallet } from "lucide-react";
 import { ShellNav, type ShellNavItem } from "../ui/ShellNav";
 
 const NAV_ITEMS: ShellNavItem[] = [
@@ -8,6 +8,7 @@ const NAV_ITEMS: ShellNavItem[] = [
   { href: "/admin/attention", label: "Attention required", icon: AlertCircle, group: "Overview" },
   { href: "/admin/vendor-applications", label: "Vendor applications", icon: ClipboardCheck, group: "Moderation" },
   { href: "/admin/listings", label: "Listings", icon: PackageSearch, group: "Moderation" },
+  { href: "/admin/talent", label: "Beauty Talent", icon: Sparkles, group: "Moderation" },
   { href: "/admin/sourcing", label: "Sourcing", icon: Search, group: "Commerce" },
   { href: "/admin/quotations", label: "Quotations", icon: FileText, group: "Commerce" },
   { href: "/admin/operations", label: "Operations", icon: Truck, group: "Commerce" },
