@@ -25,7 +25,7 @@ const paths = [
  */
 export function PurchasingPaths() {
   return (
-    <section id="marketplace" className="bg-ivory-50 py-16 sm:py-20 lg:py-28">
+    <section id="marketplace" className="bg-ivory-100 py-16 sm:py-20 lg:py-28">
       <Container>
         <div className="max-w-2xl">
           <p className="text-xs font-semibold tracking-[0.2em] text-champagne-700 uppercase">
