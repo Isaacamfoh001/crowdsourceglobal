@@ -31,7 +31,8 @@ import heroImage from "../../app/(public)/images/new wig image.png";
 export function Hero() {
   return (
     <div className="relative bg-espresso-950">
-      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,560px)_1fr]">
+      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,560px)_1fr] xl:grid-cols-[minmax(0,680px)_1fr] 2xl:grid-cols-[minmax(0,760px)_1fr]">
+      {/* <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,560px)_1fr]"> */}
         {/* Visual panel — mobile: top band; desktop: right column. */}
         <div className="relative order-1 aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-forest-900 via-forest-950 to-espresso-950 sm:aspect-[16/9] lg:order-2 lg:aspect-auto">
           <Image
@@ -51,16 +52,19 @@ export function Hero() {
         </div>
 
         {/* Text panel */}
-        <div className="relative z-10 order-2 flex flex-col justify-center px-6 py-10 sm:px-10 sm:py-14 lg:order-1 lg:py-28 lg:pr-14 lg:pl-[max(2rem,calc((100vw-1280px)/2+2rem))]">
+        {/* <div className="relative z-10 order-2 flex flex-col justify-center px-6 py-10 sm:px-10 sm:py-14 lg:order-1 lg:py-28 lg:pr-14 lg:pl-[max(2rem,calc((100vw-1280px)/2+2rem))]"> */}
+        <div className="relative z-10 order-2 flex flex-col justify-center px-6 py-10 sm:px-10 sm:py-14 lg:order-1 lg:py-28 lg:pr-14 lg:pl-[max(2rem,calc((100vw-1280px)/2+2rem))] xl:pr-16 2xl:pr-20">
           <p className="text-xs font-semibold tracking-[0.2em] text-champagne-300 uppercase">
             Global beauty sourcing &amp; commerce
           </p>
-          <h1 className="mt-5 font-display text-[2.25rem] leading-[1.05] font-medium tracking-tight text-ivory-50 sm:mt-6 sm:text-6xl lg:text-[3.75rem]">
+          {/* <h1 className="mt-5 font-display text-[2.25rem] leading-[1.05] font-medium tracking-tight text-ivory-50 sm:mt-6 sm:text-6xl lg:text-[3.75rem]"> */}
+          <h1 className="mt-5 font-display text-[2.25rem] leading-[1.05] font-medium tracking-tight text-ivory-50 sm:mt-6 sm:text-6xl lg:text-[3.75rem] xl:text-[4.25rem] 2xl:text-[4.75rem]">
             Beauty, sourced
             <br />
             <span className="text-champagne-400">without borders.</span>
           </h1>
-          <p className="mt-5 max-w-md text-base leading-relaxed text-ivory-200/70 sm:mt-7 sm:text-lg">
+          {/* <p className="mt-5 max-w-md text-base leading-relaxed text-ivory-200/70 sm:mt-7 sm:text-lg"> */}
+          <p className="mt-5 max-w-md text-base leading-relaxed text-ivory-200/70 sm:mt-7 sm:text-lg xl:max-w-lg 2xl:max-w-xl">
             Discover premium hair, beauty, and cosmetics from approved vendors — or tell
             CrownSourceGlobal what you need and we&apos;ll help connect you with the
             products, suppliers, and manufacturers to source it.
