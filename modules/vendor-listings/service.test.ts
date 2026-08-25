@@ -625,6 +625,80 @@ describe("vendorListingsService", () => {
     });
   });
 
+  // --- Admin image review (M17.1.2) -----------------------------------------
+
+  describe("admin image review", () => {
+    function pngFile(name = "photo.png") {
+      return { buffer: PNG_MAGIC, filename: name, mimeType: "image/png" as const };
+    }
+
+    it("exposes every uploaded image to admin, not just the first", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      await vendorListingsService.saveContent(
+        vendorAId,
+        listingId,
+        { ...validContent, categoryId },
+        [],
+        [pngFile("a.png"), pngFile("b.png"), pngFile("c.png")],
+      );
+
+      const admin = await vendorListingsService.getForAdmin(listingId);
+      expect(admin?.images).toHaveLength(3);
+    });
+
+    it("exposes a single image correctly", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId }, [], [pngFile()]);
+
+      const admin = await vendorListingsService.getForAdmin(listingId);
+      expect(admin?.images).toHaveLength(1);
+    });
+
+    it("exposes an explicit empty array — never undefined — when no images were uploaded", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId }, []);
+
+      const admin = await vendorListingsService.getForAdmin(listingId);
+      expect(admin?.images).toEqual([]);
+    });
+
+    it("exposes the proposed edit's images (not the live listing's) via pendingChanges, matching what the admin detail page renders", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId }, [], [pngFile("live.png")]);
+      await vendorListingsService.submitForReview(vendorAId, listingId);
+      await vendorListingsService.approve(listingId);
+      const liveImage = (await vendorListingsService.getDetail(vendorAId, listingId))!.images[0]!;
+
+      await vendorListingsService.saveContent(
+        vendorAId,
+        listingId,
+        { ...validContent, categoryId, images: [liveImage] },
+        [],
+        [pngFile("proposed-a.png"), pngFile("proposed-b.png")],
+      );
+
+      const admin = await vendorListingsService.getForAdmin(listingId);
+      expect(admin?.images).toHaveLength(1); // live row untouched
+      expect(admin?.pendingChanges?.listing.images).toHaveLength(3); // live image + 2 newly proposed
+    });
+
+    it("reading the admin view does not mutate the listing's images", async () => {
+      const listingId = await createTrackedDraft(vendorAId);
+      await vendorListingsService.saveContent(
+        vendorAId,
+        listingId,
+        { ...validContent, categoryId },
+        [],
+        [pngFile("a.png"), pngFile("b.png")],
+      );
+
+      const before = await vendorListingsService.getForAdmin(listingId);
+      await vendorListingsService.getForAdmin(listingId);
+      const after = await vendorListingsService.getForAdmin(listingId);
+      expect(after?.images).toEqual(before?.images);
+    });
+  });
+
   // --- Notification dispatch ----------------------------------------------
 
   describe("notifications", () => {

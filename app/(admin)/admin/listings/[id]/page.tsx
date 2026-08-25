@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
-import { Package } from "lucide-react";
 import { ListingDecisionForms } from "../../../../../components/admin/ListingDecisionForms";
+import { ListingImageReview } from "../../../../../components/admin/ListingImageReview";
 import { requireAdminSession } from "../../../../../modules/administration/policy";
 import { vendorListingsService } from "../../../../../modules/vendor-listings/service";
 import { formatPrice } from "../../../../../lib/format";
-import { listingImageUrl } from "../../../../../lib/listing-images";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { Card } from "../../../../../components/ui/Card";
 import { Alert } from "../../../../../components/ui/Alert";
@@ -51,23 +50,7 @@ export default async function AdminListingDetailPage({ params }: { params: Promi
         </Alert>
       ) : null}
 
-      {content.images.length > 0 ? (
-        <div className="flex gap-3 overflow-x-auto pb-1">
-          {content.images.map((image, index) => (
-            // eslint-disable-next-line @next/next/no-img-element -- storage-backed product photo, not Next's image optimizer
-            <img
-              key={index}
-              src={listingImageUrl(image)}
-              alt={`${content.title} photo ${index + 1}`}
-              className="size-28 shrink-0 rounded-xl border border-ivory-300 object-cover sm:size-36"
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="flex h-28 w-28 items-center justify-center rounded-xl border border-dashed border-ivory-400 bg-ivory-50 text-ivory-400 sm:h-36 sm:w-36">
-          <Package className="size-8" strokeWidth={1.5} />
-        </div>
-      )}
+      <ListingImageReview images={content.images} title={content.title} />
 
       <Card>
         <dl className="divide-y divide-ivory-100">
