@@ -17,7 +17,7 @@ export function StartVendorConversationForm() {
         required
         placeholder="Ask us anything about running your store…"
         disabled={isPending}
-        className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+        className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
       />
       <Button type="submit" disabled={isPending} className="w-fit">
         {isPending ? "Sending…" : "Send"}

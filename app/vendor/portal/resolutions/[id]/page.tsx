@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireVendorPortalContext } from "../../../../../modules/vendors/policy";
 import { resolutionsService } from "../../../../../modules/resolutions/service";
 import { CaseStatusBadge } from "../../../../../components/resolutions/CaseStatusBadge";
 import { AskVendorResolutionButton } from "../../../../../components/resolutions/AskVendorResolutionButton";
+import { BackLink } from "../../../../../components/ui/BackLink";
 
 type Params = { id: string };
 
@@ -25,6 +25,8 @@ export default async function VendorResolutionDetailPage({ params }: { params: P
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink href="/vendor/portal/resolutions" label="Back to issues" />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-medium text-espresso-950">{detail.caseNumber}</h1>
@@ -52,9 +54,6 @@ export default async function VendorResolutionDetailPage({ params }: { params: P
         </div>
       </div>
 
-      <Link href="/vendor/portal/resolutions" className="text-sm font-medium text-forest-800 hover:underline">
-        ← Back to issues
-      </Link>
     </div>
   );
 }

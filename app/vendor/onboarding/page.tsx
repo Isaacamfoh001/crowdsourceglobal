@@ -24,7 +24,7 @@ export default async function VendorOnboardingStatusPage() {
   if (!application) {
     return (
       <div className="flex flex-col items-center text-center">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-champagne-200 text-forest-800">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-champagne-200 text-espresso-800">
           <Store className="size-7" strokeWidth={1.75} />
         </div>
         <h1 className="mt-6 font-display text-3xl font-medium text-espresso-950">
@@ -92,7 +92,7 @@ export default async function VendorOnboardingStatusPage() {
   if (application.status === "APPROVED") {
     return (
       <div className="flex flex-col items-center text-center">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-champagne-200 text-forest-800">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-champagne-200 text-espresso-800">
           <CheckCircle2 className="size-7" strokeWidth={1.75} />
         </div>
         <h1 className="mt-6 font-display text-3xl font-medium text-espresso-950">

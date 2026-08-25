@@ -36,7 +36,7 @@ function AddressCard({ address }: { address: AddressView }) {
           <p className="flex items-center gap-2 text-sm font-medium text-espresso-950">
             {address.label || "Address"}
             {address.isDefault ? (
-              <span className="rounded-full bg-champagne-200 px-2 py-0.5 text-xs font-medium text-forest-900">Default</span>
+              <span className="rounded-full bg-champagne-200 px-2 py-0.5 text-xs font-medium text-espresso-900">Default</span>
             ) : null}
           </p>
           <p className="mt-1 text-sm text-espresso-900/65">{address.recipientName}</p>
@@ -51,13 +51,13 @@ function AddressCard({ address }: { address: AddressView }) {
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-3 text-sm">
-        <button type="button" onClick={() => setEditing(true)} className="font-medium text-forest-800 hover:underline">
+        <button type="button" onClick={() => setEditing(true)} className="font-medium text-espresso-800 hover:underline">
           Edit
         </button>
         {!address.isDefault ? (
           <form action={setDefaultAddressAction}>
             <input type="hidden" name="addressId" value={address.id} />
-            <button type="submit" className="font-medium text-forest-800 hover:underline">
+            <button type="submit" className="font-medium text-espresso-800 hover:underline">
               Set as default
             </button>
           </form>

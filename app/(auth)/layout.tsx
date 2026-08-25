@@ -12,10 +12,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
       {/* Brand panel — full experience on desktop, compact band on mobile */}
-      <div className="relative flex shrink-0 flex-col justify-between overflow-hidden bg-forest-950 px-6 py-6 lg:w-[42%] lg:px-14 lg:py-14">
+      <div className="relative flex shrink-0 flex-col justify-between overflow-hidden bg-espresso-950 px-6 py-6 lg:w-[42%] lg:px-14 lg:py-14">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 hidden bg-[radial-gradient(80%_60%_at_20%_10%,var(--color-forest-900),transparent)] lg:block"
+          className="pointer-events-none absolute inset-0 -z-10 hidden bg-[radial-gradient(80%_60%_at_20%_10%,var(--color-espresso-900),transparent)] lg:block"
         />
         <div className="flex items-center justify-between">
           <Link

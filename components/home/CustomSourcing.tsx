@@ -17,15 +17,14 @@ const examples = [
 ];
 
 /**
- * Full-bleed contrasting editorial band (M14.3) — deep forest, not a
- * gold-gradient card floating on a light section. This is the homepage's
- * one deliberate deep-forest moment, distinct from the espresso hero, and
- * the strongest expression of CrownSource's global-sourcing differentiator
+ * Full-bleed contrasting editorial band (M14.3, recolored M17.1) — deep
+ * espresso, not a gold-gradient card floating on a light section. The
+ * strongest expression of CrownSource's global-sourcing differentiator
  * (positioned right after product discovery, not buried near the footer).
  */
 export function CustomSourcing() {
   return (
-    <section id="custom-sourcing" className="bg-forest-950 py-16 sm:py-20 lg:py-28">
+    <section id="custom-sourcing" className="bg-espresso-950 py-16 sm:py-20 lg:py-28">
       <Container>
         <div className="max-w-2xl">
           <p className="text-xs font-semibold tracking-[0.2em] text-champagne-300 uppercase">

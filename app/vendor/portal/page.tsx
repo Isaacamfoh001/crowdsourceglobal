@@ -42,7 +42,7 @@ function GlanceStat({
     >
       <div
         className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
-          tone === "warning" ? "bg-champagne-200 text-champagne-700" : "bg-champagne-200 text-forest-900"
+          tone === "warning" ? "bg-champagne-200 text-champagne-700" : "bg-champagne-200 text-espresso-900"
         }`}
       >
         <Icon className="size-4" strokeWidth={1.75} />
@@ -93,7 +93,7 @@ export default async function VendorDashboardPage() {
       <div className="rounded-2xl border border-champagne-200 bg-champagne-200/20">
         <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
           <div className="min-w-0">
-            <p className="text-xs font-semibold tracking-wide text-forest-800 uppercase">
+            <p className="text-xs font-semibold tracking-wide text-espresso-800 uppercase">
               {isLive ? "Store live" : "Store being set up"}
             </p>
             <h1 className="mt-1 font-display text-2xl font-medium text-espresso-950 sm:text-[28px]">
@@ -156,7 +156,7 @@ export default async function VendorDashboardPage() {
         <div>
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-medium text-espresso-950">New orders</h2>
-            <Link href="/vendor/portal/orders?status=PENDING" className="text-sm font-medium text-forest-800 hover:underline">
+            <Link href="/vendor/portal/orders?status=PENDING" className="text-sm font-medium text-espresso-800 hover:underline">
               View all
             </Link>
           </div>
@@ -174,7 +174,7 @@ export default async function VendorDashboardPage() {
                     {timeAgo(order.createdAt)}
                   </p>
                 </div>
-                <span className="shrink-0 text-xs font-medium text-forest-800">Prepare →</span>
+                <span className="shrink-0 text-xs font-medium text-espresso-800">Prepare →</span>
               </Link>
             ))}
           </div>
@@ -194,9 +194,9 @@ export default async function VendorDashboardPage() {
 
       <Link
         href="/vendor/portal/finance"
-        className="flex items-center gap-4 rounded-2xl bg-forest-950 p-5 transition-colors hover:bg-forest-900 sm:p-6"
+        className="flex items-center gap-4 rounded-2xl bg-espresso-950 p-5 transition-colors hover:bg-espresso-900 sm:p-6"
       >
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-champagne-200 text-forest-900">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-champagne-200 text-espresso-900">
           <Wallet className="size-5" strokeWidth={1.75} />
         </div>
         <div className="min-w-0 flex-1">
@@ -210,7 +210,7 @@ export default async function VendorDashboardPage() {
 
       <Link
         href="/vendor/portal/listings/new"
-        className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-ivory-400 bg-ivory-50 p-6 text-sm font-medium text-forest-800 transition-colors hover:border-champagne-400/70 hover:bg-champagne-200/20"
+        className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-ivory-400 bg-ivory-50 p-6 text-sm font-medium text-espresso-800 transition-colors hover:border-champagne-400/70 hover:bg-champagne-200/20"
       >
         <Plus className="size-4.5" strokeWidth={2} />
         Create a new listing

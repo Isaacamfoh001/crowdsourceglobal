@@ -99,7 +99,7 @@ export function RequestCustomerClarificationForm({ id }: { id: string }) {
         required
         placeholder="What do you need from the customer?"
         disabled={isPending}
-        className="w-full rounded-lg border border-ivory-400 px-3.5 py-2.5 text-sm outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+        className="w-full rounded-lg border border-ivory-400 px-3.5 py-2.5 text-sm outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
       />
       <Button type="submit" variant="outline" size="sm" disabled={isPending} className="w-fit">
         {isPending ? "Sending…" : "Request more information"}
@@ -121,7 +121,7 @@ export function RequestVendorResponseForm({ id, vendorId, vendorName }: { id: st
         required
         placeholder={`Ask ${vendorName}…`}
         disabled={isPending}
-        className="w-full rounded-lg border border-ivory-400 px-3.5 py-2.5 text-sm outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+        className="w-full rounded-lg border border-ivory-400 px-3.5 py-2.5 text-sm outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
       />
       <Button type="submit" variant="outline" size="sm" disabled={isPending} className="w-fit">
         {isPending ? "Sending…" : `Ask ${vendorName}`}
@@ -219,7 +219,7 @@ export function ApproveResolutionForm({
 
       {cancellableFulfilmentId ? (
         <label className="flex items-center gap-2 text-sm text-espresso-800">
-          <input type="checkbox" name="cancelFulfilmentId" value={cancellableFulfilmentId} className="accent-forest-800" />
+          <input type="checkbox" name="cancelFulfilmentId" value={cancellableFulfilmentId} className="accent-espresso-800" />
           Also cancel this fulfilment and restock affected inventory
         </label>
       ) : null}
@@ -250,7 +250,7 @@ export function ApproveResolutionForm({
           minLength={3}
           placeholder="This is shown to the customer."
           disabled={isPending}
-          className="mt-1 w-full rounded-lg border border-ivory-400 px-3.5 py-2.5 text-sm outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+          className="mt-1 w-full rounded-lg border border-ivory-400 px-3.5 py-2.5 text-sm outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
         />
       </div>
 

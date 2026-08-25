@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { FulfilmentStatusBadge } from "../../../../../components/fulfilment/FulfilmentStatusBadge";
 import { FormMessage } from "../../../../../components/ui/FormMessage";
+import { BackLink } from "../../../../../components/ui/BackLink";
 import {
   AssignReceivingLocationForm,
   ConfirmCollectionForm,
@@ -46,6 +47,8 @@ export default async function AdminFulfilmentDetailPage({ params }: { params: Pr
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink href="/admin/operations" label="Back to operations" />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-medium text-espresso-950">{fulfilment.orderNumber}</h1>

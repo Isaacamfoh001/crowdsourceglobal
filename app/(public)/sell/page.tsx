@@ -99,7 +99,7 @@ export default function SellPage() {
               key={benefit.title}
               className="rounded-lg border border-ivory-300 bg-ivory-50 p-7"
             >
-              <div className="flex size-11 items-center justify-center rounded-xl bg-champagne-200 text-forest-900">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-champagne-200 text-espresso-900">
                 <benefit.icon className="size-5" strokeWidth={1.75} />
               </div>
               <h3 className="mt-5 font-display text-lg font-medium text-espresso-950">

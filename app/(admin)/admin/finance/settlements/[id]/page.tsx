@@ -50,7 +50,7 @@ export default async function AdminSettlementDetailPage({ params }: { params: Pr
           ← Settlements
         </Link>
         <h1 className="mt-2 font-display text-2xl font-medium text-espresso-950">{settlement.settlementNumber}</h1>
-        <Link href={`/admin/finance/vendors/${settlement.vendorId}`} className="text-sm text-forest-800 hover:underline">
+        <Link href={`/admin/finance/vendors/${settlement.vendorId}`} className="text-sm text-espresso-800 hover:underline">
           {settlement.vendorName}
         </Link>
       </div>

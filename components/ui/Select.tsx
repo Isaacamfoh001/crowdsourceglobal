@@ -17,7 +17,7 @@ export function Select({ label, error, hint, id, className = "", children, ...pr
       <div className="relative">
         <select
           id={selectId}
-          className={`w-full appearance-none rounded-lg border bg-ivory-50 px-3.5 py-3 pr-10 text-[15px] text-espresso-950 shadow-soft outline-none transition-colors focus:border-forest-700 focus:ring-2 focus:ring-forest-700/10 ${
+          className={`w-full appearance-none rounded-lg border bg-ivory-50 px-3.5 py-3 pr-10 text-[15px] text-espresso-950 shadow-soft outline-none transition-colors focus:border-espresso-800 focus:ring-2 focus:ring-espresso-800/10 ${
             error ? "border-danger-400" : "border-ivory-400"
           } ${className}`}
           aria-invalid={error ? true : undefined}

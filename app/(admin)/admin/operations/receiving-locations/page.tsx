@@ -14,7 +14,7 @@ export default async function ReceivingLocationsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/admin/operations" className="text-sm font-medium text-forest-800 hover:underline">
+        <Link href="/admin/operations" className="text-sm font-medium text-espresso-800 hover:underline">
           ← Operations
         </Link>
         <h1 className="mt-2 font-display text-2xl font-medium text-espresso-950">Receiving locations</h1>
@@ -46,7 +46,7 @@ export default async function ReceivingLocationsPage() {
               <button
                 type="submit"
                 className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  location.active ? "bg-champagne-200 text-forest-900" : "bg-ivory-300 text-espresso-900/65"
+                  location.active ? "bg-champagne-200 text-espresso-900" : "bg-ivory-300 text-espresso-900/65"
                 }`}
               >
                 {location.active ? "Active" : "Inactive"}

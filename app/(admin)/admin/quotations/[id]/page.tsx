@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminSession } from "../../../../../modules/administration/policy";
 import { quotationService } from "../../../../../modules/quotation/service";
@@ -6,6 +5,7 @@ import { QuoteStatusBadge } from "../../../../../components/quotation/QuoteStatu
 import { formatPrice } from "../../../../../lib/format";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { Card } from "../../../../../components/ui/Card";
+import { BackLink } from "../../../../../components/ui/BackLink";
 
 type Params = { id: string };
 
@@ -27,6 +27,8 @@ export default async function AdminQuotationDetailPage({ params }: { params: Pro
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink href="/admin/quotations" label="Back to quotations" />
+
       <PageHeader
         title={quote.reference}
         description={`${quote.customerName} · ${quote.customerEmail}`}
@@ -91,15 +93,12 @@ export default async function AdminQuotationDetailPage({ params }: { params: Pro
           {quote.acceptedOrderId ? (
             <Card>
               <p className="text-sm text-espresso-900/50">This quotation converted to an order.</p>
-              <p className="mt-1 text-sm font-medium text-forest-800">Order id: {quote.acceptedOrderId}</p>
+              <p className="mt-1 text-sm font-medium text-espresso-800">Order id: {quote.acceptedOrderId}</p>
             </Card>
           ) : null}
         </div>
       </div>
 
-      <Link href="/admin/quotations" className="text-sm font-medium text-forest-800 hover:underline">
-        ← Back to quotations
-      </Link>
     </div>
   );
 }

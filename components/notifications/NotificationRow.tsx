@@ -31,7 +31,7 @@ export function NotificationRow({ notification }: { notification: NotificationVi
     >
       <span
         aria-hidden="true"
-        className={`mt-1.5 size-2 shrink-0 rounded-full ${notification.readAt ? "bg-transparent" : "bg-forest-700"}`}
+        className={`mt-1.5 size-2 shrink-0 rounded-full ${notification.readAt ? "bg-transparent" : "bg-espresso-800"}`}
       />
       <div className="min-w-0 flex-1">
         <p className={`text-sm ${notification.readAt ? "font-medium text-espresso-800" : "font-semibold text-espresso-950"}`}>

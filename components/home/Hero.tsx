@@ -34,7 +34,7 @@ export function Hero() {
       <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,560px)_1fr] xl:grid-cols-[minmax(0,680px)_1fr] 2xl:grid-cols-[minmax(0,760px)_1fr]">
       {/* <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,560px)_1fr]"> */}
         {/* Visual panel — mobile: top band; desktop: right column. */}
-        <div className="relative order-1 aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-forest-900 via-forest-950 to-espresso-950 sm:aspect-[16/9] lg:order-2 lg:aspect-auto">
+        <div className="relative order-1 aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-espresso-900 via-espresso-950 to-espresso-950 sm:aspect-[16/9] lg:order-2 lg:aspect-auto">
           <Image
             src={heroImage}
             alt="Four models showing different premium wig and hair textures — sleek balayage, romantic curls, tight curls, and a straight black bob"

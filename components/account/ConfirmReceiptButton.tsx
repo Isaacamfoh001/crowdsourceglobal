@@ -18,7 +18,7 @@ export function ConfirmReceiptButton({
 
   if (confirmed) {
     return (
-      <p className="flex items-center gap-1.5 text-sm text-forest-800">
+      <p className="flex items-center gap-1.5 text-sm text-espresso-800">
         <CheckCircle2 className="size-4" strokeWidth={2} />
         You confirmed receipt of this package.
       </p>
@@ -37,7 +37,7 @@ export function ConfirmReceiptButton({
       <button
         type="submit"
         disabled={isPending}
-        className="text-sm font-medium text-forest-800 underline decoration-champagne-400/70 hover:text-forest-900 disabled:opacity-50"
+        className="text-sm font-medium text-espresso-800 underline decoration-champagne-400/70 hover:text-espresso-900 disabled:opacity-50"
       >
         Confirm you&apos;ve received this
       </button>

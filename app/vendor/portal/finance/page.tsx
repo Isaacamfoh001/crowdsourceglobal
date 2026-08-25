@@ -78,7 +78,7 @@ export default async function VendorFinancePage({ searchParams }: { searchParams
               key={value ?? "all"}
               href={value ? `/vendor/portal/finance?status=${value}` : "/vendor/portal/finance"}
               className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium ${
-                status === value ? "border-forest-800 bg-forest-800 text-white" : "border-ivory-400 bg-ivory-50 text-espresso-800"
+                status === value ? "border-espresso-800 bg-espresso-800 text-white" : "border-ivory-400 bg-ivory-50 text-espresso-800"
               }`}
             >
               {value ? STATUS_LABEL[value] : "All"}
@@ -86,11 +86,11 @@ export default async function VendorFinancePage({ searchParams }: { searchParams
           ))}
         </div>
         <div className="flex gap-2">
-          <Link href="/vendor/portal/finance/settlements" className="text-sm font-medium text-forest-800 hover:underline">
+          <Link href="/vendor/portal/finance/settlements" className="text-sm font-medium text-espresso-800 hover:underline">
             Settlement history
           </Link>
           <span className="text-ivory-400">·</span>
-          <Link href="/vendor/portal/finance/payout-destination" className="text-sm font-medium text-forest-800 hover:underline">
+          <Link href="/vendor/portal/finance/payout-destination" className="text-sm font-medium text-espresso-800 hover:underline">
             Payout details
           </Link>
         </div>

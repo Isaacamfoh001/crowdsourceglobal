@@ -27,7 +27,7 @@ export default async function AccountOverviewPage() {
       <div className="rounded-2xl border border-champagne-200 bg-champagne-200/20">
         <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
           <div className="min-w-0">
-            <p className="text-xs font-semibold tracking-wide text-forest-800 uppercase">Your account</p>
+            <p className="text-xs font-semibold tracking-wide text-espresso-800 uppercase">Your account</p>
             <h1 className="mt-1 font-display text-2xl font-medium text-espresso-950 sm:text-[28px]">
               Welcome back, {customerProfile?.displayName ?? session.user.name}
             </h1>
@@ -71,7 +71,7 @@ export default async function AccountOverviewPage() {
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-medium text-espresso-950">Recent orders</h2>
           {orders.length > 0 ? (
-            <Link href="/account/orders" className="text-sm font-medium text-forest-800 hover:underline">
+            <Link href="/account/orders" className="text-sm font-medium text-espresso-800 hover:underline">
               View all
             </Link>
           ) : null}

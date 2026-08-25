@@ -22,7 +22,7 @@ export default async function CustomerConversationPage({ params }: { params: Pro
 
   return (
     <div className="flex flex-col gap-4">
-      <Link href="/account/messages" className="text-sm font-medium text-forest-800 hover:underline">
+      <Link href="/account/messages" className="text-sm font-medium text-espresso-800 hover:underline">
         ← All messages
       </Link>
       <div>

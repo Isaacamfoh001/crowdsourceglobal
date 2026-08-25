@@ -33,7 +33,7 @@ export default async function CheckoutPage() {
           <PageHeader title="Checkout" description="Review your order and confirm delivery details." />
           <div className="mt-5 flex items-center gap-2 text-xs font-semibold tracking-wide uppercase">
             <span className="flex items-center gap-1.5 text-espresso-950">
-              <span className="flex size-5 items-center justify-center rounded-full bg-forest-800 text-[11px] text-ivory-50">1</span>
+              <span className="flex size-5 items-center justify-center rounded-full bg-espresso-800 text-[11px] text-ivory-50">1</span>
               Delivery
             </span>
             <span className="h-px w-6 bg-ivory-300" aria-hidden="true" />

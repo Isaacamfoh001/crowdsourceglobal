@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { Phone, MessageCircle, Mail, ExternalLink, MapPin } from "lucide-react";
 import { requireAdminSession } from "../../../../../modules/administration/policy";
 import { talentService, TALENT_SKILL_LABELS, TALENT_STATUS_LABELS, TALENT_EXPERIENCE_LABELS, TALENT_AVAILABILITY_LABELS, TALENT_OPPORTUNITY_LABELS, TALENT_WORK_STATUS_LABELS, TALENT_CLOSE_OUTCOME_LABELS } from "../../../../../modules/talent/service";
 import { TalentStatusBadge } from "../../../../../components/talent/TalentStatusBadge";
 import { StartReviewButton, ShortlistButton, MarkReferredButton, CloseApplicationForm, AddTalentNoteForm } from "../../../../../components/talent/TalentActions";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BackLink } from "../../../../../components/ui/BackLink";
 import { normalizeGhanaPhone } from "../../../../../lib/phone";
 
 type Params = { id: string };
@@ -34,6 +34,8 @@ export default async function AdminTalentDetailPage({ params }: { params: Promis
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink href="/admin/talent" label="Back to Beauty Talent" />
+
       <PageHeader
         title={application.fullName}
         description={`${application.applicationNumber} · Submitted ${formatDateTime(application.submittedAt)}`}
@@ -46,18 +48,18 @@ export default async function AdminTalentDetailPage({ params }: { params: Promis
           <div className="pb-6 first:pt-0">
             <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Applicant</h2>
             <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-              <a href={`tel:${application.phone}`} className="flex items-center gap-1.5 font-medium text-forest-800 hover:underline">
+              <a href={`tel:${application.phone}`} className="flex items-center gap-1.5 font-medium text-espresso-800 hover:underline">
                 <Phone className="size-3.5" strokeWidth={1.75} />
                 {application.phone}
               </a>
               {whatsappHref ? (
-                <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 font-medium text-forest-800 hover:underline">
+                <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 font-medium text-espresso-800 hover:underline">
                   <MessageCircle className="size-3.5" strokeWidth={1.75} />
                   WhatsApp
                 </a>
               ) : null}
               {application.email ? (
-                <a href={`mailto:${application.email}`} className="flex items-center gap-1.5 font-medium text-forest-800 hover:underline">
+                <a href={`mailto:${application.email}`} className="flex items-center gap-1.5 font-medium text-espresso-800 hover:underline">
                   <Mail className="size-3.5" strokeWidth={1.75} />
                   {application.email}
                 </a>
@@ -150,7 +152,7 @@ export default async function AdminTalentDetailPage({ params }: { params: Promis
                 href={application.portfolioUrl}
                 target="_blank"
                 rel="noopener noreferrer nofollow"
-                className="mt-2 flex w-fit items-center gap-1.5 text-sm font-medium text-forest-800 hover:underline"
+                className="mt-2 flex w-fit items-center gap-1.5 text-sm font-medium text-espresso-800 hover:underline"
               >
                 View portfolio
                 <ExternalLink className="size-3.5" strokeWidth={1.75} />
@@ -215,9 +217,6 @@ export default async function AdminTalentDetailPage({ params }: { params: Promis
         </div>
       </div>
 
-      <Link href="/admin/talent" className="text-sm font-medium text-forest-800 hover:underline">
-        ← Back to Beauty Talent
-      </Link>
     </div>
   );
 }

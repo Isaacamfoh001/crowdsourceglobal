@@ -54,7 +54,7 @@ export default async function AdminTalentPage({
                 query: { ...(filter.value ? { status: filter.value } : {}), ...(activeSkill ? { skill: activeSkill } : {}), ...(q ? { q } : {}) },
               }}
               className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
-                activeStatus === filter.value ? "bg-forest-800 text-white" : "bg-ivory-50 text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-100"
+                activeStatus === filter.value ? "bg-espresso-800 text-white" : "bg-ivory-50 text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-100"
               }`}
             >
               {filter.label}
@@ -70,7 +70,7 @@ export default async function AdminTalentPage({
         <Link
           href={{ pathname: "/admin/talent", query: { ...(activeStatus ? { status: activeStatus } : {}), ...(q ? { q } : {}) } }}
           className={`rounded-full px-3 py-1 text-xs font-medium ${
-            !activeSkill ? "bg-champagne-200 text-forest-900" : "bg-ivory-100 text-espresso-900/55 hover:bg-ivory-200"
+            !activeSkill ? "bg-champagne-200 text-espresso-900" : "bg-ivory-100 text-espresso-900/55 hover:bg-ivory-200"
           }`}
         >
           All skills
@@ -80,7 +80,7 @@ export default async function AdminTalentPage({
             key={value}
             href={{ pathname: "/admin/talent", query: { skill: value, ...(activeStatus ? { status: activeStatus } : {}), ...(q ? { q } : {}) } }}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
-              activeSkill === value ? "bg-champagne-200 text-forest-900" : "bg-ivory-100 text-espresso-900/55 hover:bg-ivory-200"
+              activeSkill === value ? "bg-champagne-200 text-espresso-900" : "bg-ivory-100 text-espresso-900/55 hover:bg-ivory-200"
             }`}
           >
             {label}

@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { BackLink } from "../../../../../components/ui/BackLink";
 import { ListingEditorForm } from "../../../../../components/vendor-portal/ListingEditorForm";
 import { InventoryForm } from "../../../../../components/vendor-portal/InventoryForm";
 import { SubmitListingButton, ToggleActiveButton } from "../../../../../components/vendor-portal/SubmitListingButton";
@@ -39,13 +38,7 @@ export default async function VendorListingEditorPage({ params }: { params: Prom
 
   return (
     <div className="flex flex-col gap-6">
-      <Link
-        href="/vendor/portal/listings"
-        className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-espresso-900/50 hover:text-espresso-950"
-      >
-        <ArrowLeft className="size-3.5" strokeWidth={2} />
-        All listings
-      </Link>
+      <BackLink href="/vendor/portal/listings" label="All listings" />
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">

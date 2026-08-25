@@ -22,7 +22,7 @@ export function QuoteDraftLineItem({ line }: { line: QuoteDraftLineView }) {
         </p>
         <Link
           href={`/listings/${line.listingId}`}
-          className="line-clamp-2 font-display text-[15px] font-medium text-espresso-950 hover:text-forest-900"
+          className="line-clamp-2 font-display text-[15px] font-medium text-espresso-950 hover:text-espresso-900"
         >
           {line.title}
         </Link>
@@ -68,7 +68,7 @@ export function QuoteDraftLineItem({ line }: { line: QuoteDraftLineView }) {
               <button
                 type="submit"
                 disabled={updatePending}
-                className="text-sm font-medium text-forest-800 hover:underline disabled:opacity-50"
+                className="text-sm font-medium text-espresso-800 hover:underline disabled:opacity-50"
               >
                 {updatePending ? "Updating…" : "Update"}
               </button>

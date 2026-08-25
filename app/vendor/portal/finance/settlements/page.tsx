@@ -74,12 +74,12 @@ export default async function VendorSettlementsPage({ searchParams }: { searchPa
       {total > pageSize ? (
         <div className="flex justify-center gap-2">
           {currentPage > 1 ? (
-            <Link href={`/vendor/portal/finance/settlements?page=${currentPage - 1}`} className="text-sm font-medium text-forest-800 hover:underline">
+            <Link href={`/vendor/portal/finance/settlements?page=${currentPage - 1}`} className="text-sm font-medium text-espresso-800 hover:underline">
               ← Previous
             </Link>
           ) : null}
           {currentPage * pageSize < total ? (
-            <Link href={`/vendor/portal/finance/settlements?page=${currentPage + 1}`} className="text-sm font-medium text-forest-800 hover:underline">
+            <Link href={`/vendor/portal/finance/settlements?page=${currentPage + 1}`} className="text-sm font-medium text-espresso-800 hover:underline">
               Next →
             </Link>
           ) : null}

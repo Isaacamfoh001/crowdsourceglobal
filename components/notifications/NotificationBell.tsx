@@ -59,7 +59,7 @@ export function NotificationBell({
         {unreadCount > 0 ? (
           <span
             aria-hidden="true"
-            className="absolute -right-0.5 -top-0.5 flex size-4.5 items-center justify-center rounded-full bg-forest-800 text-[10px] font-semibold text-ivory-50"
+            className="absolute -right-0.5 -top-0.5 flex size-4.5 items-center justify-center rounded-full bg-espresso-800 text-[10px] font-semibold text-ivory-50"
           >
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
@@ -89,7 +89,7 @@ export function NotificationBell({
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
-                  className="text-xs font-medium text-forest-800 hover:underline"
+                  className="text-xs font-medium text-espresso-800 hover:underline"
                 >
                   Mark all read
                 </button>
@@ -134,7 +134,7 @@ export function NotificationBell({
               <Link
                 href="/account/notifications"
                 onClick={() => setOpen(false)}
-                className="text-xs font-medium text-forest-800 hover:underline"
+                className="text-xs font-medium text-espresso-800 hover:underline"
               >
                 View all notifications
               </Link>

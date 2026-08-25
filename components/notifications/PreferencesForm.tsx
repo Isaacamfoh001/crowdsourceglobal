@@ -42,7 +42,7 @@ export function PreferencesForm({ preferences }: { preferences: PreferencesView 
                 name={option.key}
                 defaultChecked={preferences[option.key]}
                 disabled={isPending}
-                className="mt-1 size-4 rounded border-ivory-400 text-forest-800 focus:ring-2 focus:ring-champagne-200"
+                className="mt-1 size-4 rounded border-ivory-400 text-espresso-800 focus:ring-2 focus:ring-champagne-200"
               />
               <span>
                 <span className="block text-sm font-medium text-espresso-950">{option.label}</span>

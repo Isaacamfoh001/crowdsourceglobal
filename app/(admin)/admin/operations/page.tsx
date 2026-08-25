@@ -41,7 +41,7 @@ export default async function AdminOperationsPage({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-medium text-espresso-950">Operations</h1>
-        <Link href="/admin/operations/receiving-locations" className="text-sm font-medium text-forest-800 hover:underline">
+        <Link href="/admin/operations/receiving-locations" className="text-sm font-medium text-espresso-800 hover:underline">
           Receiving locations
         </Link>
       </div>
@@ -53,7 +53,7 @@ export default async function AdminOperationsPage({
               key={filter.label}
               href={qs(filter.value)}
               className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium ${
-                status === filter.value ? "border-forest-800 bg-forest-800 text-white" : "border-ivory-400 bg-ivory-50 text-espresso-800"
+                status === filter.value ? "border-espresso-800 bg-espresso-800 text-white" : "border-ivory-400 bg-ivory-50 text-espresso-800"
               }`}
             >
               {filter.label}

@@ -25,7 +25,7 @@ export function InstallCard({
       style={{ bottom: "calc(1rem + env(safe-area-inset-bottom))" }}
     >
       <div className="flex items-start gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-forest-900 text-champagne-300">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-espresso-900 text-champagne-300">
           <Smartphone className="size-5" strokeWidth={1.75} aria-hidden="true" />
         </div>
 

@@ -6,7 +6,7 @@ const LABELS: Record<string, string> = {
 };
 
 const TONE: Record<string, string> = {
-  IN_STOCK: "bg-forest-900/10 text-forest-800",
+  IN_STOCK: "bg-success-100 text-success-800",
   LOW_STOCK: "bg-champagne-200/70 text-champagne-700",
   OUT_OF_STOCK: "bg-espresso-950/10 text-espresso-900/70",
   MADE_TO_ORDER: "bg-ivory-300 text-espresso-900/70",

@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { CountrySelect } from "../ui/CountrySelect";
 import { FormMessage } from "../ui/FormMessage";
 import { createReceivingLocationAction } from "../../lib/actions/logistics";
 
@@ -14,7 +15,7 @@ export function ReceivingLocationForm() {
       <Input label="Name" name="name" placeholder="e.g. CrownSourceGlobal Accra Office" required disabled={isPending} />
       <Input label="Type (optional)" name="type" placeholder="office / warehouse / consolidation" disabled={isPending} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Input label="Country" name="country" defaultValue="Ghana" required disabled={isPending} />
+        <CountrySelect label="Country" name="country" defaultValue="Ghana" required disabled={isPending} />
         <Input label="Region" name="region" disabled={isPending} />
         <Input label="City" name="city" disabled={isPending} />
       </div>

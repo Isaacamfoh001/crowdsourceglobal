@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { CountrySelect } from "../ui/CountrySelect";
 import { FormMessage } from "../ui/FormMessage";
 import { saveBusinessAction } from "../../lib/actions/vendor-application";
 
@@ -57,7 +58,7 @@ export function BusinessForm({ initial, showRegistrationFields }: { initial: Ini
           placeholder="What do you sell, and what makes your store worth buying from?"
           required
           disabled={isPending}
-          className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+          className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
         />
       </div>
 
@@ -100,7 +101,7 @@ export function BusinessForm({ initial, showRegistrationFields }: { initial: Ini
       <div className="mt-2 border-t border-ivory-100 pt-4">
         <p className="text-sm font-medium text-espresso-800">Location</p>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input label="Country" name="country" defaultValue={initial.country ?? "Ghana"} required disabled={isPending} />
+          <CountrySelect label="Country" name="country" defaultValue={initial.country ?? "Ghana"} required disabled={isPending} />
           <Input label="Region" name="region" defaultValue={initial.region ?? ""} required disabled={isPending} />
           <Input label="City / Town" name="city" defaultValue={initial.city ?? ""} required disabled={isPending} />
           <Input

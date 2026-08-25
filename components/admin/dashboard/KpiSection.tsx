@@ -15,7 +15,7 @@ export function KpiSection({ today, current, range }: { today: TodayKpis; curren
                 key={r}
                 href={r === "today" ? "/admin" : `/admin?range=${r}`}
                 className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  range === r ? "bg-forest-800 text-white" : "bg-ivory-100 text-espresso-900/65 hover:bg-ivory-300"
+                  range === r ? "bg-espresso-800 text-white" : "bg-ivory-100 text-espresso-900/65 hover:bg-ivory-300"
                 }`}
               >
                 {RANGE_LABELS[r]}

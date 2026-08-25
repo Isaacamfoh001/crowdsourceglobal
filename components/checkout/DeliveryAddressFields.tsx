@@ -27,7 +27,7 @@ export function DeliveryAddressFields({ addresses, disabled }: { addresses: Addr
             <label
               key={address.id}
               className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 ${
-                selectedId === address.id ? "border-forest-700 bg-champagne-200/20" : "border-ivory-300"
+                selectedId === address.id ? "border-espresso-800 bg-champagne-200/20" : "border-ivory-300"
               }`}
             >
               <input
@@ -53,7 +53,7 @@ export function DeliveryAddressFields({ addresses, disabled }: { addresses: Addr
             </label>
           ))}
         </div>
-        <button type="button" onClick={() => setMode("new")} className="w-fit text-sm font-medium text-forest-800 hover:underline">
+        <button type="button" onClick={() => setMode("new")} className="w-fit text-sm font-medium text-espresso-800 hover:underline">
           + Add new address
         </button>
 
@@ -78,7 +78,7 @@ export function DeliveryAddressFields({ addresses, disabled }: { addresses: Addr
             rows={3}
             disabled={disabled}
             placeholder="Gate code, preferred delivery time, etc."
-            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
           />
         </div>
       </div>
@@ -88,7 +88,7 @@ export function DeliveryAddressFields({ addresses, disabled }: { addresses: Addr
   return (
     <div className="flex flex-col gap-4">
       {addresses.length > 0 ? (
-        <button type="button" onClick={() => setMode("saved")} className="w-fit text-sm font-medium text-forest-800 hover:underline">
+        <button type="button" onClick={() => setMode("saved")} className="w-fit text-sm font-medium text-espresso-800 hover:underline">
           ← Use a saved address
         </button>
       ) : null}
@@ -103,7 +103,7 @@ export function DeliveryAddressFields({ addresses, disabled }: { addresses: Addr
           rows={3}
           disabled={disabled}
           placeholder="Gate code, preferred delivery time, etc."
-          className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+          className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
         />
       </div>
       <label className="flex items-center gap-2 text-sm text-espresso-900/65">

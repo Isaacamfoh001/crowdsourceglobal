@@ -169,7 +169,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
             <p className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Sold by</p>
             <Link
               href={`/vendors/${listing.vendor.storefrontSlug}`}
-              className="mt-1.5 flex items-center gap-1.5 font-display text-lg font-medium text-espresso-950 hover:text-forest-800"
+              className="mt-1.5 flex items-center gap-1.5 font-display text-lg font-medium text-espresso-950 hover:text-espresso-800"
             >
               <Store className="size-4 shrink-0 text-espresso-900/40" strokeWidth={1.75} />
               {listing.vendor.companyName}

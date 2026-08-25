@@ -98,7 +98,7 @@ export function InstructionSheet({
         <ol className="mt-5 flex flex-col gap-4">
           {steps.map((step, index) => (
             <li key={step.text} className="flex items-center gap-3">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-forest-900 text-sm font-semibold text-champagne-300">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-espresso-900 text-sm font-semibold text-champagne-300">
                 {index + 1}
               </span>
               <step.icon className="size-4 shrink-0 text-espresso-900/50" strokeWidth={1.75} aria-hidden="true" />

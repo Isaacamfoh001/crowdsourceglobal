@@ -84,7 +84,7 @@ function ChipOption({
   required?: boolean;
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-center rounded-full border border-ivory-300 px-4 py-2.5 text-center text-sm font-medium text-espresso-800 transition-colors has-[:checked]:border-forest-700 has-[:checked]:bg-forest-800 has-[:checked]:text-ivory-50">
+    <label className="flex cursor-pointer items-center justify-center rounded-full border border-ivory-300 px-4 py-2.5 text-center text-sm font-medium text-espresso-800 transition-colors has-[:checked]:border-espresso-800 has-[:checked]:bg-espresso-800 has-[:checked]:text-ivory-50">
       <input type={type} name={name} value={value} onChange={onChange} required={required} className="sr-only" />
       {label}
     </label>
@@ -203,9 +203,9 @@ export function TalentApplicationForm() {
             <span
               className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                 index === step
-                  ? "bg-forest-800 text-ivory-50"
+                  ? "bg-espresso-800 text-ivory-50"
                   : index < step
-                    ? "bg-champagne-200 text-forest-900"
+                    ? "bg-champagne-200 text-espresso-900"
                     : "bg-ivory-200 text-espresso-900/40"
               }`}
               aria-current={index === step ? "step" : undefined}
@@ -324,7 +324,7 @@ export function TalentApplicationForm() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-[auto_1fr] sm:items-end">
           <label className="flex items-center gap-2 text-sm font-medium text-espresso-800 sm:pb-3">
-            <input type="checkbox" name="willingToRelocate" className="size-4 rounded accent-forest-800" disabled={isPending} />
+            <input type="checkbox" name="willingToRelocate" className="size-4 rounded accent-espresso-800" disabled={isPending} />
             Willing to relocate
           </label>
           <Input
@@ -405,7 +405,7 @@ export function TalentApplicationForm() {
                     onChange={(e) => updateCaption(index, e.target.value)}
                     placeholder="Caption (optional)"
                     disabled={isPending}
-                    className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-2.5 py-1.5 text-xs text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+                    className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-2.5 py-1.5 text-xs text-espresso-950 outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
                   />
                 </li>
               ))}
@@ -443,7 +443,7 @@ export function TalentApplicationForm() {
             name="ownershipConfirmed"
             required
             disabled={isPending}
-            className="mt-0.5 size-4 rounded accent-forest-800"
+            className="mt-0.5 size-4 rounded accent-espresso-800"
           />
           I confirm that the work samples I uploaded show work I personally completed or contributed to.
         </label>

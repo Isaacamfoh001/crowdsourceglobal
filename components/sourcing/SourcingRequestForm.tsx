@@ -5,6 +5,7 @@ import { Plus, Trash2, UploadCloud } from "lucide-react";
 import { submitSourcingRequestAction } from "../../lib/actions/sourcing";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { CountrySelect } from "../ui/CountrySelect";
 import { Select } from "../ui/Select";
 import { Textarea } from "../ui/Textarea";
 import { FormMessage } from "../ui/FormMessage";
@@ -93,7 +94,7 @@ export function SourcingRequestForm({ categories }: { categories: PublicCategory
           <button
             type="button"
             onClick={addSpec}
-            className="flex items-center gap-1 text-sm font-medium text-forest-800 hover:underline"
+            className="flex items-center gap-1 text-sm font-medium text-espresso-800 hover:underline"
           >
             <Plus className="size-3.5" /> Add detail
           </button>
@@ -111,7 +112,7 @@ export function SourcingRequestForm({ categories }: { categories: PublicCategory
                   onChange={(e) => updateSpec(index, "key", e.target.value)}
                   placeholder="e.g. Color"
                   disabled={isPending}
-                  className="w-1/3 rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-2 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+                  className="w-1/3 rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-2 text-sm text-espresso-950 outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
                 />
                 <input
                   name="specValue"
@@ -119,7 +120,7 @@ export function SourcingRequestForm({ categories }: { categories: PublicCategory
                   onChange={(e) => updateSpec(index, "value", e.target.value)}
                   placeholder="e.g. Navy blue"
                   disabled={isPending}
-                  className="flex-1 rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-2 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+                  className="flex-1 rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-2 text-sm text-espresso-950 outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
                 />
                 <button
                   type="button"
@@ -139,7 +140,7 @@ export function SourcingRequestForm({ categories }: { categories: PublicCategory
         <p className="text-xs font-semibold tracking-[0.15em] text-champagne-700 uppercase">Delivery</p>
         <h2 className="mt-1 font-display text-lg font-medium text-espresso-950">Where should it go?</h2>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Input label="Destination country" name="deliveryCountry" required disabled={isPending} defaultValue="Ghana" />
+          <CountrySelect label="Destination country" name="deliveryCountry" required disabled={isPending} defaultValue="Ghana" />
           <Input label="Region (optional)" name="deliveryRegion" disabled={isPending} />
           <Input label="City (optional)" name="deliveryCity" disabled={isPending} />
         </div>

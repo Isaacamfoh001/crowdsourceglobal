@@ -71,7 +71,7 @@ export function CloseApplicationForm({ id }: { id: string }) {
         value={outcome}
         onChange={(e) => setOutcome(e.target.value as TalentCloseOutcome)}
         disabled={isPending}
-        className="rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-2 text-sm text-espresso-950 outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+        className="rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-2 text-sm text-espresso-950 outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
       >
         {CLOSE_OUTCOME_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>

@@ -149,7 +149,7 @@ function FilterLink({ href, active, children }: { href: string; active: boolean;
   return (
     <Link
       href={href}
-      className={`rounded-full px-3 py-1 text-xs font-medium ${active ? "bg-forest-800 text-white" : "bg-ivory-100 text-espresso-900/65 hover:bg-ivory-300"}`}
+      className={`rounded-full px-3 py-1 text-xs font-medium ${active ? "bg-espresso-800 text-white" : "bg-ivory-100 text-espresso-900/65 hover:bg-ivory-300"}`}
     >
       {children}
     </Link>

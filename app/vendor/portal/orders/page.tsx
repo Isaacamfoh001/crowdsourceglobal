@@ -43,7 +43,7 @@ export default async function VendorOrdersPage({
             href={filter.value ? `/vendor/portal/orders?status=${filter.value}` : "/vendor/portal/orders"}
             className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium ${
               status === filter.value
-                ? "border-forest-800 bg-forest-800 text-white"
+                ? "border-espresso-800 bg-espresso-800 text-white"
                 : "border-ivory-400 bg-ivory-50 text-espresso-800"
             }`}
           >

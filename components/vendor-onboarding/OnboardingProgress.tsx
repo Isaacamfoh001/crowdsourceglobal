@@ -19,9 +19,9 @@ export function OnboardingProgress({ current }: { current: (typeof STEPS)[number
             <span
               className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                 isCurrent
-                  ? "bg-forest-800 text-white"
+                  ? "bg-espresso-800 text-white"
                   : isDone
-                    ? "bg-champagne-200 text-forest-900"
+                    ? "bg-champagne-200 text-espresso-900"
                     : "bg-ivory-100 text-espresso-900/35"
               }`}
               aria-current={isCurrent ? "step" : undefined}

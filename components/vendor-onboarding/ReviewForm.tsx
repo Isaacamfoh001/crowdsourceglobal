@@ -31,7 +31,7 @@ export function ReviewForm({
       <section>
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-espresso-950">Seller type</h2>
-          <Link href="/vendor/onboarding/seller-type" className="text-xs font-medium text-forest-800 hover:underline">
+          <Link href="/vendor/onboarding/seller-type" className="text-xs font-medium text-espresso-800 hover:underline">
             Edit
           </Link>
         </div>
@@ -43,7 +43,7 @@ export function ReviewForm({
       <section>
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-espresso-950">Contact</h2>
-          <Link href="/vendor/onboarding/details" className="text-xs font-medium text-forest-800 hover:underline">
+          <Link href="/vendor/onboarding/details" className="text-xs font-medium text-espresso-800 hover:underline">
             Edit
           </Link>
         </div>
@@ -57,7 +57,7 @@ export function ReviewForm({
       <section>
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-espresso-950">Business</h2>
-          <Link href="/vendor/onboarding/business" className="text-xs font-medium text-forest-800 hover:underline">
+          <Link href="/vendor/onboarding/business" className="text-xs font-medium text-espresso-800 hover:underline">
             Edit
           </Link>
         </div>
@@ -76,7 +76,7 @@ export function ReviewForm({
       <section>
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-espresso-950">What you sell</h2>
-          <Link href="/vendor/onboarding/operations" className="text-xs font-medium text-forest-800 hover:underline">
+          <Link href="/vendor/onboarding/operations" className="text-xs font-medium text-espresso-800 hover:underline">
             Edit
           </Link>
         </div>

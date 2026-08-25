@@ -53,7 +53,7 @@ export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
   if (success) {
     return (
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-champagne-200 text-forest-800">
+        <div className="flex size-12 items-center justify-center rounded-full bg-champagne-200 text-espresso-800">
           <CheckCircle2 className="size-6" strokeWidth={1.75} />
         </div>
         <h1 className="text-2xl font-medium text-espresso-950">Check your email</h1>
@@ -61,7 +61,7 @@ export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
           We&apos;ve sent a verification link to your inbox. Verify your email to finish
           setting up your CrownSourceGlobal account.
         </FormMessage>
-        <Link href="/sign-in" className="text-sm font-medium text-forest-800 hover:underline">
+        <Link href="/sign-in" className="text-sm font-medium text-espresso-800 hover:underline">
           Back to sign in
         </Link>
       </div>
@@ -127,7 +127,7 @@ export function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
 
       <p className="text-center text-sm text-espresso-900/50">
         Already have an account?{" "}
-        <Link href="/sign-in" className="font-medium text-forest-800 hover:underline">
+        <Link href="/sign-in" className="font-medium text-espresso-800 hover:underline">
           Sign in
         </Link>
       </p>

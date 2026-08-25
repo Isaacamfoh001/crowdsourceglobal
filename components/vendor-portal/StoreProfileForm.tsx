@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { CountrySelect } from "../ui/CountrySelect";
 import { FormMessage } from "../ui/FormMessage";
 import { updateStoreProfileAction } from "../../lib/actions/vendor-store";
 import type { VendorStoreProfile } from "../../modules/vendors/types";
@@ -30,7 +31,7 @@ export function StoreProfileForm({ profile, categories }: { profile: VendorStore
             rows={3}
             defaultValue={profile.description ?? ""}
             disabled={isPending}
-            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
           />
         </div>
         <Input
@@ -42,7 +43,7 @@ export function StoreProfileForm({ profile, categories }: { profile: VendorStore
           disabled={isPending}
         />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Input label="Country" name="country" defaultValue={profile.country ?? ""} disabled={isPending} />
+          <CountrySelect label="Country" name="country" defaultValue={profile.country ?? ""} disabled={isPending} />
           <Input label="Region" name="region" defaultValue={profile.region ?? ""} disabled={isPending} />
           <Input label="City" name="city" defaultValue={profile.city ?? ""} disabled={isPending} />
         </div>
@@ -56,7 +57,7 @@ export function StoreProfileForm({ profile, categories }: { profile: VendorStore
                   name="categorySlugs"
                   value={category.slug}
                   defaultChecked={profile.categorySlugs.includes(category.slug)}
-                  className="size-4 rounded accent-forest-800"
+                  className="size-4 rounded accent-espresso-800"
                 />
                 {category.name}
               </label>
@@ -133,7 +134,7 @@ export function StoreProfileForm({ profile, categories }: { profile: VendorStore
             defaultValue={profile.pickupNotes ?? ""}
             placeholder="Gate code, landmark, preferred entrance, etc."
             disabled={isPending}
-            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
           />
         </div>
       </section>

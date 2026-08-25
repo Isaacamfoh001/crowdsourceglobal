@@ -31,7 +31,7 @@ export function ConversationList({
               {showCounterparty && conversation.counterpartyName ? conversation.counterpartyName : conversation.contextLabel}
             </p>
             {conversation.status === "OPEN" ? (
-              <span className="shrink-0 rounded-full bg-champagne-200 px-2 py-0.5 text-[11px] font-semibold text-forest-900">
+              <span className="shrink-0 rounded-full bg-champagne-200 px-2 py-0.5 text-[11px] font-semibold text-espresso-900">
                 Open
               </span>
             ) : (

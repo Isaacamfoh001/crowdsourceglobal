@@ -64,12 +64,12 @@ export function PackageTracking({
             {stepIndex < tracking.steps.length - 1 ? (
               <span
                 aria-hidden="true"
-                className={`absolute left-[7px] top-4 h-full w-px ${step.done ? "bg-forest-700" : "bg-ivory-300"}`}
+                className={`absolute left-[7px] top-4 h-full w-px ${step.done ? "bg-espresso-800" : "bg-ivory-300"}`}
               />
             ) : null}
             <span className="relative z-10 flex size-4 shrink-0 items-center justify-center bg-ivory-50">
               {step.done ? (
-                <CheckCircle2 className="size-4 shrink-0 text-forest-800" strokeWidth={2} />
+                <CheckCircle2 className="size-4 shrink-0 text-espresso-800" strokeWidth={2} />
               ) : step.current ? (
                 <span className="flex size-4 shrink-0 items-center justify-center">
                   <span className="size-2.5 animate-pulse rounded-full bg-champagne-600" />

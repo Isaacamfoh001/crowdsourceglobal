@@ -9,6 +9,7 @@ import { formatPrice } from "../../../../../lib/format";
 import { requireSession, getCurrentCustomerProfile } from "../../../../../modules/identity/policy";
 import { sourcingService } from "../../../../../modules/sourcing/service";
 import { getPendingMessageIntent } from "../../../../../lib/actions/messaging";
+import { BackLink } from "../../../../../components/ui/BackLink";
 
 type Params = { id: string };
 
@@ -42,12 +43,14 @@ export default async function SourcingRequestDetailPage({
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink href="/account/sourcing" label="Back to sourcing requests" />
+
       {submitted === "true" ? (
         <div className="flex items-start gap-3 rounded-2xl border border-champagne-300 bg-champagne-200/20 p-5">
-          <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-forest-800" strokeWidth={1.75} />
+          <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-espresso-800" strokeWidth={1.75} />
           <div>
-            <p className="font-display text-lg font-medium text-forest-950">We&apos;ve received your sourcing request</p>
-            <p className="mt-1 text-sm text-forest-900">
+            <p className="font-display text-lg font-medium text-espresso-950">We&apos;ve received your sourcing request</p>
+            <p className="mt-1 text-sm text-espresso-900">
               {request.requestNumber} — our sourcing team will review your requirements and contact you through
               CrownSourceGlobal if we need more information.
             </p>
@@ -74,8 +77,8 @@ export default async function SourcingRequestDetailPage({
       {request.latestQuotation ? (
         <div className="flex items-center justify-between gap-4 rounded-2xl border border-champagne-300 bg-champagne-200/20 p-5">
           <div>
-            <p className="font-display text-base font-medium text-forest-950">Your quotation is ready</p>
-            <p className="mt-1 text-sm text-forest-900">
+            <p className="font-display text-base font-medium text-espresso-950">Your quotation is ready</p>
+            <p className="mt-1 text-sm text-espresso-900">
               {request.latestQuotation.reference} · {formatPrice(request.latestQuotation.total, request.latestQuotation.currency)}
             </p>
           </div>
@@ -135,7 +138,7 @@ export default async function SourcingRequestDetailPage({
                       href={`/api/sourcing/attachments/${attachment.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm font-medium text-forest-800 hover:underline"
+                      className="flex items-center gap-2 text-sm font-medium text-espresso-800 hover:underline"
                     >
                       <Paperclip className="size-3.5" />
                       {attachment.filename}
@@ -178,9 +181,6 @@ export default async function SourcingRequestDetailPage({
         </div>
       </div>
 
-      <Link href="/account/sourcing" className="text-sm font-medium text-forest-800 hover:underline">
-        ← Back to sourcing requests
-      </Link>
     </div>
   );
 }

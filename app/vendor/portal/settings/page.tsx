@@ -26,7 +26,7 @@ export default async function VendorSettingsPage() {
             <div className="flex justify-between py-2.5 text-sm">
               <dt className="text-espresso-900/50">Storefront</dt>
               <dd>
-                <Link href={`/vendors/${vendor.storefrontSlug}`} className="font-medium text-forest-800 hover:underline">
+                <Link href={`/vendors/${vendor.storefrontSlug}`} className="font-medium text-espresso-800 hover:underline">
                   View public page
                 </Link>
               </dd>
@@ -38,7 +38,7 @@ export default async function VendorSettingsPage() {
           <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Store details</h2>
           <p className="mt-2 text-sm text-espresso-900/50">
             Store name, description, location, and contact details live on your{" "}
-            <Link href="/vendor/portal/store" className="font-medium text-forest-800 hover:underline">
+            <Link href="/vendor/portal/store" className="font-medium text-espresso-800 hover:underline">
               Store profile
             </Link>{" "}
             page.

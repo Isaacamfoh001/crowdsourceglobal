@@ -42,7 +42,7 @@ export function OperationsForm({
             return (
               <label
                 key={category.id}
-                className="flex min-h-[4.5rem] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-ivory-300 p-3 text-center transition-colors has-[:checked]:border-forest-700 has-[:checked]:bg-champagne-200/20"
+                className="flex min-h-[4.5rem] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-ivory-300 p-3 text-center transition-colors has-[:checked]:border-espresso-800 has-[:checked]:bg-champagne-200/20"
               >
                 <input
                   type="checkbox"
@@ -51,7 +51,7 @@ export function OperationsForm({
                   defaultChecked={initial.categorySlugs.includes(category.slug)}
                   className="sr-only"
                 />
-                <Icon className="size-5 text-forest-800" strokeWidth={1.5} />
+                <Icon className="size-5 text-espresso-800" strokeWidth={1.5} />
                 <span className="text-[13px] leading-snug font-medium text-espresso-900">
                   {category.name}
                 </span>
@@ -72,7 +72,7 @@ export function OperationsForm({
                 value={mode.value}
                 defaultChecked={initial.sellingMode === mode.value}
                 required
-                className="size-4 accent-forest-800"
+                className="size-4 accent-espresso-800"
               />
               {mode.label}
             </label>
@@ -85,7 +85,7 @@ export function OperationsForm({
           type="checkbox"
           name="bulkCapable"
           defaultChecked={initial.bulkCapable}
-          className="size-4 rounded accent-forest-800"
+          className="size-4 rounded accent-espresso-800"
         />
         I can fulfil large bulk orders
       </label>

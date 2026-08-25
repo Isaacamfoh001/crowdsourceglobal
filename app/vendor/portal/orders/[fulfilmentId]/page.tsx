@@ -3,6 +3,7 @@ import { FulfilmentStatusBadge } from "../../../../../components/fulfilment/Fulf
 import { Card } from "../../../../../components/ui/Card";
 import { Alert } from "../../../../../components/ui/Alert";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BackLink } from "../../../../../components/ui/BackLink";
 import {
   StartPreparingButton,
   MarkReadyButton,
@@ -40,6 +41,8 @@ export default async function VendorFulfilmentDetailPage({ params }: { params: P
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink href="/vendor/portal/orders" label="Back to orders" />
+
       <PageHeader
         title={fulfilment.orderNumber}
         description={`${fulfilment.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}${international ? " · International" : " · Domestic collection"}`}
@@ -98,7 +101,7 @@ export default async function VendorFulfilmentDetailPage({ params }: { params: P
           <p className="mt-3 text-sm text-espresso-800">
             Once you mark this order ready, CrownSourceGlobal operations will arrange collection from your registered
             pickup location. Keep your pickup details up to date in{" "}
-            <a href="/vendor/portal/store" className="text-forest-800 underline">
+            <a href="/vendor/portal/store" className="text-espresso-800 underline">
               Store profile
             </a>
             .

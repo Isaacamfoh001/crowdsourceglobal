@@ -111,7 +111,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             </label>
             <Link
               href="/forgot-password"
-              className="text-xs font-medium text-forest-800 hover:underline"
+              className="text-xs font-medium text-espresso-800 hover:underline"
             >
               Forgot password?
             </Link>
@@ -123,7 +123,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
             autoComplete="current-password"
             required
             disabled={isSubmitting}
-            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none transition-colors focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none transition-colors focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
           />
         </div>
 
@@ -134,7 +134,7 @@ export function SignInForm({ googleEnabled }: { googleEnabled: boolean }) {
 
       <p className="text-center text-sm text-espresso-900/50">
         Don&apos;t have an account?{" "}
-        <Link href="/sign-up" className="font-medium text-forest-800 hover:underline">
+        <Link href="/sign-up" className="font-medium text-espresso-800 hover:underline">
           Create one
         </Link>
       </p>

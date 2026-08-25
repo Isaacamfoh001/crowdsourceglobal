@@ -4,6 +4,7 @@ import { MapPin } from "lucide-react";
 import { Button } from "../../../../../components/ui/Button";
 import { Alert } from "../../../../../components/ui/Alert";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BackLink } from "../../../../../components/ui/BackLink";
 import { OrderStatusBadge } from "../../../../../components/account/OrderStatusBadge";
 import { PackageTracking } from "../../../../../components/account/PackageTracking";
 import { AskAboutButton } from "../../../../../components/messaging/AskAboutButton";
@@ -55,6 +56,8 @@ export default async function OrderDetailPage({
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink href="/account/orders" label="Back to orders" />
+
       {showConfirmationBanner ? (
         <Alert tone="success" title="Order confirmed">
           Thanks — we&apos;ve received your order and vendors are being notified.
@@ -108,7 +111,7 @@ export default async function OrderDetailPage({
               placeholder="e.g. My package hasn't arrived, or the status looks wrong…"
             />
             {canReportProblem ? (
-              <Link href={`/account/resolutions/new?orderId=${order.id}`} className="text-sm font-medium text-forest-800 hover:underline">
+              <Link href={`/account/resolutions/new?orderId=${order.id}`} className="text-sm font-medium text-espresso-800 hover:underline">
                 Report a problem / request cancellation
               </Link>
             ) : null}
@@ -122,7 +125,7 @@ export default async function OrderDetailPage({
           <ul className="mt-2 flex flex-col divide-y divide-ivory-200">
             {orderCases.map((c) => (
               <li key={c.id}>
-                <Link href={`/account/resolutions/${c.id}`} className="flex items-center justify-between gap-3 py-2.5 hover:text-forest-800">
+                <Link href={`/account/resolutions/${c.id}`} className="flex items-center justify-between gap-3 py-2.5 hover:text-espresso-800">
                   <span className="text-sm text-espresso-800">{c.caseNumber}</span>
                   <CaseStatusBadge status={c.status} label={c.statusLabel} />
                 </Link>
@@ -207,9 +210,6 @@ export default async function OrderDetailPage({
         </div>
       </div>
 
-      <Link href="/account/orders" className="text-sm font-medium text-forest-800 hover:underline">
-        ← Back to orders
-      </Link>
     </div>
   );
 }

@@ -33,7 +33,7 @@ export function MessageThread({
               <div key={message.id} className={`flex ${isSelf ? "justify-end" : "justify-start"}`}>
                 <div
                   className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed sm:max-w-[70%] ${
-                    isSelf ? "bg-forest-800 text-white" : "bg-ivory-100 text-espresso-900"
+                    isSelf ? "bg-espresso-800 text-white" : "bg-ivory-100 text-espresso-900"
                   }`}
                 >
                   <p className="whitespace-pre-line">{message.body}</p>
@@ -58,7 +58,7 @@ export function MessageThread({
             placeholder={placeholder}
             required
             disabled={isPending}
-            className="w-full min-w-0 flex-1 rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+            className="w-full min-w-0 flex-1 rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
           />
           <Button type="submit" disabled={isPending} className="shrink-0">
             {isPending ? "Sending…" : "Send"}

@@ -3,10 +3,13 @@
 /*
  * CrownSourceGlobal design tokens.
  *
- * Palette: deep emerald (trust, growth, global reach) as the primary brand
- * color, warm gold used sparingly as an accent ("Crown"), on warm stone
- * neutrals rather than clinical white/gray. Deliberately not the generic
- * Tailwind-starter blue-on-slate combination.
+ * Palette (M17.1): ivory (warm-white surface) + espresso (near-black,
+ * primary brand/action color) + champagne/gold (restrained premium accent —
+ * the wordmark, editorial chips, never a background fill). Deliberately not
+ * the generic Tailwind-starter blue-on-slate combination. The original
+ * brand/gold and forest/burgundy scales below are unused (kept defined
+ * rather than deleted — see the M14.3 block for why) and must not be
+ * reintroduced as the default brand treatment.
  *
  * Type: Fraunces (serif, display/headlines) + Plus Jakarta Sans (UI/body).
  * Font CSS variables are set by next/font in app/layout.tsx.
@@ -78,17 +81,18 @@
   --color-info-800: #293a49;
 
   /*
-   * Premium editorial-commerce palette (M14.3). Additive — the original
-   * brand/gold/stone scales above are untouched so every page not yet
-   * migrated to this identity keeps rendering correctly. This scale is
-   * scoped to Homepage / Shop / Product Detail / ListingCard while the new
-   * visual direction is under review; once approved it propagates and the
-   * old brand/gold usage is retired.
+   * Premium editorial-commerce palette (M14.3; propagated app-wide and
+   * finalized M17.1). Relationship: deep espresso (dark brand surface,
+   * primary/strong actions) + warm ivory (page canvas, replaces sterile
+   * white/stone-50) + champagne (restrained premium accent and the
+   * wordmark — never a background fill).
    *
-   * Relationship: deep espresso (dark brand surface) + warm ivory (page
-   * canvas, replaces sterile white/stone-50) + champagne (restrained
-   * premium accent — never a background fill) + deep forest (secondary
-   * brand, CTAs) + burgundy (very sparing editorial accent).
+   * `forest-*` and `burgundy-*` below were an earlier secondary-brand /
+   * editorial-accent pairing with espresso. The client's final direction
+   * (M17.1) dropped green from the identity entirely — forest is no longer
+   * referenced anywhere in the app. Both scales are kept defined (unused)
+   * rather than deleted, since removing them is pure token archaeology with
+   * no visible effect. Do not reintroduce `forest-*` as a brand color.
    */
   --color-ivory-50: #fdfbf7;
   --color-ivory-100: #f7f2e8;

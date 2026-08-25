@@ -6,6 +6,7 @@ import { resolutionsService } from "../../../../../modules/resolutions/service";
 import { CaseStatusBadge } from "../../../../../components/resolutions/CaseStatusBadge";
 import { AskAboutButton } from "../../../../../components/messaging/AskAboutButton";
 import { AddEvidenceForm } from "../../../../../components/resolutions/AddEvidenceForm";
+import { BackLink } from "../../../../../components/ui/BackLink";
 import { formatPrice } from "../../../../../lib/format";
 
 type Params = { id: string };
@@ -25,12 +26,14 @@ export default async function ResolutionDetailPage({ params, searchParams }: { p
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink href="/account/resolutions" label="Back to returns & issues" />
+
       {submitted === "true" ? (
         <div className="flex items-start gap-3 rounded-2xl border border-champagne-300 bg-champagne-200/20 p-5">
-          <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-forest-800" strokeWidth={1.75} />
+          <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-espresso-800" strokeWidth={1.75} />
           <div>
-            <p className="font-display text-lg font-medium text-forest-950">Report received</p>
-            <p className="mt-1 text-sm text-forest-900">CrownSourceGlobal will review this and follow up with you.</p>
+            <p className="font-display text-lg font-medium text-espresso-950">Report received</p>
+            <p className="mt-1 text-sm text-espresso-900">CrownSourceGlobal will review this and follow up with you.</p>
           </div>
         </div>
       ) : null}
@@ -40,7 +43,7 @@ export default async function ResolutionDetailPage({ params, searchParams }: { p
           <h1 className="font-display text-2xl font-medium text-espresso-950">{detail.caseNumber}</h1>
           <p className="mt-1 text-sm text-espresso-900/50">
             Order{" "}
-            <Link href={`/account/orders/${detail.orderId}`} className="text-forest-800 hover:underline">
+            <Link href={`/account/orders/${detail.orderId}`} className="text-espresso-800 hover:underline">
               {detail.orderNumber}
             </Link>
           </p>
@@ -80,7 +83,7 @@ export default async function ResolutionDetailPage({ params, searchParams }: { p
             <ul className="mt-3 flex flex-col gap-1.5">
               {detail.attachments.map((a) => (
                 <li key={a.id}>
-                  <a href={`/api/resolutions/attachments/${a.id}`} target="_blank" rel="noreferrer" className="text-sm text-forest-800 hover:underline">
+                  <a href={`/api/resolutions/attachments/${a.id}`} target="_blank" rel="noreferrer" className="text-sm text-espresso-800 hover:underline">
                     {a.filename}
                   </a>
                 </li>
@@ -148,7 +151,7 @@ export default async function ResolutionDetailPage({ params, searchParams }: { p
               {r.replacementFulfilmentId ? (
                 <>
                   Being prepared — track it from{" "}
-                  <Link href={`/account/orders/${detail.orderId}`} className="text-forest-800 hover:underline">
+                  <Link href={`/account/orders/${detail.orderId}`} className="text-espresso-800 hover:underline">
                     your order
                   </Link>
                   .
@@ -176,9 +179,6 @@ export default async function ResolutionDetailPage({ params, searchParams }: { p
       </div>
       </div>
 
-      <Link href="/account/resolutions" className="text-sm font-medium text-forest-800 hover:underline">
-        ← Back to returns & issues
-      </Link>
     </div>
   );
 }

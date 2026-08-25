@@ -4,6 +4,7 @@ import { Paperclip } from "lucide-react";
 import { requireAdminSession } from "../../../../../modules/administration/policy";
 import { sourcingService } from "../../../../../modules/sourcing/service";
 import { SourcingStatusBadge } from "../../../../../components/sourcing/SourcingStatusBadge";
+import { BackLink } from "../../../../../components/ui/BackLink";
 import {
   AssignStaffForm,
   MoveToUnderReviewButton,
@@ -42,6 +43,8 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink href="/admin/sourcing" label="Back to sourcing requests" />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-medium text-espresso-950">{request.title}</h1>
@@ -110,7 +113,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
                       href={`/api/sourcing/attachments/${attachment.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm font-medium text-forest-800 hover:underline"
+                      className="flex items-center gap-2 text-sm font-medium text-espresso-800 hover:underline"
                     >
                       <Paperclip className="size-3.5" />
                       {attachment.filename}
@@ -125,7 +128,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
             <h2 className="font-display text-base font-medium text-espresso-950">Customer communication</h2>
             <p className="mt-1 text-sm text-espresso-900/50">
               Reply from the shared inbox at{" "}
-              <Link href="/admin/messages" className="text-forest-800 hover:underline">
+              <Link href="/admin/messages" className="text-espresso-800 hover:underline">
                 Admin → Messages
               </Link>{" "}
               — this request&apos;s thread appears there under &ldquo;About sourcing request {request.requestNumber}&rdquo;.
@@ -229,7 +232,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
               <ul className="mt-3 flex flex-col gap-2">
                 {request.quotations.map((quotation) => (
                   <li key={quotation.id} className="flex items-center justify-between gap-2 text-sm">
-                    <Link href={`/admin/quotations/${quotation.id}`} className="font-medium text-forest-800 hover:underline">
+                    <Link href={`/admin/quotations/${quotation.id}`} className="font-medium text-espresso-800 hover:underline">
                       {quotation.reference}
                     </Link>
                     <span className="text-xs text-espresso-900/50">
@@ -255,9 +258,6 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
         </div>
       </div>
 
-      <Link href="/admin/sourcing" className="text-sm font-medium text-forest-800 hover:underline">
-        ← Back to sourcing requests
-      </Link>
     </div>
   );
 }

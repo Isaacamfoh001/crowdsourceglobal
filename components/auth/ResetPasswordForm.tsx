@@ -58,7 +58,7 @@ export function ResetPasswordForm() {
   if (success) {
     return (
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-champagne-200 text-forest-800">
+        <div className="flex size-12 items-center justify-center rounded-full bg-champagne-200 text-espresso-800">
           <CheckCircle2 className="size-6" strokeWidth={1.75} />
         </div>
         <h1 className="text-2xl font-medium text-espresso-950">Password updated</h1>
@@ -102,7 +102,7 @@ export function ResetPasswordForm() {
       </form>
 
       <p className="text-center text-sm text-espresso-900/50">
-        <Link href="/sign-in" className="font-medium text-forest-800 hover:underline">
+        <Link href="/sign-in" className="font-medium text-espresso-800 hover:underline">
           Back to sign in
         </Link>
       </p>

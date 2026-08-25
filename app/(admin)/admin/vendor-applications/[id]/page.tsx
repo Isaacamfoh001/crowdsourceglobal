@@ -7,6 +7,7 @@ import { BeginReviewButton } from "../../../../../components/admin/BeginReviewBu
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { Card } from "../../../../../components/ui/Card";
 import { StatusBadge } from "../../../../../components/ui/StatusBadge";
+import { BackLink } from "../../../../../components/ui/BackLink";
 
 type Params = { id: string };
 
@@ -40,6 +41,8 @@ export default async function AdminVendorApplicationDetailPage({ params }: { par
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink href="/admin/vendor-applications" label="Back to vendor applications" />
+
       <PageHeader
         title={application.displayName ?? application.applicant.name}
         description={`${application.applicant.name} · ${application.applicant.email}`}

@@ -21,7 +21,7 @@ export default async function AdminConversationPage({ params }: { params: Promis
 
   return (
     <div className="flex flex-col gap-4">
-      <Link href="/admin/messages" className="text-sm font-medium text-forest-800 hover:underline">
+      <Link href="/admin/messages" className="text-sm font-medium text-espresso-800 hover:underline">
         ← All messages
       </Link>
       <div>

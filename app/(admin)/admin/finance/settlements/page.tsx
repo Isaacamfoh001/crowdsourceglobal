@@ -47,7 +47,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
             key={filter.label}
             href={filter.value ? `/admin/finance/settlements?status=${filter.value}` : "/admin/finance/settlements"}
             className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium ${
-              status === filter.value ? "bg-forest-800 text-white" : "bg-ivory-50 text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
+              status === filter.value ? "bg-espresso-800 text-white" : "bg-ivory-50 text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
             }`}
           >
             {filter.label}
@@ -79,12 +79,12 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
       {total > pageSize ? (
         <div className="flex justify-center gap-2">
           {currentPage > 1 ? (
-            <Link href={`/admin/finance/settlements?${status ? `status=${status}&` : ""}page=${currentPage - 1}`} className="text-sm font-medium text-forest-800 hover:underline">
+            <Link href={`/admin/finance/settlements?${status ? `status=${status}&` : ""}page=${currentPage - 1}`} className="text-sm font-medium text-espresso-800 hover:underline">
               ← Previous
             </Link>
           ) : null}
           {currentPage * pageSize < total ? (
-            <Link href={`/admin/finance/settlements?${status ? `status=${status}&` : ""}page=${currentPage + 1}`} className="text-sm font-medium text-forest-800 hover:underline">
+            <Link href={`/admin/finance/settlements?${status ? `status=${status}&` : ""}page=${currentPage + 1}`} className="text-sm font-medium text-espresso-800 hover:underline">
               Next →
             </Link>
           ) : null}

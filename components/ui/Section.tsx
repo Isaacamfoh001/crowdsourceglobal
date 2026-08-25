@@ -7,7 +7,7 @@ const toneClasses: Record<SectionTone, string> = {
   muted: "bg-ivory-50",
   /** A deliberately distinct third surface — warm ivory tint — so alternating sections actually read as alternating. */
   warm: "bg-ivory-100",
-  brand: "bg-forest-950 text-ivory-100",
+  brand: "bg-espresso-950 text-ivory-100",
   ink: "bg-espresso-950 text-ivory-100",
 };
 

@@ -13,7 +13,7 @@ export default async function NotificationPreferencesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/account/notifications" className="text-sm font-medium text-forest-800 hover:underline">
+        <Link href="/account/notifications" className="text-sm font-medium text-espresso-800 hover:underline">
           ← Back to notifications
         </Link>
         <h1 className="mt-2 font-display text-2xl font-medium text-espresso-950">Notification preferences</h1>

@@ -49,7 +49,7 @@ export default async function AdminSourcingPage({
             href={filter.value ? `/admin/sourcing?status=${filter.value}` : "/admin/sourcing"}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
               activeStatus === filter.value
-                ? "bg-forest-800 text-white"
+                ? "bg-espresso-800 text-white"
                 : "bg-ivory-50 text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
             }`}
           >
@@ -86,7 +86,7 @@ export default async function AdminSourcingPage({
               </div>
               <div className="flex items-center gap-2">
                 {request.hasQuotation ? (
-                  <span className="rounded-full bg-champagne-200/20 px-2.5 py-1 text-xs font-medium text-forest-800">Quoted</span>
+                  <span className="rounded-full bg-champagne-200/20 px-2.5 py-1 text-xs font-medium text-espresso-800">Quoted</span>
                 ) : null}
                 <SourcingStatusBadge status={request.status} label={request.statusLabel} />
               </div>

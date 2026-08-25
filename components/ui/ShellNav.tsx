@@ -20,8 +20,9 @@ export type ShellNavItem = {
  * accent rule plus weight change, not a filled pill — a solid champagne (or
  * any solid) chip repeated down every sidebar, on every page load, reads as
  * decoration rather than wayfinding. `tone` only changes the accent color:
- * "brand" (forest) for commerce-forward surfaces (account, vendor),
- * "neutral" (ivory) for the denser admin operations console.
+ * "brand" (espresso + a champagne accent rule) for commerce-forward
+ * surfaces (account, vendor), "neutral" (espresso only) for the denser
+ * admin operations console.
  */
 export function ShellNav({
   items,
@@ -33,7 +34,7 @@ export function ShellNav({
   const pathname = usePathname();
   const activeClasses =
     tone === "brand"
-      ? "text-forest-900 font-semibold lg:border-l-forest-800 lg:bg-ivory-100"
+      ? "text-espresso-900 font-semibold lg:border-l-champagne-400 lg:bg-ivory-100"
       : "text-espresso-950 font-semibold lg:border-l-espresso-800 lg:bg-ivory-100";
 
   return (

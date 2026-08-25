@@ -37,7 +37,7 @@ export function Pagination({
   return (
     <nav aria-label="Pagination" className="flex items-center justify-between gap-3 py-2 sm:justify-center">
       {currentPage > 1 ? (
-        <Link href={buildHref(currentPage - 1)} aria-label="Previous page" className={`${navClasses} text-forest-800 hover:bg-ivory-200`}>
+        <Link href={buildHref(currentPage - 1)} aria-label="Previous page" className={`${navClasses} text-espresso-800 hover:bg-ivory-200`}>
           <ChevronLeft className="size-5" strokeWidth={1.75} />
         </Link>
       ) : (
@@ -49,7 +49,7 @@ export function Pagination({
         Page {currentPage} of {totalPages}
       </span>
       {currentPage < totalPages ? (
-        <Link href={buildHref(currentPage + 1)} aria-label="Next page" className={`${navClasses} text-forest-800 hover:bg-ivory-200`}>
+        <Link href={buildHref(currentPage + 1)} aria-label="Next page" className={`${navClasses} text-espresso-800 hover:bg-ivory-200`}>
           <ChevronRight className="size-5" strokeWidth={1.75} />
         </Link>
       ) : (

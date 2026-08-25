@@ -67,7 +67,7 @@ export function MoneyInput({
           placeholder="0.00"
           required={required}
           disabled={disabled}
-          className="w-full rounded-lg border border-ivory-400 bg-ivory-50 py-3 pl-12 pr-3.5 text-[15px] font-medium text-espresso-950 shadow-soft outline-none transition-colors focus:border-forest-700 focus:ring-2 focus:ring-forest-700/10 disabled:bg-ivory-100"
+          className="w-full rounded-lg border border-ivory-400 bg-ivory-50 py-3 pl-12 pr-3.5 text-[15px] font-medium text-espresso-950 shadow-soft outline-none transition-colors focus:border-espresso-800 focus:ring-2 focus:ring-espresso-800/10 disabled:bg-ivory-100"
         />
       </div>
       {hint ? <p className="text-xs text-espresso-900/55">{hint}</p> : null}

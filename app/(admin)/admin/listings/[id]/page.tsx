@@ -8,6 +8,7 @@ import { listingImageUrl } from "../../../../../lib/listing-images";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { Card } from "../../../../../components/ui/Card";
 import { Alert } from "../../../../../components/ui/Alert";
+import { BackLink } from "../../../../../components/ui/BackLink";
 
 type Params = { id: string };
 
@@ -39,6 +40,8 @@ export default async function AdminListingDetailPage({ params }: { params: Promi
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink href="/admin/listings" label="Back to listings" />
+
       <PageHeader title={content.title} description={`Sold by ${listing.vendorName}`} />
 
       {isEdit ? (

@@ -24,7 +24,7 @@ export default async function AdminFinancePage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-medium text-espresso-950">Finance</h1>
-        <Link href="/admin/finance/settlements" className="text-sm font-medium text-forest-800 hover:underline">
+        <Link href="/admin/finance/settlements" className="text-sm font-medium text-espresso-800 hover:underline">
           All settlements →
         </Link>
       </div>

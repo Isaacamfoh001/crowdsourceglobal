@@ -46,7 +46,7 @@ export function ReportProblemForm({ context, defaultFulfilmentId }: { context: O
             <label
               key={option.value}
               className={`flex cursor-pointer flex-col gap-0.5 rounded-lg border px-3.5 py-2.5 text-sm ${
-                issueType === option.value ? "border-forest-700 bg-champagne-200/20" : "border-ivory-400 bg-ivory-50 hover:bg-ivory-50"
+                issueType === option.value ? "border-espresso-800 bg-champagne-200/20" : "border-ivory-400 bg-ivory-50 hover:bg-ivory-50"
               }`}
             >
               <span className="flex items-center gap-2 font-medium text-espresso-950">
@@ -56,7 +56,7 @@ export function ReportProblemForm({ context, defaultFulfilmentId }: { context: O
                   value={option.value}
                   checked={issueType === option.value}
                   onChange={() => setIssueType(option.value)}
-                  className="accent-forest-800"
+                  className="accent-espresso-800"
                 />
                 {option.label}
               </span>
@@ -84,7 +84,7 @@ export function ReportProblemForm({ context, defaultFulfilmentId }: { context: O
                       <label className="flex flex-1 items-center gap-2">
                         <input
                           type="checkbox"
-                          className="accent-forest-800"
+                          className="accent-espresso-800"
                           checked={checked}
                           onChange={(e) => {
                             const next = new Set(selected);
@@ -132,7 +132,7 @@ export function ReportProblemForm({ context, defaultFulfilmentId }: { context: O
           required
           minLength={5}
           placeholder="Describe the issue in a bit of detail…"
-          className="mt-2 w-full rounded-lg border border-ivory-400 px-3.5 py-2.5 text-sm outline-none focus:border-forest-700 focus:ring-2 focus:ring-champagne-200"
+          className="mt-2 w-full rounded-lg border border-ivory-400 px-3.5 py-2.5 text-sm outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
         />
       </div>
 

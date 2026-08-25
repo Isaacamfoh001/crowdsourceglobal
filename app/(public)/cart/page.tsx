@@ -54,7 +54,7 @@ export default async function CartPage() {
                   <div className="flex items-center justify-between gap-3">
                     <Link
                       href={`/vendors/${group.vendor.storefrontSlug}`}
-                      className="flex min-w-0 items-center gap-2 font-display text-[15px] font-medium text-espresso-950 hover:text-forest-900"
+                      className="flex min-w-0 items-center gap-2 font-display text-[15px] font-medium text-espresso-950 hover:text-espresso-900"
                     >
                       <ShoppingBag className="size-4 shrink-0 text-espresso-900/35" strokeWidth={1.75} />
                       <span className="truncate">{group.vendor.companyName}</span>
@@ -72,7 +72,7 @@ export default async function CartPage() {
                 </Card>
               ))}
 
-              <Link href="/shop" className="text-sm font-medium text-forest-800 hover:underline">
+              <Link href="/shop" className="text-sm font-medium text-espresso-800 hover:underline">
                 ← Continue shopping
               </Link>
             </div>

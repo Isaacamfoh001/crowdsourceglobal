@@ -69,7 +69,7 @@ export default async function AdminPaymentsPage({
             href={withParam("status", filter.value)}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${
               activeStatus === filter.value && !requiresAttention
-                ? "bg-forest-800 text-white"
+                ? "bg-espresso-800 text-white"
                 : "bg-ivory-50 text-espresso-900/65 ring-1 ring-ivory-300 hover:bg-ivory-50"
             }`}
           >

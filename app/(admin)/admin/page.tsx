@@ -50,7 +50,7 @@ export default async function AdminHomePage({ searchParams }: { searchParams: Pr
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-display text-base font-medium text-espresso-950">Attention required</h2>
           {data.attentionItems.length > 8 ? (
-            <Link href="/admin/attention" className="text-sm font-medium text-forest-800 hover:underline">
+            <Link href="/admin/attention" className="text-sm font-medium text-espresso-800 hover:underline">
               View all ({data.attentionItems.length})
             </Link>
           ) : null}

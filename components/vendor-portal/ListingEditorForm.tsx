@@ -289,7 +289,7 @@ export function ListingEditorForm({
           type="button"
           onClick={() => setTiers((rows) => [...rows, { minQuantity: "", maxQuantity: "", unitPrice: "" }])}
           disabled={disabled || isPending}
-          className="flex w-fit items-center gap-1.5 text-sm font-medium text-forest-800 hover:underline disabled:opacity-40"
+          className="flex w-fit items-center gap-1.5 text-sm font-medium text-espresso-800 hover:underline disabled:opacity-40"
         >
           <Plus className="size-4" />
           Add a tier

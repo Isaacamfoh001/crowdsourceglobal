@@ -24,7 +24,7 @@ function CartLink({ itemCount }: { itemCount: number }) {
     >
       <ShoppingBag className="size-5" strokeWidth={1.75} />
       {itemCount > 0 ? (
-        <span className="absolute -right-0.5 -top-0.5 flex size-4.5 items-center justify-center rounded-full bg-forest-800 text-[10px] font-semibold text-ivory-50">
+        <span className="absolute -right-0.5 -top-0.5 flex size-4.5 items-center justify-center rounded-full bg-espresso-800 text-[10px] font-semibold text-ivory-50">
           {itemCount > 99 ? "99+" : itemCount}
         </span>
       ) : null}

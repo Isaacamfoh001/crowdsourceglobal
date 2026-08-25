@@ -5,6 +5,7 @@ import { requireAdminSession } from "../../../../../modules/administration/polic
 import { resolutionsService } from "../../../../../modules/resolutions/service";
 import { sourcingService } from "../../../../../modules/sourcing/service";
 import { CaseStatusBadge } from "../../../../../components/resolutions/CaseStatusBadge";
+import { BackLink } from "../../../../../components/ui/BackLink";
 import {
   AssignResolutionStaffForm,
   MoveToReviewButton,
@@ -47,12 +48,14 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink href="/admin/resolutions" label="Back to resolutions" />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-medium text-espresso-950">{detail.caseNumber}</h1>
           <p className="mt-1 text-sm text-espresso-900/50">
             Order{" "}
-            <Link href={`/admin/operations`} className="text-forest-800 hover:underline">
+            <Link href={`/admin/operations`} className="text-espresso-800 hover:underline">
               {detail.orderNumber}
             </Link>{" "}
             · {detail.customerName} ({detail.customerEmail}) · {detail.issueType.replace(/_/g, " ").toLowerCase()}
@@ -87,7 +90,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
               <ul className="mt-4 flex flex-col gap-2">
                 {detail.attachments.map((a) => (
                   <li key={a.id}>
-                    <a href={`/api/resolutions/attachments/${a.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm font-medium text-forest-800 hover:underline">
+                    <a href={`/api/resolutions/attachments/${a.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm font-medium text-espresso-800 hover:underline">
                       <Paperclip className="size-3.5" />
                       {a.filename}
                     </a>
@@ -101,7 +104,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
             <h2 className="font-display text-base font-medium text-espresso-950">Customer communication</h2>
             <p className="mt-1 text-sm text-espresso-900/50">
               Reply from{" "}
-              <Link href="/admin/messages" className="text-forest-800 hover:underline">
+              <Link href="/admin/messages" className="text-espresso-800 hover:underline">
                 Admin → Messages
               </Link>{" "}
               — this case&apos;s thread appears there as &ldquo;About case {detail.caseNumber}&rdquo;.
@@ -215,7 +218,7 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
                   <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-ivory-300 p-3.5 text-sm">
                     <span className="text-espresso-800">Quantity {r.quantity}</span>
                     {r.replacementFulfilmentId ? (
-                      <Link href={`/admin/operations/${r.replacementFulfilmentId}`} className="text-forest-800 hover:underline">
+                      <Link href={`/admin/operations/${r.replacementFulfilmentId}`} className="text-espresso-800 hover:underline">
                         View fulfilment
                       </Link>
                     ) : (
@@ -273,9 +276,6 @@ export default async function AdminResolutionDetailPage({ params }: { params: Pr
         </div>
       </div>
 
-      <Link href="/admin/resolutions" className="text-sm font-medium text-forest-800 hover:underline">
-        ← Back to resolutions
-      </Link>
     </div>
   );
 }

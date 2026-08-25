@@ -33,11 +33,11 @@ export function MarketplacePreview({ categories }: { categories: PublicCategoryW
                 <span className="w-6 shrink-0 font-display text-sm text-espresso-900/35 sm:w-10 sm:text-base">
                   {String(index + 1).padStart(2, "0")}
                 </span>
-                <span className="flex-1 font-display text-2xl font-medium tracking-tight text-espresso-950 transition-colors group-hover:text-forest-800 sm:text-4xl">
+                <span className="flex-1 font-display text-2xl font-medium tracking-tight text-espresso-950 transition-colors group-hover:text-espresso-800 sm:text-4xl">
                   {category.name}
                 </span>
                 <ArrowUpRight
-                  className="size-5 shrink-0 text-espresso-900/25 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-forest-800 sm:size-6"
+                  className="size-5 shrink-0 text-espresso-900/25 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-espresso-800 sm:size-6"
                   strokeWidth={1.5}
                 />
               </Link>

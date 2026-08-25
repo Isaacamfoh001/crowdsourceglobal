@@ -15,7 +15,7 @@ export function Input({ label, error, hint, id, className = "", ...props }: Inpu
       </label>
       <input
         id={inputId}
-        className={`w-full rounded-lg border bg-ivory-50 px-3.5 py-3 text-[15px] text-espresso-950 shadow-soft outline-none transition-colors placeholder:text-espresso-900/35 focus:border-forest-700 focus:ring-2 focus:ring-forest-700/10 ${
+        className={`w-full rounded-lg border bg-ivory-50 px-3.5 py-3 text-[15px] text-espresso-950 shadow-soft outline-none transition-colors placeholder:text-espresso-900/35 focus:border-espresso-800 focus:ring-2 focus:ring-espresso-800/10 ${
           error ? "border-danger-400" : "border-ivory-400"
         } ${className}`}
         aria-invalid={error ? true : undefined}
