@@ -12,7 +12,7 @@ import { Button } from "../ui/Button";
  */
 export function FinalCta() {
   return (
-    <section className="border-t border-ivory-300 bg-ivory-50 py-16 sm:py-20 lg:py-24">
+    <section className="border-t border-ivory-300 bg-ivory-100 py-16 sm:py-20 lg:py-24">
       <Container>
         <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="max-w-lg font-display text-2xl font-medium tracking-tight text-espresso-950 sm:text-3xl">

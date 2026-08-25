@@ -27,7 +27,7 @@ export default async function CheckoutPage() {
   }
 
   return (
-    <div className="bg-ivory-50">
+    <div className="bg-ivory-100">
       <div className="border-b border-ivory-300 py-7 sm:py-9">
         <Container>
           <PageHeader title="Checkout" description="Review your order and confirm delivery details." />

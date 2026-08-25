@@ -10,6 +10,7 @@ import { NotificationBell } from "../notifications/NotificationBell";
 import type { NotificationView } from "../../modules/notifications/types";
 
 const NAV_LINKS = [
+  { href: "/", label: "Home" },
   { href: "/shop", label: "Shop" },
   { href: "/sourcing", label: "Source" },
   { href: "/sell", label: "Sell" },

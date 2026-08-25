@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { FormMessage } from "../ui/FormMessage";
+import { StepActions } from "./StepActions";
 import { saveContactAction } from "../../lib/actions/vendor-application";
 
 export function ContactForm({
@@ -46,9 +46,12 @@ export function ContactForm({
         disabled={isPending}
       />
 
-      <Button type="submit" size="lg" fullWidth disabled={isPending} className="mt-2">
-        {isPending ? "Saving…" : "Continue"}
-      </Button>
+      <StepActions
+        previousHref="/vendor/onboarding/seller-type"
+        submitLabel="Continue"
+        pendingLabel="Saving…"
+        isPending={isPending}
+      />
     </form>
   );
 }

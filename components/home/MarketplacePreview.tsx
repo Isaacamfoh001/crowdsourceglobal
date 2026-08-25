@@ -12,7 +12,7 @@ import type { PublicCategoryWithChildren } from "../../modules/catalogue/types";
  */
 export function MarketplacePreview({ categories }: { categories: PublicCategoryWithChildren[] }) {
   return (
-    <section className="bg-ivory-50 py-16 sm:py-20 lg:py-28">
+    <section className="bg-ivory-100 py-16 sm:py-20 lg:py-28">
       <Container>
         <div className="max-w-xl">
           <p className="text-xs font-semibold tracking-[0.2em] text-champagne-700 uppercase">

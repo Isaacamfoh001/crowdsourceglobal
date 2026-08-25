@@ -55,7 +55,7 @@ const benefits = [
 export default function SellPage() {
   return (
     <>
-      <div className="bg-ivory-50 pt-16 pb-8 sm:pt-20 lg:pt-28">
+      <div className="bg-ivory-100 pt-16 pb-8 sm:pt-20 lg:pt-28">
         <Container>
           <div className="mx-auto max-w-2xl text-center">
             <Badge tone="gold">For beauty businesses & suppliers</Badge>

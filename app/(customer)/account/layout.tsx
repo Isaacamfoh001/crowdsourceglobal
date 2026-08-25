@@ -11,7 +11,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
   const bellData = session ? await notificationsService.getBellData(session.user.id) : { unreadCount: 0, recent: [] };
 
   return (
-    <div className="min-h-screen bg-ivory-50">
+    <div className="min-h-screen bg-ivory-100">
       <header className="border-b border-ivory-300">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <Logo />

@@ -16,7 +16,7 @@ export default async function NewSourcingRequestPage() {
   const categories = await catalogueService.listCategories();
 
   return (
-    <div className="bg-ivory-50 py-10 sm:py-14">
+    <div className="bg-ivory-100 py-10 sm:py-14">
       <Container className="max-w-2xl">
         <h1 className="font-display text-3xl font-medium text-espresso-950">Request custom sourcing</h1>
         <p className="mt-1.5 text-[15px] text-espresso-900/65">

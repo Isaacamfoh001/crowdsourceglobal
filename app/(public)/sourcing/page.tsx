@@ -63,7 +63,7 @@ export default function SourcingLandingPage() {
         </div>
       </Container>
 
-      <div className="bg-ivory-50 py-14 sm:py-20">
+      <div className="bg-ivory-100 py-14 sm:py-20">
         <Container className="max-w-4xl">
           <ol className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((step) => (

@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState } from "react";
-import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { FormMessage } from "../ui/FormMessage";
 import { getCategoryIcon } from "../catalogue/categoryIcons";
+import { StepActions } from "./StepActions";
 import { saveOperationsAction } from "../../lib/actions/vendor-application";
 
 type Category = { id: string; name: string; slug: string };
@@ -109,9 +109,12 @@ export function OperationsForm({
         />
       </div>
 
-      <Button type="submit" size="lg" fullWidth disabled={isPending} className="mt-2">
-        {isPending ? "Saving…" : "Continue to review"}
-      </Button>
+      <StepActions
+        previousHref="/vendor/onboarding/business"
+        submitLabel="Continue to review"
+        pendingLabel="Saving…"
+        isPending={isPending}
+      />
     </form>
   );
 }

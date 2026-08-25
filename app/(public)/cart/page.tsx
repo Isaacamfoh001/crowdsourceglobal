@@ -21,7 +21,7 @@ export default async function CartPage() {
     : { cartId: null, itemCount: 0, vendorGroups: [], subtotal: 0, currency: "GHS" };
 
   return (
-    <div className="bg-ivory-50">
+    <div className="bg-ivory-100">
       <div className="bg-espresso-950 py-7 sm:py-9">
         <Container>
           <PageHeader

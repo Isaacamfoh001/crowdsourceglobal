@@ -20,7 +20,7 @@ const benefits = [
  */
 export function VendorSection() {
   return (
-    <section id="sell" className="bg-ivory-50 py-16 sm:py-20 lg:py-28">
+    <section id="sell" className="bg-ivory-100 py-16 sm:py-20 lg:py-28">
       <Container>
         <div className="grid gap-12 lg:grid-cols-[1fr_0.9fr] lg:gap-20">
           <div>

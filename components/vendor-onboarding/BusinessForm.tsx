@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState } from "react";
-import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { CountrySelect } from "../ui/CountrySelect";
 import { FormMessage } from "../ui/FormMessage";
+import { StepActions } from "./StepActions";
 import { saveBusinessAction } from "../../lib/actions/vendor-application";
 
 type Initial = {
@@ -114,9 +114,12 @@ export function BusinessForm({ initial, showRegistrationFields }: { initial: Ini
         </div>
       </div>
 
-      <Button type="submit" size="lg" fullWidth disabled={isPending} className="mt-2">
-        {isPending ? "Saving…" : "Continue"}
-      </Button>
+      <StepActions
+        previousHref="/vendor/onboarding/details"
+        submitLabel="Continue"
+        pendingLabel="Saving…"
+        isPending={isPending}
+      />
     </form>
   );
 }

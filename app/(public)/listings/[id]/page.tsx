@@ -40,7 +40,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
   const resumedQuoteQuantity = isSignedIn ? await getPendingQuoteIntent(listing.id) : null;
 
   return (
-    <div className="bg-ivory-50 py-8 sm:py-12">
+    <div className="bg-ivory-100 py-8 sm:py-12">
       <Container>
         <Breadcrumbs
           items={[

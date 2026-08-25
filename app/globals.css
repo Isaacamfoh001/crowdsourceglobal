@@ -128,7 +128,7 @@
 
 @layer base {
   body {
-    background-color: var(--color-ivory-50);
+    background-color: var(--color-ivory-100);
     color: var(--color-espresso-950);
     font-family: var(--font-sans);
   }

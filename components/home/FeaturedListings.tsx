@@ -10,7 +10,7 @@ export function FeaturedListings({ listings }: { listings: PublicListingSummary[
   }
 
   return (
-    <section className="bg-ivory-50 py-16 sm:py-20 lg:py-28">
+    <section className="bg-ivory-100 py-16 sm:py-20 lg:py-28">
       <Container>
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>

@@ -26,7 +26,7 @@ export default async function ShopPage({
   ]);
 
   return (
-    <div className="bg-ivory-50">
+    <div className="bg-ivory-100">
       <div className="border-b border-ivory-300 py-8 sm:py-10">
         <Container>
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">

@@ -2,8 +2,8 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { Button } from "../ui/Button";
 import { FormMessage } from "../ui/FormMessage";
+import { StepActions } from "./StepActions";
 import { submitApplicationAction } from "../../lib/actions/vendor-application";
 import { SELLER_TYPES, type VendorApplicationView } from "../../modules/vendor-applications/types";
 
@@ -93,9 +93,12 @@ export function ReviewForm({
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
 
       <form action={formAction}>
-        <Button type="submit" size="lg" fullWidth disabled={isPending}>
-          {isPending ? "Submitting…" : "Submit application"}
-        </Button>
+        <StepActions
+          previousHref="/vendor/onboarding/operations"
+          submitLabel="Submit application"
+          pendingLabel="Submitting…"
+          isPending={isPending}
+        />
       </form>
     </div>
   );

@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { Button } from "../ui/Button";
 import { FormMessage } from "../ui/FormMessage";
+import { StepActions } from "./StepActions";
 import { saveSellerTypeAction } from "../../lib/actions/vendor-application";
 import { SELLER_TYPES, type SellerType } from "../../modules/vendor-applications/types";
 
@@ -36,9 +36,7 @@ export function SellerTypeForm({ initialValue }: { initialValue: SellerType | nu
         ))}
       </fieldset>
 
-      <Button type="submit" size="lg" fullWidth disabled={isPending} className="mt-2">
-        {isPending ? "Saving…" : "Continue"}
-      </Button>
+      <StepActions submitLabel="Continue" pendingLabel="Saving…" isPending={isPending} />
     </form>
   );
 }

@@ -23,7 +23,7 @@ export default async function QuoteBuilderPage() {
   const canGenerate = lines.length > 0 && eligibleLines.length === lines.length;
 
   return (
-    <div className="bg-ivory-50 py-10 sm:py-14">
+    <div className="bg-ivory-100 py-10 sm:py-14">
       <Container className="max-w-3xl">
         <h1 className="font-display text-3xl font-medium text-espresso-950">Build your quote</h1>
         <p className="mt-1.5 text-sm text-espresso-900/50">

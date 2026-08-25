@@ -45,7 +45,7 @@ export default function CareersLandingPage() {
         </Container>
       </div>
 
-      <div className="bg-ivory-50 py-14 sm:py-20">
+      <div className="bg-ivory-100 py-14 sm:py-20">
         <Container className="max-w-2xl">
           <p className="text-xs font-semibold tracking-[0.2em] text-champagne-700 uppercase">Who can apply</p>
           <h2 className="mt-3 font-display text-2xl font-medium text-espresso-950 sm:text-3xl">

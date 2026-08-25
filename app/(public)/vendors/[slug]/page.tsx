@@ -45,7 +45,7 @@ export default async function VendorStorefrontPage({
   const resumedMessage = await getPendingMessageIntent("VENDOR", vendor.id);
 
   return (
-    <div className="bg-ivory-50 pb-14">
+    <div className="bg-ivory-100 pb-14">
       {/* Light editorial identity block (M14.4) — replaces the dark
           gradient cover band and giant watermark initial, which read as
           decoration rather than brand identity once a store has no real

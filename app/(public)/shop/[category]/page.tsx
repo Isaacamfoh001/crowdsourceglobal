@@ -43,7 +43,7 @@ export default async function CategoryPage({
   );
 
   return (
-    <div className="bg-ivory-50">
+    <div className="bg-ivory-100">
       <div className="border-b border-ivory-300 py-7 sm:py-9">
         <Container>
           <Breadcrumbs

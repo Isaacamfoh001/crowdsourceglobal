@@ -3,10 +3,11 @@ import { Container } from "./Container";
 type SectionTone = "default" | "muted" | "warm" | "brand" | "ink";
 
 const toneClasses: Record<SectionTone, string> = {
-  default: "bg-ivory-50",
-  muted: "bg-ivory-50",
-  /** A deliberately distinct third surface — warm ivory tint — so alternating sections actually read as alternating. */
-  warm: "bg-ivory-100",
+  /** M17.1.1: the default page canvas moved from ivory-50 to the slightly darker ivory-100 app-wide — see app/globals.css. */
+  default: "bg-ivory-100",
+  muted: "bg-ivory-100",
+  /** A deliberately distinct third surface — one step darker still — so alternating sections actually read as alternating. */
+  warm: "bg-ivory-200",
   brand: "bg-espresso-950 text-ivory-100",
   ink: "bg-espresso-950 text-ivory-100",
 };
