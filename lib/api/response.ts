@@ -65,12 +65,16 @@ export function serializeDate(date: Date): string {
 }
 
 /**
- * `{ page, pageSize, total, rows }` — wraps whatever
+ * `{ page, pageSize, total, totalPages, rows }` — wraps whatever
  * `lib/pagination.ts`'s existing `skip`/`take` + `count()` convention
  * already produced. Does not change that convention, only how it's shaped
  * for a JSON response (an RSC page renders the same rows/total directly;
- * an API response needs an explicit envelope).
+ * an API response needs an explicit envelope). `totalPages` is derived,
+ * never stored — a client that already has `total`/`pageSize` could
+ * compute it, but every list is a natural fit so it's provided directly
+ * (M18.2, this function's first real caller).
  */
 export function apiPage<T>(params: { rows: T[]; total: number; page: number; pageSize: number }) {
-  return { page: params.page, pageSize: params.pageSize, total: params.total, rows: params.rows };
+  const totalPages = params.pageSize > 0 ? Math.max(1, Math.ceil(params.total / params.pageSize)) : 1;
+  return { page: params.page, pageSize: params.pageSize, total: params.total, totalPages, rows: params.rows };
 }

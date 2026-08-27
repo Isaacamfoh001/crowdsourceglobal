@@ -61,4 +61,27 @@ export const catalogueService = {
   async listFeaturedListings(take = 6) {
     return catalogueRepository.listListingsCapped({}, take);
   },
+
+  /**
+   * (M18.2) Per-category discovery grid backing the mobile Explore
+   * surface — a bounded slice of each top-level category's most recent
+   * listings (a category's own listings include its children's, same
+   * rule as listListingsForCategorySlug), composed from the exact same
+   * repository calls listFeaturedListings/the category nav already use.
+   * No new query shape, no ranking/personalization: recency within each
+   * category is the entire "algorithm", matching MOBILE_V1_PLAN.md's
+   * explicit "simple deterministic ranking" instruction. A category with
+   * no live listings is omitted rather than shown empty.
+   */
+  async listExploreSections(sectionTake = 8) {
+    const topLevel = await catalogueRepository.listTopLevelCategoriesWithChildren();
+    const sections = await Promise.all(
+      topLevel.map(async (category) => {
+        const categoryIds = [category.id, ...category.children.map((child) => child.id)];
+        const listings = await catalogueRepository.listListingsCapped({ categoryIds }, sectionTake);
+        return { category, listings };
+      }),
+    );
+    return sections.filter((section) => section.listings.length > 0);
+  },
 };

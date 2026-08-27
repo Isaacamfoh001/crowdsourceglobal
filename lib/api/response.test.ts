@@ -37,12 +37,17 @@ describe("lib/api/response — shared /api/v1 conventions", () => {
     expect(serializeDate(date)).toBe("2026-08-27T12:00:00.000Z");
   });
 
-  it("shapes a paginated result using the existing page/pageSize/total convention", () => {
+  it("shapes a paginated result using the existing page/pageSize/total convention, plus a derived totalPages", () => {
     expect(apiPage({ rows: [1, 2], total: 5, page: 1, pageSize: 2 })).toEqual({
       page: 1,
       pageSize: 2,
       total: 5,
+      totalPages: 3,
       rows: [1, 2],
     });
+  });
+
+  it("never reports zero total pages, even for an empty result set", () => {
+    expect(apiPage({ rows: [], total: 0, page: 1, pageSize: 24 }).totalPages).toBe(1);
   });
 });
