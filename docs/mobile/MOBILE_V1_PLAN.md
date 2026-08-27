@@ -1920,6 +1920,19 @@ Do not implement against fake production credentials.
 
 ## M18 --- Mobile/API Architecture Foundation
 
+Status: `/api/v1` namespace, response/error conventions, and the
+authentication/session strategy (Better Auth `bearer()` plugin) shipped in
+M18.1. M20.1 (backend-only) audited native/Expo compatibility and bumped
+Better Auth 1.6.29 → 1.6.30 — the last non-breaking patch before 1.7.0's
+required `Account.issuer` schema migration — so a matching
+`@better-auth/expo@1.6.30` can be installed here and in the Expo app without
+touching production Account/Session rows. See
+`docs/architecture/overview.md`'s "Mobile API Foundation" section for the
+full audit. Remaining for M18/M19: Expo repository scaffold, build profiles,
+network client, secure session persistence, deep-link foundation, and
+actually installing `@better-auth/expo` (client side in the mobile repo,
+`expo()` server plugin here).
+
 Deliver:
 
 - audit existing services/actions/API routes;
