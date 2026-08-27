@@ -18,6 +18,11 @@ export const vendorsService = {
     return vendorsRepository.findFirstMembershipForUser(userId);
   },
 
+  /** (M18.1) Every Vendor a user has a membership in — see repository. */
+  listMembershipsForUser(userId: string) {
+    return vendorsRepository.findAllMembershipsForUser(userId);
+  },
+
   isMember(userId: string, vendorId: string) {
     return vendorsRepository.isMember(userId, vendorId);
   },

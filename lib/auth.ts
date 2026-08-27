@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
+import { bearer } from "better-auth/plugins";
 import { prisma } from "./db";
 import { env, googleOAuthConfigured } from "./env";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./email";
@@ -116,5 +117,21 @@ export const auth = betterAuth({
     },
   },
 
-  plugins: [nextCookies()],
+  /**
+   * M18.1 — mobile/native auth foundation. `bearer()` lets a client that
+   * cannot hold a browser cookie jar (a React Native/Expo app) authenticate
+   * with `Authorization: Bearer <token>` instead: on sign-in/sign-up it
+   * echoes the session token as a `set-auth-token` response header (in
+   * addition to the normal Set-Cookie), and on every later request it
+   * transparently rewrites a valid bearer token back into the same
+   * session-cookie header `auth.api.getSession()` already reads — so
+   * `modules/identity/policy.ts`'s `getCurrentSession()` (and everything
+   * built on it, including every `/api/v1` route) needs no changes at all
+   * to support either transport. Purely additive: the `before` hook only
+   * activates when an `Authorization` header is present, so existing
+   * browser/cookie requests (which never send one) are entirely
+   * unaffected. Must come before `nextCookies()`, which Better Auth
+   * requires to be the last plugin in the array.
+   */
+  plugins: [bearer(), nextCookies()],
 });

@@ -68,6 +68,24 @@ export const vendorsRepository = {
     });
   },
 
+  /**
+   * Every membership a user holds (M18.1 — GET /api/v1/me needs the full
+   * set, not just "the" portal context findFirstMembershipForUser resolves
+   * for the web Vendor Portal, which still only supports one active
+   * membership at a time per its own doc comment).
+   */
+  findAllMembershipsForUser(userId: string) {
+    return prisma.vendorMembership.findMany({
+      where: { userId },
+      select: {
+        role: true,
+        vendorId: true,
+        vendor: { select: { id: true, companyName: true, storefrontSlug: true, verificationStatus: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+  },
+
   isMember(userId: string, vendorId: string): Promise<boolean> {
     return prisma.vendorMembership
       .findUnique({ where: { userId_vendorId: { userId, vendorId } } })
