@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { bearer } from "better-auth/plugins";
+import { expo } from "@better-auth/expo";
 import { prisma } from "./db";
 import { env, googleOAuthConfigured } from "./env";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./email";
@@ -132,6 +133,28 @@ export const auth = betterAuth({
    * browser/cookie requests (which never send one) are entirely
    * unaffected. Must come before `nextCookies()`, which Better Auth
    * requires to be the last plugin in the array.
+   *
+   * M20.2 — `expo()` (`@better-auth/expo`, version-locked to `1.6.30` to
+   * match `better-auth`'s own pin above, per the M20.1 finding in
+   * docs/architecture/overview.md) is the server half of the actual
+   * `@better-auth/expo` mobile integration. In practice the installed
+   * Expo client plugin (`expoClient`, mobile repo's `src/lib/auth/client.ts`)
+   * does NOT use the `bearer()` token path above — it emulates a cookie jar
+   * on-device (captures `Set-Cookie` on each response, replays it as a
+   * `Cookie` header on each request), so `getCurrentSession()` sees an
+   * ordinary cookie-authenticated request from a native client exactly as
+   * it would from a browser. What `expo()` actually adds: (1) rewrites the
+   * synthetic `expo-origin` header the client sends into a real `origin`
+   * header so Better Auth's origin/CSRF check doesn't reject a native
+   * request that has no browser Origin; (2) in `NODE_ENV=development`,
+   * treats Expo Go's `exp://` scheme as trusted automatically; (3) appends
+   * the session cookie as a `?cookie=` query param on the final OAuth
+   * redirect back to the app's custom scheme — required for native Google
+   * sign-in — but only for a scheme already present in `trustedOrigins`
+   * (this app's `crownsourceglobal://`, via `BETTER_AUTH_TRUSTED_ORIGINS`;
+   * see docs/architecture/overview.md's "Mobile API Foundation" section).
+   * `bearer()` stays registered for any future non-cookie native caller;
+   * `expo()` must come before `nextCookies()`, same rule as `bearer()`.
    */
-  plugins: [bearer(), nextCookies()],
+  plugins: [bearer(), expo(), nextCookies()],
 });
