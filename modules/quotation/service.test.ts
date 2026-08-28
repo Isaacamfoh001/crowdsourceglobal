@@ -99,8 +99,8 @@ describe("quotationService / ordersService.createOrderFromQuotation", () => {
     availableQuantity: number;
     vendorSupplyCost?: number;
     tiers?: { minQuantity: number; maxQuantity: number | null; unitPrice: number }[];
-    approvalStatus?: "APPROVED" | "PENDING";
-    listingStatus?: "ACTIVE" | "INACTIVE";
+    approvalStatus?: "APPROVED" | "PENDING" | "CHANGES_REQUESTED";
+    listingStatus?: "ACTIVE" | "INACTIVE" | "DRAFT";
   }) {
     const listing = await prisma.vendorListing.create({
       data: {
@@ -175,8 +175,14 @@ describe("quotationService / ordersService.createOrderFromQuotation", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("rejects a PENDING (not-yet-approved) listing", async () => {
-    const listing = await seedListing({ vendorId: vendorAId, basePrice: 50, availableQuantity: 100, approvalStatus: "PENDING" });
+  it("rejects a never-approved listing (PENDING approval, still DRAFT — never gone live)", async () => {
+    const listing = await seedListing({
+      vendorId: vendorAId,
+      basePrice: 50,
+      availableQuantity: 100,
+      approvalStatus: "PENDING",
+      listingStatus: "DRAFT",
+    });
     const result = await generate(customerAId, customerAEmail, [{ listingId: listing.id, quantity: 5 }]);
     expect(result.ok).toBe(false);
   });
@@ -185,6 +191,59 @@ describe("quotationService / ordersService.createOrderFromQuotation", () => {
     const listing = await seedListing({ vendorId: vendorAId, basePrice: 50, availableQuantity: 100, listingStatus: "INACTIVE" });
     const result = await generate(customerAId, customerAEmail, [{ listingId: listing.id, quantity: 5 }]);
     expect(result.ok).toBe(false);
+  });
+
+  // --- M21.2: a live listing under edit re-review stays quotable at its live price ---
+
+  it("still generates an instant quote at the live price for an ACTIVE listing whose edit is under PENDING re-review", async () => {
+    const listing = await seedListing({
+      vendorId: vendorAId,
+      basePrice: 300,
+      availableQuantity: 100,
+      approvalStatus: "PENDING", // re-review of a staged edit — listingStatus stays ACTIVE
+      listingStatus: "ACTIVE",
+    });
+    const result = await generate(customerAId, customerAEmail, [{ listingId: listing.id, quantity: 5 }]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const detail = await quotationService.getDetailForCustomer(result.value.quotationId, customerAId);
+    expect(detail?.items[0]?.unitPrice).toBe(300);
+  });
+
+  it("still generates an instant quote for an ACTIVE listing whose edit is under CHANGES_REQUESTED re-review", async () => {
+    const listing = await seedListing({
+      vendorId: vendorAId,
+      basePrice: 150,
+      availableQuantity: 100,
+      approvalStatus: "CHANGES_REQUESTED",
+      listingStatus: "ACTIVE",
+    });
+    const result = await generate(customerAId, customerAEmail, [{ listingId: listing.id, quantity: 2 }]);
+    expect(result.ok).toBe(true);
+  });
+
+  it("getDraftPreview marks an ACTIVE listing under re-review as stillEligible", async () => {
+    const listing = await seedListing({
+      vendorId: vendorAId,
+      basePrice: 75,
+      availableQuantity: 100,
+      approvalStatus: "PENDING",
+      listingStatus: "ACTIVE",
+    });
+    const preview = await quotationService.getDraftPreview([{ listingId: listing.id, quantity: 1 }]);
+    expect(preview[0]?.stillEligible).toBe(true);
+  });
+
+  it("getDraftPreview marks a never-approved (DRAFT) listing as not stillEligible", async () => {
+    const listing = await seedListing({
+      vendorId: vendorAId,
+      basePrice: 75,
+      availableQuantity: 100,
+      approvalStatus: "PENDING",
+      listingStatus: "DRAFT",
+    });
+    const preview = await quotationService.getDraftPreview([{ listingId: listing.id, quantity: 1 }]);
+    expect(preview[0]?.stillEligible).toBe(false);
   });
 
   it("supports multiple line items from the same vendor", async () => {
@@ -410,6 +469,28 @@ describe("quotationService / ordersService.createOrderFromQuotation", () => {
 
     const quotation = await prisma.quotation.findUnique({ where: { id: result.value.quotationId } });
     expect(quotation?.status).toBe("ISSUED");
+  });
+
+  it("still allows acceptance at the quoted price when the listing entered edit re-review after issuance (M21.2)", async () => {
+    const listing = await seedListing({ vendorId: vendorAId, basePrice: 40, availableQuantity: 100 });
+    const result = await generate(customerAId, customerAEmail, [{ listingId: listing.id, quantity: 2 }]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // Vendor submitted a material edit for admin review — listingStatus
+    // stays ACTIVE, only approvalStatus moves off APPROVED.
+    await prisma.vendorListing.update({
+      where: { id: listing.id },
+      data: { approvalStatus: "PENDING", pendingChanges: { listing: { basePrice: 999 }, bulkPriceTiers: [] } },
+    });
+
+    const accept = await ordersService.createOrderFromQuotation(customerAId, result.value.quotationId, deliveryInfo);
+    expect(accept.ok).toBe(true);
+    if (!accept.ok) return;
+    createdOrderIds.push(accept.value.orderId);
+
+    const order = await prisma.order.findUnique({ where: { id: accept.value.orderId }, include: { items: true } });
+    expect(order?.items[0]?.unitPrice.toNumber()).toBe(40); // quoted price, unaffected by the pending 999 edit
   });
 
   // ---- Multi-vendor acceptance ----------------------------------------------------

@@ -80,6 +80,9 @@ describe("ordersService", () => {
     basePrice: number;
     availableQuantity: number;
     vendorSupplyCost?: number;
+    approvalStatus?: "APPROVED" | "PENDING" | "CHANGES_REQUESTED";
+    listingStatus?: "ACTIVE" | "INACTIVE" | "DRAFT";
+    pendingChanges?: object;
   }) {
     const listing = await prisma.vendorListing.create({
       data: {
@@ -90,8 +93,9 @@ describe("ordersService", () => {
         basePrice: options.basePrice,
         moq: 1,
         availableQuantity: options.availableQuantity,
-        approvalStatus: "APPROVED",
-        listingStatus: "ACTIVE",
+        approvalStatus: options.approvalStatus ?? "APPROVED",
+        listingStatus: options.listingStatus ?? "ACTIVE",
+        pendingChanges: options.pendingChanges,
       },
     });
     createdListingIds.push(listing.id);
@@ -142,6 +146,55 @@ describe("ordersService", () => {
 
   it("rejects checkout when requested quantity exceeds available stock", async () => {
     await seedCartWithListing({ vendorId: vendorAId, quantity: 10, basePrice: 10, availableQuantity: 3 });
+
+    const result = await ordersService.createOrderFromCart(customerId, deliveryInfo);
+    expect(result.ok).toBe(false);
+  });
+
+  // --- M21.2: checkout eligibility/pricing during a staged edit re-review ---
+
+  it("checks out normally, at the live price, while the listing has a staged edit under PENDING re-review", async () => {
+    await seedCartWithListing({
+      vendorId: vendorAId,
+      quantity: 2,
+      basePrice: 30,
+      availableQuantity: 20,
+      approvalStatus: "PENDING",
+      pendingChanges: { listing: { basePrice: 9999 }, bulkPriceTiers: [] },
+    });
+
+    const result = await ordersService.createOrderFromCart(customerId, deliveryInfo);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    createdOrderIds.push(result.value.orderId);
+
+    const orderItem = await prisma.orderItem.findFirst({ where: { orderId: result.value.orderId } });
+    expect(orderItem?.unitPrice.toNumber()).toBe(30); // live price, never the pending 9999
+  });
+
+  it("checks out normally while the listing's edit is under CHANGES_REQUESTED re-review", async () => {
+    await seedCartWithListing({
+      vendorId: vendorAId,
+      quantity: 1,
+      basePrice: 50,
+      availableQuantity: 10,
+      approvalStatus: "CHANGES_REQUESTED",
+    });
+
+    const result = await ordersService.createOrderFromCart(customerId, deliveryInfo);
+    expect(result.ok).toBe(true);
+    if (result.ok) createdOrderIds.push(result.value.orderId);
+  });
+
+  it("still rejects checkout for a never-approved (DRAFT) listing", async () => {
+    await seedCartWithListing({
+      vendorId: vendorAId,
+      quantity: 1,
+      basePrice: 50,
+      availableQuantity: 10,
+      approvalStatus: "PENDING",
+      listingStatus: "DRAFT",
+    });
 
     const result = await ordersService.createOrderFromCart(customerId, deliveryInfo);
     expect(result.ok).toBe(false);

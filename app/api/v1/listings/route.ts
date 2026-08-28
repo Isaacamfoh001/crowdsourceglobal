@@ -9,7 +9,7 @@ import { toListingSummaryDTO } from "../../../../lib/api/dto/catalogue";
  * (a path segment) — a JSON API has no SEO reason to keep those as
  * separate paths, so `category` is just another query param here. Both
  * branches call the exact same catalogueService functions the web pages
- * already use; visibility (APPROVED + ACTIVE only) is enforced entirely
+ * already use; visibility (listingStatus ACTIVE only) is enforced entirely
  * by those functions' own repository query, never re-implemented here.
  * No `sort` param exists because none exists on the web today (newest-
  * first only) — not invented for this API.

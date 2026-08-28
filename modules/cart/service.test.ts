@@ -16,6 +16,8 @@ describe("cartService", () => {
   let outOfStockListingId: string;
   let inactiveListingId: string;
   let lowStockListingId: string;
+  let underReviewListingId: string;
+  let neverApprovedListingId: string;
 
   beforeAll(async () => {
     const suffix = Date.now();
@@ -96,6 +98,32 @@ describe("cartService", () => {
       data: { ...commonListingData, title: "Low Stock Listing", moq: 1, availableQuantity: 3 },
     });
     lowStockListingId = lowStock.id;
+
+    // M21.2 — live listing with a staged edit under re-review: approvalStatus
+    // moved off APPROVED, listingStatus stays ACTIVE.
+    const underReview = await prisma.vendorListing.create({
+      data: {
+        ...commonListingData,
+        title: "Live Listing Under Re-Review",
+        moq: 1,
+        availableQuantity: 40,
+        approvalStatus: "PENDING",
+        pendingChanges: { listing: { basePrice: 9999 }, bulkPriceTiers: [] },
+      },
+    });
+    underReviewListingId = underReview.id;
+
+    const neverApproved = await prisma.vendorListing.create({
+      data: {
+        ...commonListingData,
+        title: "Never Approved Listing",
+        moq: 1,
+        availableQuantity: 40,
+        approvalStatus: "PENDING",
+        listingStatus: "DRAFT",
+      },
+    });
+    neverApprovedListingId = neverApproved.id;
   });
 
   afterAll(async () => {
@@ -140,6 +168,20 @@ describe("cartService", () => {
     const result = await cartService.addToCart(customerAId, inactiveListingId, 1);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toContain("no longer available");
+  });
+
+  it("M21.2: allows adding a live listing whose edit is under PENDING re-review, at its live (unchanged) price", async () => {
+    const result = await cartService.addToCart(customerAId, underReviewListingId, 1);
+    expect(result.ok).toBe(true);
+
+    const view = await cartService.getCartView(customerAId);
+    const line = view.vendorGroups.flatMap((g) => g.lines).find((l) => l.listingId === underReviewListingId);
+    expect(line?.unitPrice).toBe(50); // commonListingData.basePrice — never the pending 9999
+  });
+
+  it("M21.2: still rejects a never-approved (DRAFT) listing", async () => {
+    const result = await cartService.addToCart(customerAId, neverApprovedListingId, 1);
+    expect(result.ok).toBe(false);
   });
 
   it("rejects a quantity exceeding available stock", async () => {

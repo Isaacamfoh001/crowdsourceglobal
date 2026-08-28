@@ -137,6 +137,123 @@ describe("catalogueRepository", () => {
     expect(detail?.images).toEqual(["vendor-listing-images/a.png", "vendor-listing-images/b.jpg", "vendor-listing-images/c.webp"]);
   });
 
+  // --- M21.2: published-listing edit visibility correction ----------------
+
+  it("a listing with a staged edit under re-review (approvalStatus PENDING, listingStatus ACTIVE) remains publicly visible", async () => {
+    const listing = await prisma.vendorListing.create({
+      data: {
+        vendorId,
+        categoryId,
+        title: "Live Listing Under Re-Review",
+        description: "Still live while its edit awaits admin review.",
+        basePrice: 100,
+        approvalStatus: "APPROVED",
+        listingStatus: "ACTIVE",
+      },
+    });
+
+    // Simulates vendorListingsService.saveContent (staged) + submitForReview
+    // on an already-live listing: pendingChanges is set and approvalStatus
+    // flips to PENDING, but listingStatus stays ACTIVE.
+    await prisma.vendorListing.update({
+      where: { id: listing.id },
+      data: {
+        approvalStatus: "PENDING",
+        submittedAt: new Date(),
+        pendingChanges: { listing: { title: "Proposed New Title", basePrice: 999 }, bulkPriceTiers: [] },
+      },
+    });
+
+    const detail = await catalogueRepository.getListingById(listing.id);
+    expect(detail).not.toBeNull();
+    expect(detail?.title).toBe("Live Listing Under Re-Review");
+    expect(detail?.basePrice).toBe(100);
+
+    const { rows } = await catalogueRepository.listListings({ vendorId }, { page: 1, pageSize: 48 });
+    expect(rows.find((r) => r.id === listing.id)).toBeDefined();
+  });
+
+  it("a listing with a staged edit under CHANGES_REQUESTED re-review also remains publicly visible with its old live values", async () => {
+    const listing = await prisma.vendorListing.create({
+      data: {
+        vendorId,
+        categoryId,
+        title: "Live Listing With Changes Requested On Its Edit",
+        description: "Admin asked for more changes on the proposed edit.",
+        basePrice: 200,
+        approvalStatus: "APPROVED",
+        listingStatus: "ACTIVE",
+      },
+    });
+
+    await prisma.vendorListing.update({
+      where: { id: listing.id },
+      data: {
+        approvalStatus: "CHANGES_REQUESTED",
+        changesRequestedReason: "Add more detail.",
+        pendingChanges: { listing: { title: "Proposed Title", basePrice: 5000 }, bulkPriceTiers: [] },
+      },
+    });
+
+    const detail = await catalogueRepository.getListingById(listing.id);
+    expect(detail).not.toBeNull();
+    expect(detail?.title).toBe("Live Listing With Changes Requested On Its Edit");
+    expect(detail?.basePrice).toBe(200);
+  });
+
+  it("a never-approved listing (PENDING/DRAFT) stays private even with a submittedAt set", async () => {
+    const listing = await prisma.vendorListing.create({
+      data: {
+        vendorId,
+        categoryId,
+        title: "First-Time Submission Awaiting Review",
+        description: "Never been approved before.",
+        basePrice: 50,
+        approvalStatus: "PENDING",
+        listingStatus: "DRAFT",
+        submittedAt: new Date(),
+      },
+    });
+
+    const detail = await catalogueRepository.getListingById(listing.id);
+    expect(detail).toBeNull();
+  });
+
+  it("a rejected never-approved listing stays private", async () => {
+    const listing = await prisma.vendorListing.create({
+      data: {
+        vendorId,
+        categoryId,
+        title: "Rejected First-Time Submission",
+        description: "Never went live.",
+        basePrice: 50,
+        approvalStatus: "REJECTED",
+        listingStatus: "DRAFT",
+        submittedAt: new Date(),
+      },
+    });
+
+    const detail = await catalogueRepository.getListingById(listing.id);
+    expect(detail).toBeNull();
+  });
+
+  it("an archived/inactive listing stays private regardless of approvalStatus", async () => {
+    const listing = await prisma.vendorListing.create({
+      data: {
+        vendorId,
+        categoryId,
+        title: "Paused Listing",
+        description: "Vendor toggled this off.",
+        basePrice: 50,
+        approvalStatus: "APPROVED",
+        listingStatus: "INACTIVE",
+      },
+    });
+
+    const detail = await catalogueRepository.getListingById(listing.id);
+    expect(detail).toBeNull();
+  });
+
   it("includes a parent category's subcategory listings when browsing the parent", async () => {
     const parent = await catalogueRepository.findCategoryBySlug("hair-beauty-supplies");
     expect(parent).not.toBeNull();

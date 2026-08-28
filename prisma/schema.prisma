@@ -2633,8 +2633,9 @@ model TalentApplicationNote {
 // never reads `pendingChanges`, so the proposal is never shown publicly
 // either way. (M21 originally also required approvalStatus=APPROVED here,
 // copying VendorListing's PUBLIC_LISTING_WHERE — that made an already-live
-// post vanish from the public feed the instant its edit was submitted;
-// VendorListing has this same latent bug, not fixed here, out of scope.)
+// post vanish from the public feed the instant its edit was submitted.
+// VendorListing had this same latent bug; corrected in M21.2 — see
+// modules/catalogue/repository.ts's PUBLIC_LISTING_WHERE doc comment.)
 //
 // Location: deliberately NOT snapshotted onto ExplorePost — `vendor.city/
 // region/country` are already public fields (see modules/vendors), and

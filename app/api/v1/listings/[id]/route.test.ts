@@ -56,12 +56,19 @@ describe("GET /api/v1/listings/[id]", () => {
     draftListingId = draft.id;
     createdListingIds.push(draft.id);
 
+    // A genuine never-approved, first-time submission awaiting an admin
+    // decision — listingStatus stays DRAFT because it has never gone live
+    // (distinct from `draft` above only by having been explicitly submitted).
     const pending = await prisma.vendorListing.create({
-      data: { vendorId, categoryId, title: "M18.2 Detail Pending", description: "x", basePrice: 10, approvalStatus: "PENDING", listingStatus: "ACTIVE", submittedAt: new Date() },
+      data: { vendorId, categoryId, title: "M18.2 Detail Pending", description: "x", basePrice: 10, approvalStatus: "PENDING", listingStatus: "DRAFT", submittedAt: new Date() },
     });
     pendingListingId = pending.id;
     createdListingIds.push(pending.id);
 
+    // M21.2 — an already-live listing (previously approved, listingStatus
+    // ACTIVE) with a material edit staged in pendingChanges and submitted
+    // for re-review (approvalStatus PENDING). Must remain publicly visible
+    // showing its LIVE fields; the proposed pendingChanges must never leak.
     const withPendingChanges = await prisma.vendorListing.create({
       data: {
         vendorId,
@@ -72,7 +79,7 @@ describe("GET /api/v1/listings/[id]", () => {
         approvalStatus: "PENDING",
         listingStatus: "ACTIVE",
         submittedAt: new Date(),
-        pendingChanges: { title: "SECRET-UNPUBLISHED-TITLE-CHANGE" },
+        pendingChanges: { listing: { title: "SECRET-UNPUBLISHED-TITLE-CHANGE" }, bulkPriceTiers: [] },
       },
     });
     hasPendingChangesListingId = withPendingChanges.id;
@@ -125,7 +132,7 @@ describe("GET /api/v1/listings/[id]", () => {
     expect((await response.json()).error.code).toBe("NOT_FOUND");
   });
 
-  it("returns 404 for a PENDING (submitted, awaiting admin decision) listing", async () => {
+  it("returns 404 for a never-approved listing (PENDING, submitted, still DRAFT — never gone live)", async () => {
     const response = await GET(request(pendingListingId), { params: Promise.resolve({ id: pendingListingId }) });
     expect(response.status).toBe(404);
   });
@@ -141,13 +148,12 @@ describe("GET /api/v1/listings/[id]", () => {
     expect(JSON.stringify(body)).not.toMatch(/vendorSupplyCost|marginRuleType|marginValue/);
   });
 
-  it("never leaks a queued pendingChanges edit, even for a listing that is otherwise publicly visible", async () => {
-    // This listing is still approvalStatus PENDING (a live edit awaiting
-    // re-review) so it correctly 404s — pendingChanges must not leak even
-    // via the 404 path (which returns no body content from the listing at all).
+  it("M21.2: a live listing under edit re-review stays publicly visible, showing the OLD live title, never the queued pendingChanges edit", async () => {
     const response = await GET(request(hasPendingChangesListingId), { params: Promise.resolve({ id: hasPendingChangesListingId }) });
-    expect(response.status).toBe(404);
-    expect(JSON.stringify(await response.json())).not.toContain("SECRET-UNPUBLISHED-TITLE-CHANGE");
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.data.title).toBe("M18.2 Live Listing With A Pending Edit");
+    expect(JSON.stringify(body)).not.toContain("SECRET-UNPUBLISHED-TITLE-CHANGE");
   });
 
   it("returns only the deliberate detail DTO fields", async () => {

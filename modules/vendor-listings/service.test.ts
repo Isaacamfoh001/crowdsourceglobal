@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../lib/db";
 import { vendorListingsService } from "./service";
 import { cartService } from "../cart/service";
+import { catalogueRepository } from "../catalogue/repository";
 import { storageProvider } from "../../lib/storage";
 import * as emailProviderModule from "../../lib/email-provider";
 import { processEmailQueue } from "../../lib/email-worker";
@@ -262,6 +263,101 @@ describe("vendorListingsService", () => {
     const afterApproval = await prisma.vendorListing.findUnique({ where: { id: listingId } });
     expect(afterApproval?.title).toBe("Renamed listing title");
     expect(afterApproval?.pendingChanges).toBeNull();
+  });
+
+  // --- M21.2: published-listing edit visibility correction ---------------
+  //
+  // The full lifecycle, exercised end-to-end through the actual public
+  // catalogue read path (catalogueRepository), not just raw DB fields —
+  // this is the exact customer-facing surface the M21.2 bug affected.
+
+  it("an approved+active listing stays publicly visible, at its old values, throughout a full edit re-review cycle, then flips to the new values only on approval", async () => {
+    const listingId = await createTrackedDraft(vendorAId);
+    await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId, basePrice: 480 }, []);
+    await vendorListingsService.submitForReview(vendorAId, listingId);
+    await vendorListingsService.approve(listingId);
+
+    // Sanity: live and public right after first approval.
+    let publicListing = await catalogueRepository.getListingById(listingId);
+    expect(publicListing?.title).toBe(validContent.title);
+    expect(publicListing?.basePrice).toBe(480);
+
+    // Vendor proposes a material edit and submits it for re-review.
+    await vendorListingsService.saveContent(
+      vendorAId,
+      listingId,
+      { ...validContent, categoryId, title: "Renamed listing title", basePrice: 999 },
+      [],
+    );
+    const submitResult = await vendorListingsService.submitForReview(vendorAId, listingId);
+    expect(submitResult.ok).toBe(true);
+
+    // THE BUG: must still be publicly visible, with the OLD values, while PENDING re-review.
+    publicListing = await catalogueRepository.getListingById(listingId);
+    expect(publicListing).not.toBeNull();
+    expect(publicListing?.title).toBe(validContent.title);
+    expect(publicListing?.basePrice).toBe(480);
+
+    // Admin requests changes instead of approving/rejecting outright — old
+    // live version must remain public throughout.
+    const requestChangesResult = await vendorListingsService.requestChanges(listingId, "Please clarify the description.");
+    expect(requestChangesResult.ok).toBe(true);
+    publicListing = await catalogueRepository.getListingById(listingId);
+    expect(publicListing?.title).toBe(validContent.title);
+    expect(publicListing?.basePrice).toBe(480);
+
+    // Vendor revises and resubmits; admin approves this time.
+    await vendorListingsService.saveContent(
+      vendorAId,
+      listingId,
+      { ...validContent, categoryId, title: "Renamed listing title", basePrice: 999 },
+      [],
+    );
+    await vendorListingsService.submitForReview(vendorAId, listingId);
+    const approveResult = await vendorListingsService.approve(listingId);
+    expect(approveResult.ok).toBe(true);
+
+    publicListing = await catalogueRepository.getListingById(listingId);
+    expect(publicListing?.title).toBe("Renamed listing title");
+    expect(publicListing?.basePrice).toBe(999);
+  });
+
+  it("admin reject on an edit-in-flight preserves the live public listing exactly as it was", async () => {
+    const listingId = await createTrackedDraft(vendorAId);
+    await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId, basePrice: 480 }, []);
+    await vendorListingsService.submitForReview(vendorAId, listingId);
+    await vendorListingsService.approve(listingId);
+
+    await vendorListingsService.saveContent(
+      vendorAId,
+      listingId,
+      { ...validContent, categoryId, title: "Rejected proposed title", basePrice: 111 },
+      [],
+    );
+    await vendorListingsService.submitForReview(vendorAId, listingId);
+
+    const rejectResult = await vendorListingsService.reject(listingId, "Not a fit right now.");
+    expect(rejectResult.ok).toBe(true);
+
+    const listing = await prisma.vendorListing.findUnique({ where: { id: listingId } });
+    expect(listing?.approvalStatus).toBe("APPROVED"); // discardPendingChanges restores APPROVED
+    expect(listing?.pendingChanges).toBeNull();
+
+    const publicListing = await catalogueRepository.getListingById(listingId);
+    expect(publicListing?.title).toBe(validContent.title);
+    expect(publicListing?.basePrice).toBe(480);
+  });
+
+  it("a never-approved listing under first-time review is never publicly visible", async () => {
+    const listingId = await createTrackedDraft(vendorAId);
+    await vendorListingsService.saveContent(vendorAId, listingId, { ...validContent, categoryId }, []);
+    await vendorListingsService.submitForReview(vendorAId, listingId);
+
+    expect(await catalogueRepository.getListingById(listingId)).toBeNull();
+
+    const rejectResult = await vendorListingsService.reject(listingId, "Not eligible.");
+    expect(rejectResult.ok).toBe(true);
+    expect(await catalogueRepository.getListingById(listingId)).toBeNull();
   });
 
   it("admin request-changes on a first-time submission keeps it hidden and shows the vendor a reason", async () => {

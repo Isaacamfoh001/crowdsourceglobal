@@ -10,11 +10,24 @@ import type {
 } from "./types";
 
 /**
- * Every public catalogue query is scoped to this — an approved AND active
- * listing. Never loosen this in a public-facing query.
+ * Every public catalogue query is scoped to this. `listingStatus: "ACTIVE"`
+ * alone is the correct, complete gate — it can only ever be reached via an
+ * admin approval (vendor-listings repository's applyApprovalAndActivate, or
+ * toggleActive re-activating a listing that was already APPROVED at the
+ * time), so it already encodes "this listing has a previously-approved live
+ * version and is currently for sale."
+ *
+ * Deliberately does NOT also require `approvalStatus: "APPROVED"`. A vendor
+ * editing an already-live listing stages the edit in `pendingChanges` and
+ * flips `approvalStatus` to PENDING (or CHANGES_REQUESTED) for re-review —
+ * `listingStatus` stays ACTIVE throughout, and the live row's own fields
+ * (read here) are untouched until admin approval merges the edit in. Adding
+ * an `approvalStatus` check here would incorrectly hide that still-live,
+ * still-on-sale listing from the public marketplace during re-review
+ * (M21.2 — see the equivalent invariant already documented at
+ * prisma/schema.prisma's VendorListing.pendingChanges).
  */
 const PUBLIC_LISTING_WHERE = {
-  approvalStatus: "APPROVED",
   listingStatus: "ACTIVE",
 } as const;
 

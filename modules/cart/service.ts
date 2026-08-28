@@ -4,8 +4,14 @@ import { resolveUnitPrice } from "../pricing/resolveUnitPrice";
 import { ok, err, type Result } from "../../lib/result";
 import type { CartLineView, CartVendorGroup, CartView } from "./types";
 
-function isPubliclyPurchasable(listing: { approvalStatus: string; listingStatus: string }) {
-  return listing.approvalStatus === "APPROVED" && listing.listingStatus === "ACTIVE";
+/**
+ * `listingStatus === "ACTIVE"` alone is the correct eligibility gate — see
+ * modules/catalogue/repository.ts's PUBLIC_LISTING_WHERE doc comment for
+ * why an additional `approvalStatus === "APPROVED"` check would incorrectly
+ * block a live listing that's mid-re-review for a staged edit (M21.2).
+ */
+function isPubliclyPurchasable(listing: { listingStatus: string }) {
+  return listing.listingStatus === "ACTIVE";
 }
 
 async function validateQuantity(

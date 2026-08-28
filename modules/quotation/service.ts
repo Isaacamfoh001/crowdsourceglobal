@@ -82,7 +82,10 @@ export const quotationService = {
 
         const tiers = tiersByListing.get(line.listingId) ?? [];
         const unitPrice = resolveUnitPrice(listing.basePrice.toNumber(), tiers, line.quantity);
-        const stillEligible = listing.approvalStatus === "APPROVED" && listing.listingStatus === "ACTIVE";
+        // listingStatus === "ACTIVE" alone is the correct gate — see
+        // modules/catalogue/repository.ts's PUBLIC_LISTING_WHERE doc comment
+        // (M21.2).
+        const stillEligible = listing.listingStatus === "ACTIVE";
 
         const view: QuoteDraftLineView = {
           listingId: listing.id,
@@ -138,7 +141,10 @@ export const quotationService = {
 
     for (const line of draftLines) {
       const listing = listingById.get(line.listingId);
-      if (!listing || listing.approvalStatus !== "APPROVED" || listing.listingStatus !== "ACTIVE") {
+      // listingStatus === "ACTIVE" alone is the correct gate — see
+      // modules/catalogue/repository.ts's PUBLIC_LISTING_WHERE doc comment
+      // (M21.2).
+      if (!listing || listing.listingStatus !== "ACTIVE") {
         return err("An item in your quote is no longer available. Please review your quote.");
       }
       if (!Number.isInteger(line.quantity) || line.quantity <= 0) {

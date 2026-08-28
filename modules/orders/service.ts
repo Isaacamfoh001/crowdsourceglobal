@@ -65,7 +65,11 @@ async function runCheckoutTransaction(
         },
       });
 
-      if (!listing || listing.approvalStatus !== "APPROVED" || listing.listingStatus !== "ACTIVE") {
+      // listingStatus === "ACTIVE" alone is the correct gate — see
+      // modules/catalogue/repository.ts's PUBLIC_LISTING_WHERE doc comment
+      // (M21.2): a live listing under re-review for a staged edit must
+      // remain checkout-eligible at its unchanged live price.
+      if (!listing || listing.listingStatus !== "ACTIVE") {
         throw new CheckoutValidationError(
           `An item in your cart is no longer available. Please review your cart.`,
         );
@@ -195,7 +199,10 @@ async function runQuoteAcceptanceTransaction(
           where: { id: item.listingId },
           select: { id: true, approvalStatus: true, listingStatus: true },
         });
-        if (!listing || listing.approvalStatus !== "APPROVED" || listing.listingStatus !== "ACTIVE") {
+        // listingStatus === "ACTIVE" alone is the correct gate — see
+        // modules/catalogue/repository.ts's PUBLIC_LISTING_WHERE doc comment
+        // (M21.2).
+        if (!listing || listing.listingStatus !== "ACTIVE") {
           throw new CheckoutValidationError(
             `${item.description} is no longer available. This quotation can no longer be completed as issued.`,
           );
