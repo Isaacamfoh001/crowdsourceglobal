@@ -5,6 +5,7 @@ import { requireAdminSession } from "../../modules/administration/policy";
 import { vendorApplicationsService } from "../../modules/vendor-applications/service";
 import { vendorListingsService } from "../../modules/vendor-listings/service";
 import { explorePostsService } from "../../modules/explore-posts/service";
+import { beautyProfessionalsService } from "../../modules/beauty-professionals/service";
 import { messagingService } from "../../modules/messaging/service";
 import { err, ok, type Result } from "../result";
 
@@ -147,6 +148,51 @@ export async function rejectExplorePostAction(
   if (!result.ok) return result;
   revalidatePath(`/admin/explore-posts/${postId}`);
   revalidatePath("/admin/explore-posts");
+  return ok(null);
+}
+
+// --- Beauty Professional profile moderation (M22) -----------------------
+
+export async function approveBeautyProfessionalAction(
+  _prevState: Result<null> | null,
+  formData: FormData,
+): Promise<Result<null>> {
+  await requireAdminSession("/admin/beauty-professionals", ["SUPER_ADMIN", "OPS_ADMIN"]);
+  const profileId = String(formData.get("profileId") ?? "");
+  const result = await beautyProfessionalsService.approve(profileId);
+  if (!result.ok) return result;
+  revalidatePath(`/admin/beauty-professionals/${profileId}`);
+  revalidatePath("/admin/beauty-professionals");
+  return ok(null);
+}
+
+export async function requestBeautyProfessionalChangesAction(
+  _prevState: Result<null> | null,
+  formData: FormData,
+): Promise<Result<null>> {
+  await requireAdminSession("/admin/beauty-professionals", ["SUPER_ADMIN", "OPS_ADMIN"]);
+  const profileId = String(formData.get("profileId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (reason.length < 3) return err("Explain what needs to change.");
+  const result = await beautyProfessionalsService.requestChanges(profileId, reason);
+  if (!result.ok) return result;
+  revalidatePath(`/admin/beauty-professionals/${profileId}`);
+  revalidatePath("/admin/beauty-professionals");
+  return ok(null);
+}
+
+export async function rejectBeautyProfessionalAction(
+  _prevState: Result<null> | null,
+  formData: FormData,
+): Promise<Result<null>> {
+  await requireAdminSession("/admin/beauty-professionals", ["SUPER_ADMIN", "OPS_ADMIN"]);
+  const profileId = String(formData.get("profileId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (reason.length < 3) return err("Explain the reason.");
+  const result = await beautyProfessionalsService.reject(profileId, reason);
+  if (!result.ok) return result;
+  revalidatePath(`/admin/beauty-professionals/${profileId}`);
+  revalidatePath("/admin/beauty-professionals");
   return ok(null);
 }
 

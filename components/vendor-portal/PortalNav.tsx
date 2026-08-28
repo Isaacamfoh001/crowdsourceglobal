@@ -1,12 +1,13 @@
 "use client";
 
-import { ClipboardList, Compass, LayoutGrid, MessagesSquare, Package, RotateCcw, Settings, Store, Wallet } from "lucide-react";
+import { ClipboardList, Compass, LayoutGrid, MessagesSquare, Package, RotateCcw, Settings, Sparkles, Store, Wallet } from "lucide-react";
 import { ShellNav, type ShellNavItem } from "../ui/ShellNav";
 
 const NAV_ITEMS: ShellNavItem[] = [
   { href: "/vendor/portal", label: "Dashboard", icon: LayoutGrid, exact: true },
   { href: "/vendor/portal/listings", label: "Listings", icon: Package, exact: false },
   { href: "/vendor/portal/explore", label: "Explore", icon: Compass, exact: false },
+  { href: "/vendor/portal/beauty-professional", label: "Beauty Services", icon: Sparkles, exact: false },
   { href: "/vendor/portal/orders", label: "Orders", icon: ClipboardList, exact: false },
   { href: "/vendor/portal/finance", label: "Finance", icon: Wallet, exact: false },
   { href: "/vendor/portal/resolutions", label: "Issues", icon: RotateCcw, exact: false },

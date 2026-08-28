@@ -989,6 +989,248 @@ integration task once native sourcing creation ships.
 
 ---
 
+# 12B. Beauty Services / Professional Discovery — implemented M22 (client-designated)
+
+**Numbering note:** this is the client-designated "M22" (Beauty Services /
+Professional Discovery), a different track from §47's own internal "M22 ---
+Vendor Business Core" milestone (native listings/orders/fulfilment), which
+remains not-yet-implemented and is intentionally left renumbered/untouched
+below — the two "M22"s are not the same milestone. This section is inserted
+here (after §12A) rather than renumbering the rest of the document, same
+convention as §12A's own insertion after §12.
+
+This is explicitly **not** Careers (M23 — people seeking employment/gigs),
+**not** Explore, **not** Shop, and **not** a customer-posted jobs board. A
+Beauty Professional is an established professional/business (Makeup Artist,
+Hairstylist, Wig Installer, Nail Technician, Lash Technician, Barber,
+Braider, Beautician, Bridal Beauty Professional, etc.) discoverable by
+customers, who submit a structured request for one of their offered
+services rather than contacting the provider directly.
+
+## 12B.1 Intermediary / privacy rule
+
+CrownSourceGlobal never exposes a provider's phone/email/WhatsApp/social
+link publicly, and there is no customer↔provider direct messaging in M22.
+The flow is Customer → CrownSource → Provider: a customer submits a
+structured `ServiceRequest`, the provider accepts/declines through the
+platform, and CrownSource remains the intermediary throughout. Day-of
+contact/coordination details (once a request is accepted) are handled by
+CrownSourceGlobal operations outside the product for V1 — in-platform
+messaging for an accepted request is explicitly deferred (see §12B.9).
+
+## 12B.2 Domain model chosen
+
+`BeautyProfessionalProfile` — a small, **optional** 1:1 extension of an
+already-`APPROVED` `Vendor` (`vendorId @unique`), not a second User/auth
+system and not automatically granted. This mirrors `ExplorePost`'s M21
+publisher-identity decision (the smallest existing identity that already
+carries a public name/logo/location and a real moderation relationship with
+CrownSource) rather than inventing a new Provider domain — but unlike
+`ExplorePost`, becoming a public Beauty Professional is its own gated
+decision, not implied by Vendor approval alone.
+
+**Why product vendors aren't automatically professionals:** a wholesale
+cosmetics supplier is a real, approved `Vendor`, but is not a makeup artist.
+`BeautyProfessionalProfile.status` (`DRAFT → PENDING → APPROVED /
+CHANGES_REQUESTED / REJECTED`, plus vendor-initiated `ARCHIVED`) is the one
+moderated decision: may this Vendor present publicly as a Beauty
+Professional at all. Tested explicitly in
+`modules/beauty-professionals/service.test.ts` ("a product-only vendor has
+no Beauty Professional profile and never appears on the public feed").
+
+Unlike `VendorListing`/`ExplorePost`, a profile has **no `pendingChanges`
+staging** — once `APPROVED`, further edits to bio/displayName/specialties/
+locationMode/heroImageUrl apply immediately with no new review. This is a
+deliberate simplification, justified by precedent already in this codebase:
+Vendor's own storefront settings (`modules/vendors/repository.ts`'s
+`updateStoreProfile`) have never had an approval step either, and a
+profile's text fields carry no new photo content to re-moderate (portfolio
+imagery is Explore's job — see §12B.3). Editing an `ARCHIVED` profile
+republishes it directly (`APPROVED`) — it was already vetted once. Only the
+first-time "may this Vendor go public" decision is moderated.
+
+## 12B.3 Portfolio ↔ Explore relationship
+
+Deliberately **not** a second photo system. A professional's public
+portfolio is simply their own approved+published `ExplorePost` rows,
+resolved live by `vendorId` at detail-read time
+(`modules/beauty-professionals/repository.ts`'s `findPublicById`). A hero
+image is a plain external URL field (`heroImageUrl`), the exact same
+convention as `Vendor.logoUrl` — no new upload flow was built for it.
+
+## 12B.4 Category strategy
+
+Reuses the exact same `EXPLORE_CATEGORY_SLUGS` taxonomy M21 already
+established (Wigs / Makeup & Cosmetics / Lashes & Brows / Skincare /
+Hairstyling / Nails / Barbering) for both a professional's
+`specialtyCategorySlugs` and each `BeautyService.categoryId` — never a
+third category universe. The mobile client reuses Explore's own
+`GET /api/v1/explore-posts/categories` endpoint/hook for the category chip
+row; no new categories endpoint was added.
+
+## 12B.5 Service + request model
+
+`BeautyService` — the smallest sellable-unit analogue for a service (name,
+optional description, a shared beauty `Category`, an optional indicative
+`startingPrice`, `active` flag). Never modeled as a `VendorListing` — no
+fake inventory/shipping/MOQ semantics for a service.
+
+`ServiceRequest` — the entire V1 booking workflow:
+`SUBMITTED → PROVIDER_ACCEPTED / PROVIDER_DECLINED`, plus
+customer-initiated `CANCELLED` while still `SUBMITTED`. Fields: selected
+service, `preferredDate`, a free-text `preferredTimeNote` (e.g. "Morning" /
+"Flexible" — deliberately not a time-slot booking engine),
+`locationMode` (`PROVIDER_LOCATION` / `CUSTOMER_LOCATION` — validated
+against what the professional actually supports), `locationDetails`,
+`notes`, `quantity`, and an optional single reference/inspiration photo
+(reuses the M13 `StorageProvider` abstraction, same validated-upload
+pattern as Explore's images, bounded to one image not 1–6). No payment,
+escrow, scheduling calendar, or chat — see the schema's section-header
+comment for the full explicitly-deferred list.
+
+Admin gets full read visibility over both profiles and requests via a
+moderation queue (`/admin/beauty-professionals`) and an operational list
+(`/admin/service-requests`) — no `ADMIN_NEW_*` notification for either,
+same established precedent as `ExplorePost` (admin uses the queue/list as
+the discovery mechanism, not a push notification, for every new
+submission/request).
+
+## 12B.6 Public API
+
+`GET /api/v1/beauty-professionals` — public, unauthenticated, cursor-
+paginated (same `createdAt desc, id desc` opaque-cursor convention as
+Explore's feed), `?category=<slug>` and `?q=<text>` (simple
+case-insensitive `displayName` search — no search infrastructure added).
+`GET /api/v1/beauty-professionals/[id]` — public detail: profile + active
+services + portfolio (only an `APPROVED` profile resolves; anything else
+404s, same as an unapproved listing/Explore post).
+
+`POST /api/v1/service-requests` — authenticated only, `multipart/form-data`
+(the one mutating public-facing endpoint this milestone adds), validates
+the service belongs to the given professional and is active, the location
+mode is supported, and the preferred date isn't in the past.
+`GET /api/v1/service-requests` / `GET .../[id]` — the caller's own requests
+only (ownership-scoped, page-paginated). `DELETE /api/v1/service-requests/[id]`
+— customer cancellation while still `SUBMITTED`.
+
+Every public DTO (`lib/api/dto/beauty-professionals.ts`,
+`lib/api/dto/service-requests.ts`) excludes `Vendor.contactEmail`/
+`contactPhone` and any other private field — tested explicitly in both
+`modules/beauty-professionals/service.test.ts` and
+`app/api/v1/beauty-professionals/route.test.ts`.
+
+## 12B.7 Mobile integration
+
+`src/app/beauty-services/{index,[id],request,my-requests}.tsx` — a
+dedicated stack reached from a Home capability card (`Beauty Services`,
+alongside Marketplace/Explore/Source/Account), **not** a sixth bottom tab —
+the existing five (Home/Explore/Shop/Source/Account) stay as the primary
+navigation, consistent with §19's "preserve a maximum of roughly five
+primary bottom-tab destinations."
+
+Browsing (discovery list + professional detail) is fully public, no sign-in
+required (§13's principle applied here too). "Request Service" is gated:
+a signed-out tap shows the same `promptSignInRequired` Alert pattern
+Explore's like/save already established, redirecting to sign-in with a
+`redirect` param that returns the customer to the exact intended request
+(`professionalId`/`serviceId` preserved in the query string) once
+authenticated. `BeautyProfessionalCard` is a purpose-built component —
+deliberately not `ProductCard` (Shop's commerce grid) or `ExplorePostCard`
+(Explore's full-bleed feed) — a compact horizontal row so a list of
+professionals reads like a trusted directory. No rating/review/badge/
+years-of-experience anywhere — none of that is real persisted data in M22.
+
+`src/app/beauty-services/request.tsx` collects service selection, a
+relative-date quick-pick (Tomorrow / In 3 days / Next week / In 2 weeks —
+no native calendar-picker dependency was added; see §12B.9), a broad time
+preference, the supported location mode(s), free-text location details/
+notes, and an optional single reference photo via `expo-image-picker`.
+`src/app/beauty-services/my-requests.tsx` is the customer's request
+history (Explore's Saved-list pattern, reused for this domain), reachable
+from a real, wired "Service requests" row in Account for a signed-in user.
+
+## 12B.8 Web (Vendor Portal + Admin)
+
+Extends the existing Vendor Portal rather than building another web
+application (§16's principle): `/vendor/portal/beauty-professional`
+(profile create/edit + take-down), `.../services` (service CRUD), and
+`.../requests` (incoming requests, accept/decline). Profile/service
+creation and request accept/decline are **web-only** for M22 — the mirror
+image of Explore's "post creation is mobile-only" decision, and for the
+same reason: native provider/vendor management is explicitly out of scope
+for M22 (§16), and the web Vendor Portal already has the right form/table
+primitives for this. Admin gets `/admin/beauty-professionals` (moderation
+queue + decision forms, mirroring `/admin/explore-posts` exactly) and
+`/admin/service-requests` (read-only operational list + detail — the
+accept/decline decision belongs to the provider, not Admin).
+
+## 12B.9 Explicitly deferred / known limitations
+
+- Customer↔provider in-platform messaging once a request is accepted (day-
+  of coordination is manual CrownSource-ops work for V1).
+- A native date/time picker — the request flow uses relative quick-pick
+  presets instead of adding a new native dependency untested in this pass.
+- Quantity/"number of people" has no dedicated UI control in V1 (defaults
+  to 1; a multi-person need can be described in the free-text notes) —
+  the schema field exists for a future UI addition without a migration.
+- Payment/escrow/provider payout, a scheduling calendar, and fake ratings/
+  reviews/badges/response-time/years-of-experience — none built, per the
+  milestone brief.
+- No customer-facing web browsing page for Beauty Services was built —
+  mobile is the primary discovery surface (same asymmetry as Explore); the
+  only new customer-facing web page is `/account/service-requests` (a
+  read-only request-history mirror, so the notification-email CTA lands
+  somewhere real).
+
+## 12B.10 M22.1 — real-device integration hardening
+
+Real-iPhone acceptance testing (Expo Go) surfaced four issues, all fixed or
+explicitly documented rather than worked around:
+
+1. **`BeautyProfessionalProfile.heroImage`** (renamed from `heroImageUrl`)
+   is now a real Choose/Take-Photo upload through the existing M13
+   `StorageProvider`, never a pasted external URL — see
+   `modules/beauty-professionals/image-validation.ts` and the schema doc
+   comment. This was the first case of a wider, now-documented product
+   rule: **user-managed images must be file/photo uploads, never a pasted
+   URL** (external links — Instagram/TikTok/website — are unaffected).
+   `Vendor.logoUrl` is the one other confirmed instance of the old pattern;
+   deliberately NOT touched this pass (blast radius: 2 backend DTOs, 3 web
+   page renders, ~6 mobile read sites) — flagged for a future milestone.
+2. A demo-seeding bug (double-JSON-encoding an `ExplorePost.images` Json
+   value) crashed the ENTIRE Beauty Professional detail endpoint for any
+   profile whose portfolio included the malformed row, because the DTO
+   mapper cast `images` unsafely instead of using the same defensive
+   `Array.isArray(...) ? value : []` guard `modules/explore-posts/repository.ts`
+   already established. Fixed by reusing that guard
+   (`modules/beauty-professionals/repository.ts`); regression test added.
+   A single malformed/missing image must never break an entire API
+   response or entire screen — the mobile side now has a shared
+   `FallbackImage` component (`src/components/ui/FallbackImage.tsx`)
+   applied to every Beauty Services image surface (discovery card, hero,
+   portfolio grid) for the same reason on the client side.
+3. Google native Sign-In cannot be exercised end-to-end against a bare
+   local LAN backend (Expo Go or a dev build) — Google's OAuth policy only
+   accepts a plain-HTTP redirect URI for `localhost`/`127.0.0.1`, never a
+   LAN IP, so `BETTER_AUTH_URL` (which Better Auth uses to build the Google
+   `redirect_uri`) must stay `http://localhost:3000`, which a physical
+   phone cannot itself resolve back to the Mac. Not a bug — a real
+   environment constraint, requiring either an HTTPS tunnel for the local
+   backend or testing against a deployed staging backend. Full runbook:
+   `../crownsourceglobal-mobile/README.md`'s "Authentication on a physical
+   device (M22.1)" section.
+4. Email verification "not arriving" locally is the intended zero-config
+   dev behavior (`EMAIL_PROVIDER` defaults to `console`, which prints the
+   email to the `npm run dev` terminal instead of calling Resend — verified
+   directly, no error was being swallowed). Verification is deliberately
+   web-only by design already (`src/app/(auth)/verify-email.tsx`), so the
+   fix is workflow documentation, not code: open the printed link in a
+   browser on the same Mac, or configure Resend + set `NEXT_PUBLIC_APP_URL`
+   to the LAN IP to receive it on the phone itself. Same README section
+   covers this.
+
+---
+
 # 13. Saved / Favorites
 
 Explore should ship with a useful lightweight engagement mechanism.

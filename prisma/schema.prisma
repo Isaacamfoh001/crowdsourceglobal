@@ -48,6 +48,9 @@ model User {
   explorePostLikes ExplorePostLike[]
   explorePostSaves ExplorePostSave[]
 
+  /// M22 — Beauty Services. A customer's submitted service requests.
+  serviceRequests ServiceRequest[]
+
   @@unique([email])
   @@map("user")
 }
@@ -240,6 +243,10 @@ model Category {
   /// because no existing commerce category represents that type of work —
   /// see docs/mobile/MOBILE_V1_PLAN.md's M21 section and prisma/reference-data.ts).
   explorePosts     ExplorePost[]
+  /// M22 — Beauty Services reuses the exact same EXPLORE_CATEGORY_SLUGS
+  /// taxonomy as "type of beauty work" for both a professional's specialties
+  /// and each BeautyService's category — never a third category universe.
+  beautyServices   BeautyService[]
 
   @@index([parentCategoryId])
   @@map("category")
@@ -313,6 +320,12 @@ model Vendor {
   /// see modules/explore-posts's doc comment for why this isn't a new
   /// Provider domain yet.
   explorePosts ExplorePost[]
+
+  /// M22 — Beauty Services. Optional: only an approved Vendor that has
+  /// explicitly applied to also be a public Beauty Professional gets one —
+  /// see BeautyProfessionalProfile's doc comment for why a product-only
+  /// Vendor never gets this automatically.
+  beautyProfessionalProfile BeautyProfessionalProfile?
 
   @@map("vendor")
 }
@@ -1962,6 +1975,18 @@ enum NotificationType {
   EXPLORE_POST_APPROVED
   EXPLORE_POST_CHANGES_REQUESTED
   EXPLORE_POST_REJECTED
+  /// M22 — Beauty Professional moderation outcomes (mirrors EXPLORE_POST_*)
+  /// plus service-request submission/decision notices. No
+  /// ADMIN_NEW_SERVICE_REQUEST / ADMIN_NEW_BEAUTY_PROFESSIONAL_PROFILE —
+  /// same established precedent as EXPLORE_POST_* above: admin uses the
+  /// moderation queue / operational list, not a push notification, for
+  /// every new submission.
+  BEAUTY_PROFESSIONAL_APPROVED
+  BEAUTY_PROFESSIONAL_CHANGES_REQUESTED
+  BEAUTY_PROFESSIONAL_REJECTED
+  SERVICE_REQUEST_SUBMITTED
+  SERVICE_REQUEST_ACCEPTED
+  SERVICE_REQUEST_DECLINED
 }
 
 /// A structured, typed in-app notification. `title`/`body` are plain text
@@ -2750,4 +2775,217 @@ model ExplorePostSave {
   @@index([explorePostId])
   @@index([userId])
   @@map("explore_post_save")
+}
+
+// ---------------------------------------------------------------------------
+// M22 — Beauty Services / Professional Discovery. A Beauty Professional is an
+// established professional/business (Makeup Artist, Hairstylist, Wig
+// Installer, Nail Technician, Lash Technician, Barber, Braider, Beautician,
+// Bridal Beauty Professional, etc.) discoverable by customers, who submit a
+// structured request for a specific offered service rather than contacting
+// the provider directly. This is NOT Careers (M23 — people seeking
+// employment/gigs) and NOT a customer-posted jobs board.
+//
+// CrownSourceGlobal is the intermediary throughout: no provider phone/email/
+// WhatsApp/social link is ever exposed publicly, and there is no direct
+// customer<->provider messaging. A request goes Customer -> CrownSource ->
+// Provider, and the provider accepts/declines through the platform.
+//
+// Identity: BeautyProfessionalProfile is a small, OPTIONAL 1:1 extension of
+// an already-APPROVED Vendor (same reasoning as ExplorePost's publisher
+// choice — see that model's doc comment) — never a second User/auth system,
+// and never granted automatically. A wholesale cosmetics supplier (a real,
+// approved Vendor) is not automatically a makeup artist: only a Vendor that
+// explicitly applies for this profile, and is explicitly approved for it,
+// becomes a public Beauty Professional. `status` is therefore its own field
+// distinct from Vendor.verificationStatus, gating the ONE decision that
+// actually needs moderation — whether this Vendor may present publicly as a
+// Beauty Professional at all.
+//
+// Unlike VendorListing/ExplorePost, a profile has no pendingChanges staging:
+// once APPROVED, further edits to bio/displayName/specialties/locationMode/
+// heroImage apply immediately without a new review, the same self-serve
+// convention Vendor's own storefront settings already use
+// (modules/vendors/repository.ts's updateStoreProfile has no approval step
+// either). Only the FIRST-time "may this Vendor appear publicly as a Beauty
+// Professional" decision is moderated. (M22.1: heroImage became a real
+// upload rather than a pasted link — this profile-level self-serve
+// convention is deliberately kept as-is for a single hero/banner image,
+// same trust level as Vendor.logoUrl; it is NOT the same moderation
+// surface as a portfolio, which stays entirely ExplorePost's job, not
+// this model's — see below).
+//
+// Portfolio: deliberately NOT a second photo system. A professional's public
+// portfolio is simply their own approved+published ExplorePost rows,
+// resolved live at read time by vendorId (see modules/beauty-professionals's
+// detail query) — publishing great work once already feeds both Explore and
+// a Beauty Professional's profile.
+//
+// Services: BeautyService is the smallest sellable-unit analogue for a
+// service (name, optional description, a shared beauty Category, an optional
+// indicative startingPrice, active flag) — never modeled as a VendorListing
+// (no fake inventory/shipping/MOQ semantics for a service).
+//
+// Requests: ServiceRequest is the small, real V1 workflow — SUBMITTED ->
+// PROVIDER_ACCEPTED / PROVIDER_DECLINED, plus customer-initiated CANCELLED
+// while still SUBMITTED. No payment/escrow/scheduling-calendar/chat — see
+// docs/mobile/MOBILE_V1_PLAN.md's M22 section for what's explicitly
+// deferred. Admin gets full read visibility over both profiles and requests
+// via the existing moderation-queue/admin-dashboard convention, not a
+// separate notification for every request (mirrors ExplorePost/VendorListing
+// — this codebase does not notify admin of every new operational row, only
+// genuine escalations).
+// ---------------------------------------------------------------------------
+
+enum BeautyProfessionalStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+  ARCHIVED
+}
+
+/// Where a service is actually performed — used both as what a professional
+/// supports (profile.locationMode may be BOTH) and, on a specific
+/// ServiceRequest, which single mode the customer chose (never BOTH there —
+/// enforced in modules/service-requests, not the schema).
+enum ServiceLocationMode {
+  PROVIDER_LOCATION
+  CUSTOMER_LOCATION
+  BOTH
+}
+
+/// Public Beauty Professional identity — see the section header above for
+/// the full architecture rationale.
+model BeautyProfessionalProfile {
+  id     String                   @id @default(cuid())
+  status BeautyProfessionalStatus @default(DRAFT)
+
+  /// Professional/business display name — may differ from the legal
+  /// Vendor.companyName (e.g. a wholesale-and-services Vendor's public
+  /// "beauty professional" persona).
+  displayName String
+  bio         String?
+
+  /// Storage key (M13 StorageProvider/R2), never a pasted external URL — a
+  /// real Choose/Take Photo upload, same convention as ServiceRequest's
+  /// referenceImage (M22.1 §4: "user-managed images must be file/photo
+  /// uploads", not a paste-a-URL field). Named without an "Url" suffix
+  /// deliberately, so its actual shape (an opaque storage key resolved
+  /// through app/api/beauty-professionals/images/[key], never rendered
+  /// directly) can never be confused with a directly-renderable URL again
+  /// — see modules/beauty-professionals/image-validation.ts.
+  heroImage String?
+
+  /// Subset of the shared EXPLORE_CATEGORY_SLUGS taxonomy (prisma/reference-data.ts)
+  /// this professional specializes in — never a second category universe.
+  specialtyCategorySlugs String[]            @default([])
+  locationMode           ServiceLocationMode @default(PROVIDER_LOCATION)
+
+  submittedAt            DateTime?
+  reviewedAt             DateTime?
+  changesRequestedReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vendorId String @unique
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  services        BeautyService[]
+  serviceRequests ServiceRequest[]
+
+  @@index([status])
+  /// Backs the admin moderation queue (oldest-awaiting-review first, same
+  /// convention as VendorListing/ExplorePost's equivalent index).
+  @@index([status, submittedAt])
+  @@map("beauty_professional_profile")
+}
+
+/// A single offered service, e.g. "Bridal Makeup — from GHS 600". The
+/// smallest sellable-unit analogue for a service — see section header.
+model BeautyService {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  /// Indicative "starting from" price — a request does not lock in a final
+  /// price (no quotation/payment engine in M22 — see section header).
+  startingPrice Decimal? @db.Decimal(12, 2)
+  currency      String   @default("GHS")
+  active        Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  professionalId String
+  professional   BeautyProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  serviceRequests ServiceRequest[]
+
+  @@index([professionalId])
+  @@index([categoryId])
+  @@map("beauty_service")
+}
+
+enum ServiceRequestStatus {
+  SUBMITTED
+  PROVIDER_ACCEPTED
+  PROVIDER_DECLINED
+  CANCELLED
+}
+
+/// A customer's structured request for one BeautyService from one
+/// BeautyProfessionalProfile — the entire V1 booking workflow. See section
+/// header for the deliberately small state machine and what's deferred.
+model ServiceRequest {
+  id     String               @id @default(cuid())
+  status ServiceRequestStatus @default(SUBMITTED)
+
+  preferredDate     DateTime
+  /// Broad time preference, e.g. "Morning" / "Afternoon" / "Evening" /
+  /// "Flexible" — deliberately free text, never a time-slot booking engine.
+  preferredTimeNote String?
+
+  locationMode    ServiceLocationMode
+  /// Area/address text the customer provides — not structured geocoding
+  /// (MOBILE_V1_PLAN.md §32: no fabricated nationwide location sophistication
+  /// for the current Ghana-only operating market).
+  locationDetails String?
+
+  notes    String?
+  quantity Int     @default(1)
+
+  /// Optional single reference/inspiration photo — storage key through the
+  /// existing M13 StorageProvider, same pattern as ExplorePost.images (see
+  /// modules/service-requests/image-validation.ts), just bounded to one
+  /// image rather than 1-6 since this is context, not a portfolio post.
+  referenceImage String?
+
+  declineReason String?
+  respondedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customerUserId String
+  customer       User   @relation(fields: [customerUserId], references: [id], onDelete: Cascade)
+
+  professionalId String
+  professional   BeautyProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  serviceId String
+  service   BeautyService @relation(fields: [serviceId], references: [id])
+
+  @@index([customerUserId])
+  @@index([professionalId])
+  /// Backs both the provider's incoming-requests list and the admin
+  /// operational list — newest-first (see modules/service-requests/repository.ts).
+  @@index([professionalId, createdAt])
+  @@index([status, createdAt])
+  @@map("service_request")
 }

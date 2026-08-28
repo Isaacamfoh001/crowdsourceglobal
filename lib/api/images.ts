@@ -1,5 +1,7 @@
 import { listingImageUrl } from "../listing-images";
 import { explorePostImageUrl } from "../explore-post-images";
+import { serviceRequestImageUrl } from "../service-request-images";
+import { beautyProfessionalImageUrl } from "../beauty-professional-images";
 import { env } from "../env";
 
 /**
@@ -23,5 +25,17 @@ export function absoluteImageUrl(entry: string): string {
 /** Same absolute-URL requirement (M21) — see absoluteImageUrl's doc comment above. */
 export function absoluteExplorePostImageUrl(entry: string): string {
   const resolved = explorePostImageUrl(entry);
+  return resolved.startsWith("/") ? `${env.NEXT_PUBLIC_APP_URL}${resolved}` : resolved;
+}
+
+/** Same absolute-URL requirement (M22) — see absoluteImageUrl's doc comment above. */
+export function absoluteServiceRequestImageUrl(entry: string): string {
+  const resolved = serviceRequestImageUrl(entry);
+  return resolved.startsWith("/") ? `${env.NEXT_PUBLIC_APP_URL}${resolved}` : resolved;
+}
+
+/** Same absolute-URL requirement (M22.1) — see absoluteImageUrl's doc comment above. */
+export function absoluteBeautyProfessionalImageUrl(entry: string): string {
+  const resolved = beautyProfessionalImageUrl(entry);
   return resolved.startsWith("/") ? `${env.NEXT_PUBLIC_APP_URL}${resolved}` : resolved;
 }

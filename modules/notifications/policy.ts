@@ -76,6 +76,16 @@ const POLICY: Record<NotificationType, Policy> = {
   EXPLORE_POST_APPROVED: { required: true },
   EXPLORE_POST_CHANGES_REQUESTED: { required: true },
   EXPLORE_POST_REJECTED: { required: true },
+  // M22 — Beauty Professional moderation outcomes, same reasoning as
+  // EXPLORE_POST_*/LISTING_* above. Service-request submission/decision
+  // notices are required for the same "submission receipt"/"decisive
+  // outcome" reasoning as SOURCING_REQUEST_SUBMITTED/RESOLUTION_APPROVED.
+  BEAUTY_PROFESSIONAL_APPROVED: { required: true },
+  BEAUTY_PROFESSIONAL_CHANGES_REQUESTED: { required: true },
+  BEAUTY_PROFESSIONAL_REJECTED: { required: true },
+  SERVICE_REQUEST_SUBMITTED: { required: true },
+  SERVICE_REQUEST_ACCEPTED: { required: true },
+  SERVICE_REQUEST_DECLINED: { required: true },
 };
 
 const CATEGORY_FIELD: Record<NotificationCategory, keyof PreferencesView> = {
