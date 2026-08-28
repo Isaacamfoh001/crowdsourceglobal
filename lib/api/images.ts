@@ -1,4 +1,5 @@
 import { listingImageUrl } from "../listing-images";
+import { explorePostImageUrl } from "../explore-post-images";
 import { env } from "../env";
 
 /**
@@ -16,5 +17,11 @@ import { env } from "../env";
  */
 export function absoluteImageUrl(entry: string): string {
   const resolved = listingImageUrl(entry);
+  return resolved.startsWith("/") ? `${env.NEXT_PUBLIC_APP_URL}${resolved}` : resolved;
+}
+
+/** Same absolute-URL requirement (M21) — see absoluteImageUrl's doc comment above. */
+export function absoluteExplorePostImageUrl(entry: string): string {
+  const resolved = explorePostImageUrl(entry);
   return resolved.startsWith("/") ? `${env.NEXT_PUBLIC_APP_URL}${resolved}` : resolved;
 }

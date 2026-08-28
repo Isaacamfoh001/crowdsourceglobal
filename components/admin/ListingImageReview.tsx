@@ -4,24 +4,40 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ImageOff, X } from "lucide-react";
 import { listingImageUrl } from "../../lib/listing-images";
 
+type ListingImageReviewProps = {
+  images: string[];
+  title: string;
+  /**
+   * (M21) Which storage-key resolver to render images through — defaults to
+   * `listingImageUrl` (VendorListing photos). The Explore-post admin detail
+   * page passes `explorePostImageUrl` instead, reusing this entire
+   * component/lightbox rather than building a second image-viewer (CLAUDE.md
+   * M21 §19: "reuse the good image-review/lightbox pattern... do not create
+   * duplicated image-viewer logic unnecessarily").
+   */
+  resolveUrl?: (entry: string) => string;
+  /** Label for the section heading/counts — "Product images" by default, "Post photos" for Explore. */
+  label?: string;
+};
+
 /**
- * Admin moderation image review (M17.1.2). Read-only: renders every
- * VendorListing.images[] entry (same `listingImageUrl` resolution already
- * used on the public product page and vendor portal — no second image
- * representation) so Admin can inspect a listing visually before deciding.
- * Primary image + thumbnail grid, click-through to a larger lightbox with
- * prev/next. No mutation, no reorder, no delete.
+ * Admin moderation image review (M17.1.2, generalized M21). Read-only:
+ * renders every image-array entry (resolved via `resolveUrl`, same
+ * resolution already used on the corresponding public page — no second
+ * image representation) so Admin can inspect content visually before
+ * deciding. Primary image + thumbnail grid, click-through to a larger
+ * lightbox with prev/next. No mutation, no reorder, no delete.
  */
-export function ListingImageReview({ images, title }: { images: string[]; title: string }) {
+export function ListingImageReview({ images, title, resolveUrl = listingImageUrl, label = "Product images" }: ListingImageReviewProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   if (images.length === 0) {
     return (
       <div>
-        <p className="mb-3 text-xs font-semibold tracking-[0.15em] text-espresso-900/50 uppercase">Product images</p>
+        <p className="mb-3 text-xs font-semibold tracking-[0.15em] text-espresso-900/50 uppercase">{label}</p>
         <div className="flex items-center gap-3 rounded-lg border border-dashed border-ivory-400 bg-ivory-100 px-5 py-6 text-sm text-espresso-900/60">
           <ImageOff className="size-5 shrink-0 text-ivory-400" strokeWidth={1.5} aria-hidden="true" />
-          No product images uploaded.
+          No images uploaded.
         </div>
       </div>
     );
@@ -32,9 +48,9 @@ export function ListingImageReview({ images, title }: { images: string[]; title:
   return (
     <div>
       <div className="mb-3 flex items-baseline justify-between gap-3">
-        <p className="text-xs font-semibold tracking-[0.15em] text-espresso-900/50 uppercase">Product images</p>
+        <p className="text-xs font-semibold tracking-[0.15em] text-espresso-900/50 uppercase">{label}</p>
         <p className="text-xs text-espresso-900/50">
-          {images.length} product {images.length === 1 ? "image" : "images"}
+          {images.length} {images.length === 1 ? "image" : "images"}
         </p>
       </div>
 
@@ -44,9 +60,9 @@ export function ListingImageReview({ images, title }: { images: string[]; title:
         aria-label={`View ${title} photo 1 larger`}
         className="block w-full overflow-hidden rounded-lg border border-ivory-300 bg-ivory-200"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- storage-backed product photo, not Next's image optimizer */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- storage-backed photo, not Next's image optimizer */}
         <img
-          src={listingImageUrl(primary as string)}
+          src={resolveUrl(primary as string)}
           alt={`${title} photo 1`}
           className="aspect-[4/3] w-full object-cover sm:aspect-[16/9]"
         />
@@ -62,9 +78,9 @@ export function ListingImageReview({ images, title }: { images: string[]; title:
               aria-label={`View ${title} photo ${index + 2} larger`}
               className="overflow-hidden rounded-lg border border-ivory-300 bg-ivory-200"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- storage-backed product photo, not Next's image optimizer */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- storage-backed photo, not Next's image optimizer */}
               <img
-                src={listingImageUrl(image)}
+                src={resolveUrl(image)}
                 alt={`${title} photo ${index + 2}`}
                 className="aspect-square w-full object-cover"
               />
@@ -78,6 +94,7 @@ export function ListingImageReview({ images, title }: { images: string[]; title:
           images={images}
           title={title}
           index={lightboxIndex}
+          resolveUrl={resolveUrl}
           onIndexChange={setLightboxIndex}
           onClose={() => setLightboxIndex(null)}
         />
@@ -90,12 +107,14 @@ function ImageLightbox({
   images,
   title,
   index,
+  resolveUrl,
   onIndexChange,
   onClose,
 }: {
   images: string[];
   title: string;
   index: number;
+  resolveUrl: (entry: string) => string;
   onIndexChange: (index: number) => void;
   onClose: () => void;
 }) {
@@ -152,9 +171,9 @@ function ImageLightbox({
         </button>
       ) : null}
 
-      {/* eslint-disable-next-line @next/next/no-img-element -- storage-backed product photo, not Next's image optimizer */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- storage-backed photo, not Next's image optimizer */}
       <img
-        src={listingImageUrl(images[index] as string)}
+        src={resolveUrl(images[index] as string)}
         alt={`${title} photo ${index + 1}`}
         className="max-h-[85vh] max-w-full rounded-lg object-contain"
         onClick={(event) => event.stopPropagation()}

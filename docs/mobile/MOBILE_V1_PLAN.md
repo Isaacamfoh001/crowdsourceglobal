@@ -811,6 +811,184 @@ Do not claim AI personalization until real personalization exists.
 
 ---
 
+# 12A. Explore Architecture — Real Beauty Discovery (implemented M21)
+
+M21 replaced §12's placeholder ("approved marketplace content") with a real,
+backend-backed provider-portfolio system: `ExplorePost` — a beauty
+professional/business's photo(s) of finished work (a hairstyle, wig
+install, makeup look, nail set, lash set, barbering, skincare result),
+distinct from `VendorListing` (a sellable product). This is unrelated to
+the pre-existing `GET /api/v1/explore` endpoint (M18.2,
+`catalogueService.listExploreSections()`), which still serves category-
+grouped commerce listings and is untouched.
+
+## 12A.1 Publisher identity
+
+An approved `Vendor` (the same identity the web Vendor Portal already
+grants access to) publishes `ExplorePost` rows — the smallest identity that
+already carries a public name/logo/location and a real moderation
+relationship with CrownSource. There is no dedicated beauty-professional/
+service-profile domain yet; building one prematurely was explicitly out of
+scope. `ExplorePost.vendorId` (not a polymorphic/`providerId` reference) is
+what keeps this minimal today — a future dedicated provider-profile domain
+can widen ownership (e.g. an optional `providerId` alongside `vendorId`)
+without dropping or restructuring the table. Eligibility is resolved
+server-side (`modules/explore-posts/policy.ts`'s
+`resolveExplorePostPublisher`) from the caller's first `VendorMembership`,
+requiring `Vendor.verificationStatus === "APPROVED"` — mirrors every other
+public-vendor-identity read path in the backend.
+
+## 12A.2 Data model
+
+`ExplorePost` (caption, `images: Json` — 1-6 storage keys, `categoryId`,
+`vendorId`) with a moderation state machine that deliberately mirrors
+`VendorListing`'s existing two-axis model exactly, rather than inventing a
+new one:
+
+- `approvalStatus` literally reuses the `ListingApprovalStatus` enum
+  (`PENDING`/`APPROVED`/`CHANGES_REQUESTED`/`REJECTED`).
+- `visibility` is a smaller 3-value analogue of `ListingStatus`
+  (`DRAFT`/`PUBLISHED`/`ARCHIVED` — no `INACTIVE`; M21 has no
+  "temporarily hide, plan to reactivate" requirement).
+- A published post's material edit is staged in `pendingChanges`
+  (`{caption, categoryId, images}`), exactly like `VendorListing`'s own
+  field — the live FIELD DATA is undisturbed AND (M21.1 correction) the
+  post STAYS visible/public on the feed throughout re-review: the public
+  feed query gates only on `visibility: PUBLISHED` (set once, at first
+  approval, and only ever cleared by an explicit archive — never touched
+  by a re-review submission), never on `approvalStatus`. M21's original
+  implementation also required `approvalStatus = APPROVED` here, copying
+  `VendorListing`'s `PUBLIC_LISTING_WHERE` — that made an already-live post
+  vanish from the public feed the instant its owner submitted an edit.
+  `VendorListing` has this same latent bug; it was not touched by the
+  M21.1 fix (out of scope — flagged for a future correction).
+
+`ExplorePostLike`/`ExplorePostSave` are real, idempotent, `User`-owned
+(never anonymous) join tables with a `@@unique([explorePostId, userId])`
+constraint as the duplicate-tap guarantee. Like/save counts are always a
+live `_count` aggregate, never a stored counter column. Full detail and
+rationale: `prisma/schema.prisma`'s M21 section header comment.
+
+## 12A.3 Category strategy
+
+Reuses the SAME `Category` table/taxonomy as commerce — not a second
+category universe. Four slugs are reused as-is because they already
+represent a type of beauty work (`wigs`, `makeup-cosmetics`, `lashes-brows`,
+`skincare`); three are new top-level rows added only because no existing
+commerce category represented that work type at all (`hairstyling`,
+`nails`, `barbering`). See `prisma/reference-data.ts`'s
+`EXPLORE_CATEGORY_SLUGS`/`EXPLORE_CATEGORIES`. These three new rows are
+never added to `CANONICAL_TOP_LEVEL_SLUGS`, so Shop's commerce navigation
+is unaffected.
+
+## 12A.4 Location
+
+Not snapshotted onto `ExplorePost` — `Vendor.city`/`region`/`country` are
+already public fields, and duplicating them would drift the moment a
+vendor updates their storefront location. The public feed DTO joins them
+live (`lib/api/dto/explore-posts.ts`).
+
+## 12A.5 Image storage
+
+Reuses the existing M13 `StorageProvider` abstraction unchanged (local disk
+in dev, Cloudflare R2 in production) — no second image-storage system.
+`explore-post-images/<uuid>.<ext>` keys, served by a new public,
+unauthenticated route (`app/api/explore-posts/images/[key]/route.ts`,
+prefix-scoped, mirroring the existing `listings/images` route exactly).
+1-6 images per post (`modules/explore-posts/image-validation.ts` — same
+PNG/JPEG/WEBP + 5MB-per-file limits as listing images, kept as a
+deliberately separate small file rather than a shared abstraction, matching
+this codebase's existing `lib/attachment-validation.ts` vs.
+`vendor-listings/image-validation.ts` precedent). Removed/replaced images
+are never deleted from storage — same "opaque keys are cheap to leave
+orphaned" convention `VendorListing` already established; a future storage
+lifecycle/cleanup pass (if ever needed) would cover both at once.
+
+## 12A.6 Public API
+
+`GET /api/v1/explore-posts` — public, unauthenticated, cursor-paginated
+(`createdAt desc, id desc`, opaque base64 cursor —
+`modules/explore-posts/repository.ts`'s `encodeExploreFeedCursor`), an
+optional `?category=<slug>` filter, PUBLISHED+APPROVED only. A signed-in
+caller additionally gets real `likedByMe`/`savedByMe`; anonymous always
+gets `false` for both (never an anonymous like/save record). Response
+shape: `{ data: { rows: ExplorePostDTO[], nextCursor: string | null } }`.
+
+Engagement: `POST`/`DELETE /api/v1/explore-posts/[id]/like` and
+`.../save` — authenticated only (401 otherwise), idempotent both
+directions, rate-limited (60/min/user via the existing
+`lib/rate-limit.ts` — no new infrastructure).
+`GET /api/v1/explore-posts/saved` — the caller's own saved posts, same
+cursor shape.
+
+Publishing (approved-Vendor-only): `POST /api/v1/explore-posts`
+(`multipart/form-data`: caption, categoryId, 1-6 `images` file parts;
+create-and-submit in one shot — mobile has no persisted "save as draft"
+step) and `PATCH /api/v1/explore-posts/[id]` (edit own post — direct if
+never public, staged if already PUBLISHED). `POST
+/api/v1/explore-posts/[id]/archive` unpublishes (never deletes). `GET
+/api/v1/explore-posts/mine` — the vendor's own posts at every status,
+page-paginated. `GET /api/v1/explore-posts/categories` — the fixed Explore
+category allowlist, backing the create-post picker.
+
+## 12A.7 Admin moderation
+
+`/admin/explore-posts` (queue, oldest-submission-first, paginated) and
+`/admin/explore-posts/[id]` (detail + Approve/Request changes/Reject),
+mirroring `/admin/listings` exactly — same `requireAdminSession`
+`["SUPER_ADMIN", "OPS_ADMIN"]` gating, same
+`components/admin/ListingImageReview.tsx` lightbox component (generalized
+with a `resolveUrl`/`label` prop rather than duplicated) so admin can see
+every submitted photo before deciding, per the listing-moderation
+precedent this milestone was explicitly told to reuse.
+
+## 12A.8 Vendor web capability
+
+`/vendor/portal/explore` — read-only-plus-archive: every post the vendor
+has posted, at any status, with an Archive action for a live post. Post
+**creation is deliberately mobile-only** for M21 V1 — camera roll/gallery
+access is already native there, and a parallel multi-image web upload form
+would duplicate that exact flow for marginal V1 benefit.
+
+## 12A.9 Mobile integration
+
+`src/features/explore/*` — `useExploreFeed`/`useSavedExplorePosts`
+(`useInfiniteQuery`, cursor-based), `useExploreEngagement`
+(optimistic like/save across every cached feed/saved query, with
+rollback-on-error), `useCreateExplorePost` (multipart upload via
+`expo-image-picker`), `useExploreCategories`, `useMyExplorePosts`,
+`eligibility.ts` (UI-affordance-only mirror of the backend's own
+eligibility check — the backend independently re-verifies on every
+mutating request). `src/lib/api/client.ts` was extended from GET-only to
+support JSON/multipart mutations (`post`/`patch`/`delete`), since M21 is
+this codebase's first mobile mutation flow.
+
+`ExplorePostCard` gained real multi-image carousel support (paged
+`FlatList` + dot indicator, replacing M19.2's single-placeholder-tile
+card) while keeping the same approved visual language (4:5 imagery,
+provider header, interaction row, caption). The M19 development fixtures
+(`src/features/explore/devPostFixtures.ts`) were deleted; the Explore tab
+now renders `GET /api/v1/explore-posts` through the standard TanStack Query
++ loading/error/empty/pull-to-refresh/pagination pattern already
+established by Shop (`src/app/(tabs)/shop.tsx`).
+
+Post creation: `/explore/create` (modal, gated on the same eligibility
+check, `expo-image-picker` for 1-6 photo selection —
+`photosPermission`/`cameraPermission: false`/`microphonePermission: false`
+configured in `app.json`'s `expo-image-picker` plugin entry, since camera
+capture is out of scope for V1). Anonymous like/save taps show a
+polished sign-in prompt (`src/lib/auth/requireAuthPrompt.ts`) rather than
+silently failing or navigating away immediately.
+
+"Source this look": a restrained CTA on every post navigates to the
+existing Source tab placeholder (`src/app/(tabs)/source.tsx`) without
+faking an integration — native sourcing creation (`POST
+/api/v1/sourcing`) does not exist yet, so no context/image prefill is
+possible today. Wiring real prefill is the concrete next Explore→Sourcing
+integration task once native sourcing creation ships.
+
+---
+
 # 13. Saved / Favorites
 
 Explore should ship with a useful lightweight engagement mechanism.
@@ -1984,7 +2162,22 @@ Deliver:
 
 ---
 
-## M21 --- Vendor Business Core
+## M21 --- Explore + Saved (implemented — delivered ahead of M22 Vendor Business Core)
+
+**Status: implemented.** Delivered ahead of the sequence below because it was
+prioritized by the client as a real beauty-discovery platform milestone. See
+§12A for the full architecture. Publisher identity for M21 is an approved
+Vendor (no dedicated beauty-professional/service-profile domain exists yet —
+see §12A's "Publisher identity" discussion for why, and how a future
+dedicated provider profile can be added without dropping `ExplorePost`).
+Vendor mobile listing/fulfilment flows (the M22 content below) remain
+undelivered; a Vendor's Explore-post moderation status is visible from the
+web Vendor Portal (`/vendor/portal/explore`), not yet from a native Business
+Home.
+
+---
+
+## M22 --- Vendor Business Core (renumbered from the original M21 — not yet implemented)
 
 Deliver:
 
@@ -2003,7 +2196,7 @@ Admin remains web.
 
 ---
 
-## M22 --- Explore + Saved
+## M22.1 --- Explore + Saved (original scope, now implemented as M21 above)
 
 Deliver:
 
@@ -2015,6 +2208,16 @@ Deliver:
 - Saved account screen.
 
 Do not build comments/followers/reels.
+
+**Scope note (M21 delivery vs. this original text):** M21 implemented real
+provider-posted portfolio content (`ExplorePost`), not "approved marketplace
+content" (the M18.2 `/api/v1/explore` product-discovery endpoint, which
+already existed and is untouched/separate — see §12A). Save is implemented
+for Explore posts only, not yet for Shop/Product listings — that remains a
+future addition using the same `ExplorePostSave`-style pattern against
+`VendorListing` instead. "Saved account screen" was delivered as a
+dedicated Explore-scoped `/explore/saved` screen (reachable from Explore's
+header bookmark icon), not a general cross-domain Account → Saved area.
 
 ---
 

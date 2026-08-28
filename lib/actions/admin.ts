@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminSession } from "../../modules/administration/policy";
 import { vendorApplicationsService } from "../../modules/vendor-applications/service";
 import { vendorListingsService } from "../../modules/vendor-listings/service";
+import { explorePostsService } from "../../modules/explore-posts/service";
 import { messagingService } from "../../modules/messaging/service";
 import { err, ok, type Result } from "../result";
 
@@ -101,6 +102,51 @@ export async function rejectListingAction(
   if (!result.ok) return result;
   revalidatePath(`/admin/listings/${listingId}`);
   revalidatePath("/admin/listings");
+  return ok(null);
+}
+
+// --- Explore post moderation (M21) --------------------------------------
+
+export async function approveExplorePostAction(
+  _prevState: Result<null> | null,
+  formData: FormData,
+): Promise<Result<null>> {
+  await requireAdminSession("/admin/explore-posts", ["SUPER_ADMIN", "OPS_ADMIN"]);
+  const postId = String(formData.get("postId") ?? "");
+  const result = await explorePostsService.approve(postId);
+  if (!result.ok) return result;
+  revalidatePath(`/admin/explore-posts/${postId}`);
+  revalidatePath("/admin/explore-posts");
+  return ok(null);
+}
+
+export async function requestExplorePostChangesAction(
+  _prevState: Result<null> | null,
+  formData: FormData,
+): Promise<Result<null>> {
+  await requireAdminSession("/admin/explore-posts", ["SUPER_ADMIN", "OPS_ADMIN"]);
+  const postId = String(formData.get("postId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (reason.length < 3) return err("Explain what needs to change.");
+  const result = await explorePostsService.requestChanges(postId, reason);
+  if (!result.ok) return result;
+  revalidatePath(`/admin/explore-posts/${postId}`);
+  revalidatePath("/admin/explore-posts");
+  return ok(null);
+}
+
+export async function rejectExplorePostAction(
+  _prevState: Result<null> | null,
+  formData: FormData,
+): Promise<Result<null>> {
+  await requireAdminSession("/admin/explore-posts", ["SUPER_ADMIN", "OPS_ADMIN"]);
+  const postId = String(formData.get("postId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (reason.length < 3) return err("Explain the reason.");
+  const result = await explorePostsService.reject(postId, reason);
+  if (!result.ok) return result;
+  revalidatePath(`/admin/explore-posts/${postId}`);
+  revalidatePath("/admin/explore-posts");
   return ok(null);
 }
 

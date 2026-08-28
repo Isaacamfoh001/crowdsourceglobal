@@ -70,6 +70,12 @@ const POLICY: Record<NotificationType, Policy> = {
   VENDOR_SETTLEMENT_PAID: { required: true },
   // M15 — narrow, low-volume admin event, same reasoning as the other ADMIN_* rows above.
   ADMIN_NEW_TALENT_APPLICATION: { required: true },
+  // M21 — Explore moderation outcomes, same reasoning as LISTING_APPROVED/
+  // CHANGES_REQUESTED/REJECTED above: a vendor's ability to reach customers
+  // depends on knowing the outcome.
+  EXPLORE_POST_APPROVED: { required: true },
+  EXPLORE_POST_CHANGES_REQUESTED: { required: true },
+  EXPLORE_POST_REJECTED: { required: true },
 };
 
 const CATEGORY_FIELD: Record<NotificationCategory, keyof PreferencesView> = {

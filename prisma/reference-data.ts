@@ -72,6 +72,40 @@ export const CATEGORIES: CategorySeed[] = [
 
 export const CANONICAL_TOP_LEVEL_SLUGS = CATEGORIES.map((category) => category.slug);
 
+/**
+ * Explore (M21) discovery categories — the SAME `Category` table/taxonomy
+ * mechanism as commerce above, not a second category universe. Four of
+ * these slugs already exist as commerce categories and are reused as-is
+ * (`wigs`, `makeup-cosmetics`, `lashes-brows`, `skincare` — a completed wig
+ * install, makeup look, lash set, or skincare result maps directly onto the
+ * existing product category). Three are new, added here only because no
+ * existing commerce category represents that TYPE OF WORK: `hairstyling`
+ * (a completed hairstyle/silk press/treatment — distinct from "Hair Care",
+ * which is about care PRODUCTS, and from "Wigs", which is a product
+ * category), `nails`, and `barbering` (neither has any commerce-category
+ * equivalent at all). This list is exactly the 7-category set named in
+ * MOBILE_V1_PLAN.md's M21 section.
+ *
+ * These 3 new rows are deliberately NOT added to CANONICAL_TOP_LEVEL_SLUGS
+ * — they carry no VendorListings and must never appear in Shop's commerce
+ * navigation; they exist solely as Category rows ExplorePost can reference.
+ */
+export const EXPLORE_CATEGORIES: CategorySeed[] = [
+  { name: "Hairstyling", slug: "hairstyling" },
+  { name: "Nails", slug: "nails" },
+  { name: "Barbering", slug: "barbering" },
+];
+
+export const EXPLORE_CATEGORY_SLUGS = [
+  "hairstyling",
+  "wigs",
+  "nails",
+  "makeup-cosmetics",
+  "lashes-brows",
+  "barbering",
+  "skincare",
+];
+
 export type ReferenceDataResult = {
   categoriesCreated: number;
   categoriesUpdated: number;
@@ -114,6 +148,10 @@ export async function bootstrapReferenceData(): Promise<ReferenceDataResult> {
     for (const child of category.children ?? []) {
       await upsertCategory(child, parent.id);
     }
+  }
+
+  for (const category of EXPLORE_CATEGORIES) {
+    await upsertCategory(category, null);
   }
 
   return { categoriesCreated, categoriesUpdated, categoriesUnchanged };

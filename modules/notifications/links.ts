@@ -12,6 +12,7 @@ export const notificationLinks = {
   vendorResolution: (caseId: string) => `/vendor/portal/resolutions/${caseId}`,
   vendorFinance: () => "/vendor/portal/finance",
   vendorSettlement: (settlementId: string) => `/vendor/portal/finance/settlements/${settlementId}`,
+  vendorExplorePost: (postId: string) => `/vendor/portal/explore/${postId}`,
 
   customerOrder: (orderId: string) => `/account/orders/${orderId}`,
   customerQuote: (quotationId: string) => `/account/quotes/${quotationId}`,
@@ -28,4 +29,5 @@ export const notificationLinks = {
   adminFinanceVendor: (vendorId: string) => `/admin/finance/vendors/${vendorId}`,
   adminSettlement: (settlementId: string) => `/admin/finance/settlements/${settlementId}`,
   adminTalentApplication: (applicationId: string) => `/admin/talent/${applicationId}`,
+  adminExplorePost: (postId: string) => `/admin/explore-posts/${postId}`,
 };

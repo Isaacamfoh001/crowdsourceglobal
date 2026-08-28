@@ -1,8 +1,8 @@
 import { renderEmail, type TemplateContent } from "./email-templates";
 
 /**
- * templateKey -> content builder, one per NotificationType (36 total as of
- * M9, matching modules/notifications/types.ts exactly — 1:1 traceability from
+ * templateKey -> content builder, one per NotificationType (see
+ * modules/notifications/types.ts for the current count) — 1:1 traceability from
  * event to email, mirroring the individual lib/email.ts functions this
  * registry replaces). `data` is trusted: it only ever originates from this
  * codebase's own `notificationsService.notify()` calls, never client input.
@@ -54,6 +54,25 @@ const registry: Record<string, (data: Record<string, unknown>) => TemplateConten
     intro: `Your listing "${d["listingTitle"]}" was not approved: ${d["reason"]}`,
     ctaLabel: "View listings",
     ctaPath: "/vendor/portal/listings",
+  }),
+  "explore-post-approved": () => ({
+    title: "Your Explore post is now live",
+    intro: "Your beauty work post is now visible to CrownSourceGlobal customers on Explore.",
+    ctaLabel: "View your posts",
+    ctaPath: "/vendor/portal/explore",
+  }),
+  "explore-post-changes-requested": (d) => ({
+    title: "Changes requested on your Explore post",
+    intro: `CrownSourceGlobal requested changes to your Explore post: ${d["reason"]}`,
+    bodyLines: ["Edit and resubmit it from your Vendor Portal."],
+    ctaLabel: "View your posts",
+    ctaPath: "/vendor/portal/explore",
+  }),
+  "explore-post-rejected": (d) => ({
+    title: "Your Explore post was not approved",
+    intro: `Your Explore post was not approved: ${d["reason"]}`,
+    ctaLabel: "View your posts",
+    ctaPath: "/vendor/portal/explore",
   }),
   "order-confirmed": (d) => ({
     title: "Your order is confirmed",

@@ -41,6 +41,13 @@ model User {
   notifications          Notification[]
   notificationPreference NotificationPreference?
 
+  /// M21 — Explore engagement. A User (not CustomerProfile) is the owner
+  /// here, same reasoning as Notification.recipientUserId: a Vendor owner
+  /// browsing Explore while signed in should see their own likes/saves
+  /// regardless of which capability they're currently using the app as.
+  explorePostLikes ExplorePostLike[]
+  explorePostSaves ExplorePostSave[]
+
   @@unique([email])
   @@map("user")
 }
@@ -227,6 +234,12 @@ model Category {
 
   listings         VendorListing[]
   sourcingRequests CustomSourcingRequest[]
+  /// M21 — reuses this same taxonomy for beauty-work discovery categories
+  /// (Wigs/Makeup & Cosmetics/Lashes & Brows/Skincare are shared with the
+  /// commerce tree; Hairstyling/Nails/Barbering are new rows added only
+  /// because no existing commerce category represents that type of work —
+  /// see docs/mobile/MOBILE_V1_PLAN.md's M21 section and prisma/reference-data.ts).
+  explorePosts     ExplorePost[]
 
   @@index([parentCategoryId])
   @@map("category")
@@ -293,6 +306,13 @@ model Vendor {
   financialAdjustments VendorFinancialAdjustment[]
   settlements          VendorSettlement[]
   payoutDestination    VendorPayoutDestination?
+
+  /// M21 — beauty-work portfolio posts. An approved Vendor is the smallest
+  /// existing publisher identity that already carries a public name/logo/
+  /// location and a moderation-worthy trust relationship with CrownSource —
+  /// see modules/explore-posts's doc comment for why this isn't a new
+  /// Provider domain yet.
+  explorePosts ExplorePost[]
 
   @@map("vendor")
 }
@@ -1932,6 +1952,16 @@ enum NotificationType {
   VENDOR_SETTLEMENT_APPROVED
   VENDOR_SETTLEMENT_PAID
   ADMIN_NEW_TALENT_APPLICATION
+  /// M21 — mirrors LISTING_APPROVED/CHANGES_REQUESTED/REJECTED exactly (same
+  /// moderation-outcome semantics, same required:true policy — see
+  /// modules/notifications/policy.ts). No ADMIN_NEW_EXPLORE_POST: admin is
+  /// not notified of new listing submissions either (the moderation queue
+  /// is the discovery mechanism, not a push notification) — M21 follows
+  /// that same, already-established precedent rather than inventing a new
+  /// admin-notification pattern.
+  EXPLORE_POST_APPROVED
+  EXPLORE_POST_CHANGES_REQUESTED
+  EXPLORE_POST_REJECTED
 }
 
 /// A structured, typed in-app notification. `title`/`body` are plain text
@@ -2558,4 +2588,165 @@ model TalentApplicationNote {
 
   @@index([applicationId, createdAt])
   @@map("talent_application_note")
+}
+
+// ---------------------------------------------------------------------------
+// M21 — Explore (beauty-work portfolio posts, image feed, saves, likes)
+//
+// Explore is visual INSPIRATION (a completed hairstyle, wig install, makeup
+// look, nail set) — structurally distinct from VendorListing (a SELLABLE
+// product). Deliberately not modeled as a VendorListing with fake
+// price/inventory (CLAUDE.md's "do not model a service as a VendorListing
+// product with fake inventory/shipping semantics").
+//
+// Publisher identity: an approved Vendor (the same Vendor row the Vendor
+// Portal already grants access to) is the smallest existing identity that
+// already carries a public name/logo/location and a real moderation
+// relationship with CrownSource — there is no dedicated beauty-professional/
+// service-profile domain yet (M21 brief explicitly says not to build one
+// prematurely). `vendorId` (not a new `providerId`/polymorphic reference) is
+// what keeps this table small today; a future dedicated provider profile
+// domain can be introduced by widening ExplorePost's ownership (e.g. an
+// optional `providerId` alongside `vendorId`) without dropping or
+// restructuring this table — see docs/mobile/MOBILE_V1_PLAN.md's M21
+// section for the fuller rationale.
+//
+// Moderation state machine deliberately mirrors VendorListing's existing
+// two-axis model exactly (CLAUDE.md's "reuse existing project conventions
+// rather than inventing an inconsistent state machine") — `approvalStatus`
+// literally reuses the `ListingApprovalStatus` enum (PENDING/APPROVED/
+// CHANGES_REQUESTED/REJECTED) rather than declaring a parallel one.
+// `visibility` is a smaller 3-value analogue of ListingStatus (DRAFT/
+// PUBLISHED/ARCHIVED — no INACTIVE: M21 has no "temporarily hide, plan to
+// reactivate" requirement, ARCHIVED already covers "unpublish"). A
+// published post's material edit is staged in `pendingChanges` exactly like
+// VendorListing.pendingChanges — the live FIELD DATA (caption/images/
+// category) is undisturbed while the edit is re-reviewed, AND (M21.1 fix)
+// the post STAYS visible on the public feed throughout re-review: the
+// public query (modules/explore-posts/repository.ts) gates ONLY on
+// `visibility: PUBLISHED`, deliberately NOT also on `approvalStatus:
+// APPROVED`. `visibility` flips to PUBLISHED exactly once, at first
+// approval, and is only ever cleared by an explicit archive — it is never
+// touched by a re-review submission — so it alone is the correct "is this
+// post's current live content public" gate, independent of whatever
+// approvalStatus a pending edit review is sitting in. The public query
+// never reads `pendingChanges`, so the proposal is never shown publicly
+// either way. (M21 originally also required approvalStatus=APPROVED here,
+// copying VendorListing's PUBLIC_LISTING_WHERE — that made an already-live
+// post vanish from the public feed the instant its edit was submitted;
+// VendorListing has this same latent bug, not fixed here, out of scope.)
+//
+// Location: deliberately NOT snapshotted onto ExplorePost — `vendor.city/
+// region/country` are already public fields (see modules/vendors), and
+// duplicating them here would drift the moment a vendor updates their
+// storefront location, per CLAUDE.md's "avoid duplicated data unless a
+// snapshot is genuinely useful" (this is discovery metadata, not a
+// commercial/financial snapshot like OrderItem's).
+//
+// Engagement: like/save counts are never a stored counter column — always a
+// live `_count` aggregate over ExplorePostLike/ExplorePostSave (no
+// denormalized-counter invalidation problem to get wrong at M21 scale).
+// ---------------------------------------------------------------------------
+
+enum ExplorePostVisibility {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+/// A beauty-work portfolio post — the unit of Explore's visual discovery
+/// feed. See the section header above for the full architecture rationale.
+model ExplorePost {
+  id      String @id @default(cuid())
+  caption String
+
+  /// Storage keys only (never base64/data URLs — see lib/storage.ts),
+  /// resolved through app/api/explore-posts/images/[key], same pattern as
+  /// VendorListing.images. Length is enforced in application code
+  /// (modules/explore-posts/image-validation.ts, 1-6 images), not the DB.
+  images Json @default("[]")
+
+  approvalStatus ListingApprovalStatus @default(PENDING)
+  visibility     ExplorePostVisibility @default(DRAFT)
+
+  /// Same "never-submitted draft vs. genuinely awaiting review" distinction
+  /// as VendorListing.submittedAt — mobile's create flow submits
+  /// atomically, so this is always set in practice for M21, but the field
+  /// stays independent of approvalStatus for the same reason VendorListing's
+  /// does.
+  submittedAt DateTime?
+
+  /// A material edit to an already-PUBLISHED post, staged rather than
+  /// applied in place — see the section header above. Shape:
+  /// { caption, images, categoryId }.
+  pendingChanges Json?
+
+  /// Admin's reason when approvalStatus = CHANGES_REQUESTED, shown to the
+  /// vendor. Cleared on the next admin decision — same convention as
+  /// VendorListing.changesRequestedReason.
+  changesRequestedReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  likes ExplorePostLike[]
+  saves ExplorePostSave[]
+
+  @@index([vendorId])
+  @@index([categoryId])
+  /// Backs the public feed: PUBLISHED + APPROVED, newest first, stable
+  /// cursor ordering (createdAt desc, id desc).
+  @@index([approvalStatus, visibility, createdAt])
+  /// Backs the admin moderation queue (oldest-awaiting-review first, same
+  /// convention as VendorListing's equivalent index).
+  @@index([approvalStatus, submittedAt])
+  @@map("explore_post")
+}
+
+/// Real, idempotent likes — never anonymous (CLAUDE.md's "do not create
+/// anonymous likes"). The `@@unique` constraint IS the idempotency/
+/// duplicate-tap guarantee, same pattern as VendorSettlementItem's
+/// one-earning-per-settlement guarantee elsewhere in this schema.
+model ExplorePostLike {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  explorePostId String
+  explorePost   ExplorePost @relation(fields: [explorePostId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([explorePostId, userId])
+  @@index([explorePostId])
+  @@index([userId])
+  @@map("explore_post_like")
+}
+
+/// Real, idempotent saves — same shape/guarantees as ExplorePostLike.
+/// Deliberately a separate table rather than a shared "reaction" table with
+/// a type column: like and save have different product meaning (transient
+/// approval vs. "come back to this later") and different future read paths
+/// (a Saved list reads this table alone), so keeping them independent
+/// tables is the simpler, more direct query shape.
+model ExplorePostSave {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  explorePostId String
+  explorePost   ExplorePost @relation(fields: [explorePostId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([explorePostId, userId])
+  @@index([explorePostId])
+  @@index([userId])
+  @@map("explore_post_save")
 }
