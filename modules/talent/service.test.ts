@@ -105,6 +105,41 @@ describe("talentService", () => {
     expect(valid.ok).toBe(true);
   });
 
+  it("accepts up to 3 valid work/portfolio links", async () => {
+    const result = await submit({
+      portfolioLinks: ["https://instagram.com/amasbraids", "https://tiktok.com/@amasbraids", "https://amasbraids.com"],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const detail = await talentService.getForAdmin(result.value.id);
+    expect(detail?.portfolioLinks).toEqual([
+      "https://instagram.com/amasbraids",
+      "https://tiktok.com/@amasbraids",
+      "https://amasbraids.com",
+    ]);
+  });
+
+  it("rejects more than 3 work/portfolio links", async () => {
+    const result = await submit({
+      portfolioLinks: ["https://a.example.com", "https://b.example.com", "https://c.example.com", "https://d.example.com"],
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/up to 3/i);
+  });
+
+  it("rejects an invalid work/portfolio link", async () => {
+    const result = await submit({ portfolioLinks: ["not a url"] });
+    expect(result.ok).toBe(false);
+  });
+
+  it("falls back to the legacy single portfolioUrl for admin display when portfolioLinks is empty", async () => {
+    const result = await submit({ portfolioUrl: "https://instagram.com/amasbraids", portfolioLinks: [] });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const detail = await talentService.getForAdmin(result.value.id);
+    expect(detail?.portfolioLinks).toEqual(["https://instagram.com/amasbraids"]);
+  });
+
   it("enforces a minimum of 3 work sample photos", async () => {
     const result = await submit({}, [validPhoto("a.png"), validPhoto("b.png")]);
     expect(result.ok).toBe(false);

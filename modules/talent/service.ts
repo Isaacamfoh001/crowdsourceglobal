@@ -23,6 +23,7 @@ import type {
 } from "./types";
 
 const STATEMENT_MAX_LENGTH = 750;
+const MAX_PORTFOLIO_LINKS = 3;
 
 export const TALENT_STATUS_LABELS: Record<TalentApplicationStatus, string> = {
   NEW: "New",
@@ -181,6 +182,13 @@ export const talentService = {
     if (input.portfolioUrl?.trim() && !isValidPortfolioUrl(input.portfolioUrl.trim())) {
       return err("Enter a valid portfolio/social link (starting with http:// or https://), or leave it blank.");
     }
+    const portfolioLinks = (input.portfolioLinks ?? []).map((link) => link.trim()).filter(Boolean);
+    if (portfolioLinks.length > MAX_PORTFOLIO_LINKS) {
+      return err(`You can add up to ${MAX_PORTFOLIO_LINKS} work/portfolio links.`);
+    }
+    if (portfolioLinks.some((link) => !isValidPortfolioUrl(link))) {
+      return err("Work/portfolio links must be valid URLs starting with http:// or https://.");
+    }
     if (!input.ownershipConfirmed) {
       return err("Please confirm the work samples are your own before submitting.");
     }
@@ -227,6 +235,7 @@ export const talentService = {
             otherSkillDescription: input.otherSkillDescription?.trim() || null,
             statement: input.statement.trim(),
             portfolioUrl: input.portfolioUrl?.trim() || null,
+            portfolioLinks,
             ownershipConfirmed: input.ownershipConfirmed,
           },
           input.skills,
@@ -272,6 +281,10 @@ export const talentService = {
       preferredWorkLocation: row.preferredWorkLocation,
       statement: row.statement,
       portfolioUrl: row.portfolioUrl,
+      // Legacy single-URL rows (pre-M23.2 web submissions) surface here too
+      // so Admin sees every work/portfolio link regardless of which client
+      // the application came from.
+      portfolioLinks: row.portfolioLinks.length > 0 ? row.portfolioLinks : row.portfolioUrl ? [row.portfolioUrl] : [],
       status: row.status,
       closeOutcome: row.closeOutcome,
       statusUpdatedAt: row.statusUpdatedAt,

@@ -27,6 +27,7 @@ type CreateApplicationData = {
   otherSkillDescription: string | null;
   statement: string;
   portfolioUrl: string | null;
+  portfolioLinks: string[];
   ownershipConfirmed: boolean;
 };
 
@@ -63,6 +64,7 @@ const adminDetailSelect = {
   preferredWorkLocation: true,
   statement: true,
   portfolioUrl: true,
+  portfolioLinks: true,
   status: true,
   closeOutcome: true,
   statusUpdatedAt: true,

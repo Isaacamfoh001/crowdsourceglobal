@@ -46,6 +46,7 @@ export type TalentApplicationInput = {
   preferredWorkLocation?: string;
   statement: string;
   portfolioUrl?: string;
+  portfolioLinks?: string[];
   ownershipConfirmed: boolean;
 };
 
@@ -97,6 +98,7 @@ export type AdminTalentApplicationDetailView = {
   preferredWorkLocation: string | null;
   statement: string;
   portfolioUrl: string | null;
+  portfolioLinks: string[];
   status: TalentApplicationStatus;
   closeOutcome: TalentCloseOutcome | null;
   statusUpdatedAt: Date | null;

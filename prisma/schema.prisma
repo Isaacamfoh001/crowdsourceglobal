@@ -2529,7 +2529,18 @@ model TalentApplication {
   /// Optional Instagram/TikTok/portfolio URL — stored and linked out to
   /// exactly as given (safe `rel`/`target` at render time), never fetched
   /// or embedded server-side (no social API integration in scope).
+  /// Superseded by `portfolioLinks` (M23.2) for new submissions — kept
+  /// so existing rows (and the existing web guest form) keep working
+  /// unchanged; Admin display merges both.
   portfolioUrl String?
+
+  /// M23.2 — up to 3 optional work/portfolio links (Instagram, TikTok,
+  /// LinkedIn, personal site, etc.), used by the mobile application flow.
+  /// Validated as real http(s) URLs at the application layer
+  /// (modules/talent/service.ts), never contact information. A native
+  /// scalar array, same reasoning as `opportunityTypes` — no cross-
+  /// application filtering value dense enough to justify a join table.
+  portfolioLinks String[] @default([])
 
   /// Must be true to submit (enforced in modules/talent/service.ts) — kept
   /// as a persisted field, not just a client-side gate, so the confirmation

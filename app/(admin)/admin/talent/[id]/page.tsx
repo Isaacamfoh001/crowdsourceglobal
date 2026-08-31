@@ -144,19 +144,27 @@ export default async function AdminTalentDetailPage({ params }: { params: Promis
             </ul>
           </div>
 
-          {/* Portfolio link */}
-          {application.portfolioUrl ? (
+          {/* Portfolio / work links */}
+          {application.portfolioLinks.length > 0 ? (
             <div className="py-6 last:pb-0">
-              <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Portfolio</h2>
-              <a
-                href={application.portfolioUrl}
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                className="mt-2 flex w-fit items-center gap-1.5 text-sm font-medium text-espresso-800 hover:underline"
-              >
-                View portfolio
-                <ExternalLink className="size-3.5" strokeWidth={1.75} />
-              </a>
+              <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">
+                Portfolio &amp; work links ({application.portfolioLinks.length})
+              </h2>
+              <ul className="mt-2 flex flex-col gap-1.5">
+                {application.portfolioLinks.map((link) => (
+                  <li key={link}>
+                    <a
+                      href={link}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className="flex w-fit items-center gap-1.5 text-sm font-medium text-espresso-800 hover:underline"
+                    >
+                      {link}
+                      <ExternalLink className="size-3.5 shrink-0" strokeWidth={1.75} />
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : null}
         </div>
