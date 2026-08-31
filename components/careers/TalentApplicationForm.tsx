@@ -337,11 +337,10 @@ export function TalentApplicationForm() {
 
         <div>
           <Textarea
-            label="Tell us a little about yourself and the kind of opportunity you want"
+            label="Tell us a little about yourself and the kind of opportunity you want (optional)"
             id="statement"
             name="statement"
             rows={5}
-            required
             maxLength={STATEMENT_MAX_LENGTH}
             disabled={isPending}
             placeholder="e.g. I've been braiding and installing wigs for about two years and I'm looking for a full-time role at a salon in Accra."

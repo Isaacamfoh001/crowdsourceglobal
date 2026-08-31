@@ -97,6 +97,28 @@ describe("talentService", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("accepts a submission with no statement (M23.3 — statement is optional)", async () => {
+    const result = await submit({ statement: undefined });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const detail = await talentService.getForAdmin(result.value.id);
+    expect(detail?.statement).toBeNull();
+  });
+
+  it("treats a blank/whitespace-only statement the same as no statement", async () => {
+    const result = await submit({ statement: "   " });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const detail = await talentService.getForAdmin(result.value.id);
+    expect(detail?.statement).toBeNull();
+  });
+
+  it("still enforces the statement max length when one is provided", async () => {
+    const result = await submit({ statement: "x".repeat(751) });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/750 characters/i);
+  });
+
   it("rejects an invalid portfolio URL but accepts a valid one", async () => {
     const invalid = await submit({ portfolioUrl: "not a url" });
     expect(invalid.ok).toBe(false);

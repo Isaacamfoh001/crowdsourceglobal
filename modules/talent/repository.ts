@@ -25,7 +25,7 @@ type CreateApplicationData = {
   willingToRelocate: boolean;
   preferredWorkLocation: string | null;
   otherSkillDescription: string | null;
-  statement: string;
+  statement: string | null;
   portfolioUrl: string | null;
   portfolioLinks: string[];
   ownershipConfirmed: boolean;

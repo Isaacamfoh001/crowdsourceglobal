@@ -2523,8 +2523,11 @@ model TalentApplication {
   otherSkillDescription String?
 
   /// Short practical statement, not a cover letter — length-capped at the
-  /// application layer (modules/talent/service.ts), not the DB.
-  statement String
+  /// application layer (modules/talent/service.ts), not the DB. Optional
+  /// (M23.3) — core identity/skills/work-preference/photos already
+  /// communicate suitability; an applicant shouldn't be blocked from
+  /// submitting for want of an essay.
+  statement String?
 
   /// Optional Instagram/TikTok/portfolio URL — stored and linked out to
   /// exactly as given (safe `rel`/`target` at render time), never fetched

@@ -62,7 +62,7 @@ export async function submitTalentApplicationAction(
       opportunityTypes: formData.getAll("opportunityTypes").map(String) as TalentOpportunityType[],
       willingToRelocate: formData.get("willingToRelocate") === "on",
       preferredWorkLocation: String(formData.get("preferredWorkLocation") ?? "") || undefined,
-      statement: String(formData.get("statement") ?? ""),
+      statement: String(formData.get("statement") ?? "") || undefined,
       portfolioUrl: String(formData.get("portfolioUrl") ?? "") || undefined,
       ownershipConfirmed: formData.get("ownershipConfirmed") === "on",
     },

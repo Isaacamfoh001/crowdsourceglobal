@@ -51,7 +51,7 @@ function resolveIpFromRequest(request: Request): string {
  * `multipart/form-data`: fullName, phone, email?, city, region?,
  * currentWorkStatus, experienceLevel, availability, skills[] (repeat
  * field), otherSkillDescription?, opportunityTypes[] (repeat field),
- * willingToRelocate ("true"/"false"), preferredWorkLocation?, statement,
+ * willingToRelocate ("true"/"false"), preferredWorkLocation?, statement?,
  * portfolioLinks[] (repeat field, up to 3 http(s) URLs),
  * ownershipConfirmed ("true"/"false"), plus 3-8 `workSamplePhotos` file
  * parts (PNG/JPEG/WEBP, <=5MB each) with optional parallel
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     opportunityTypes: formData.getAll("opportunityTypes").map(String) as TalentOpportunityType[],
     willingToRelocate: String(formData.get("willingToRelocate") ?? "") === "true",
     preferredWorkLocation: String(formData.get("preferredWorkLocation") ?? "") || undefined,
-    statement: String(formData.get("statement") ?? ""),
+    statement: String(formData.get("statement") ?? "") || undefined,
     portfolioLinks: formData.getAll("portfolioLinks").map(String).filter(Boolean),
     ownershipConfirmed: String(formData.get("ownershipConfirmed") ?? "") === "true",
   };

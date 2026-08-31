@@ -114,7 +114,11 @@ export default async function AdminTalentDetailPage({ params }: { params: Promis
           {/* Statement */}
           <div className="py-6">
             <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Applicant statement</h2>
-            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-espresso-800">{application.statement}</p>
+            {application.statement ? (
+              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-espresso-800">{application.statement}</p>
+            ) : (
+              <p className="mt-2 text-sm text-espresso-900/40 italic">No statement provided.</p>
+            )}
           </div>
 
           {/* Work samples */}

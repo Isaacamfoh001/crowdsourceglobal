@@ -175,8 +175,8 @@ export const talentService = {
       return err("Tell us what your other skill is.");
     }
     if (input.opportunityTypes.length === 0) return err("Select at least one type of opportunity you're looking for.");
-    if (!input.statement.trim()) return err("Tell us a little about yourself and what you're looking for.");
-    if (input.statement.trim().length > STATEMENT_MAX_LENGTH) {
+    const statement = input.statement?.trim() || null;
+    if (statement && statement.length > STATEMENT_MAX_LENGTH) {
       return err(`Keep your statement under ${STATEMENT_MAX_LENGTH} characters.`);
     }
     if (input.portfolioUrl?.trim() && !isValidPortfolioUrl(input.portfolioUrl.trim())) {
@@ -233,7 +233,7 @@ export const talentService = {
             willingToRelocate: input.willingToRelocate,
             preferredWorkLocation: input.preferredWorkLocation?.trim() || null,
             otherSkillDescription: input.otherSkillDescription?.trim() || null,
-            statement: input.statement.trim(),
+            statement,
             portfolioUrl: input.portfolioUrl?.trim() || null,
             portfolioLinks,
             ownershipConfirmed: input.ownershipConfirmed,
