@@ -133,6 +133,8 @@ export type CustomerTrackingStep = {
   label: string;
   done: boolean;
   current: boolean;
+  /** Real recorded timestamp for this step, where the domain actually tracks one (e.g. Shipment.deliveredAt) — null rather than fabricated for steps with no dedicated column (M26). */
+  at: Date | null;
 };
 
 export type CustomerPackageTracking = {
@@ -142,4 +144,7 @@ export type CustomerPackageTracking = {
   steps: CustomerTrackingStep[];
   hasIssue: boolean;
   customerConfirmedReceiptAt: Date | null;
+  /** Carrier/tracking reference (M26) — null until CrownSource logistics records a Shipment for this package. */
+  carrier: string | null;
+  trackingReference: string | null;
 };

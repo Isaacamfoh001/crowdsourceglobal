@@ -54,3 +54,13 @@ export function absoluteBeautyProfessionalImageUrl(entry: string): string {
 export function absoluteSourcingAttachmentUrl(attachmentId: string): string {
   return `${env.NEXT_PUBLIC_APP_URL}/api/sourcing/attachments/${attachmentId}`;
 }
+
+/**
+ * Resolution-case evidence attachment URL (M26). Same private,
+ * session-authenticated-route convention as absoluteSourcingAttachmentUrl
+ * above (app/api/resolutions/attachments/[id]/route.ts) — owning customer
+ * or staff only, never the unauthenticated-but-unguessable-key convention.
+ */
+export function absoluteResolutionAttachmentUrl(attachmentId: string): string {
+  return `${env.NEXT_PUBLIC_APP_URL}/api/resolutions/attachments/${attachmentId}`;
+}

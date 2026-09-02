@@ -470,11 +470,25 @@ export const fulfilmentService = {
         currentIndex = stepDefs.length - 1;
       }
 
+      // Real recorded timestamp per step, where the domain actually has a
+      // dedicated column for it — never fabricated from Fulfilment.updatedAt
+      // or interpolated for a status that was never individually timestamped
+      // (e.g. PREPARING has no column of its own).
+      const stepTimestamps: Record<string, Date | null> = {
+        confirmed: row.createdAt,
+        collected: shipment?.collectedAt ?? null,
+        to_crownsource: shipment?.shippedAt ?? null,
+        received: shipment?.receivedAt ?? null,
+        out_for_delivery: shipment?.outForDeliveryAt ?? null,
+        delivered: shipment?.deliveredAt ?? null,
+      };
+
       const steps: CustomerTrackingStep[] = stepDefs.map((step, index) => ({
         key: step.key,
         label: step.label,
         done: index < currentIndex || row.status === "DELIVERED" || row.status === "COMPLETED",
         current: index === currentIndex && row.status !== "DELIVERED" && row.status !== "COMPLETED",
+        at: stepTimestamps[step.key] ?? null,
       }));
 
       return {
@@ -484,6 +498,8 @@ export const fulfilmentService = {
         steps,
         hasIssue: row.issues.length > 0 || row.status === "EXCEPTION",
         customerConfirmedReceiptAt: shipment?.customerConfirmedReceiptAt ?? null,
+        carrier: shipment?.carrier ?? null,
+        trackingReference: shipment?.trackingReference ?? null,
       };
     });
   },

@@ -7,10 +7,16 @@ import { generateOrderNumber } from "../../lib/order-number";
 import { quotationRepository } from "../quotation/repository";
 import { ordersRepository, toDisplayStatusFulfilments, toDisplayStatusCases } from "./repository";
 import { computeOrderDisplayStatus, ORDER_DISPLAY_STATUS_LABEL } from "./display-status";
+import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import { ok, err, type Result } from "../../lib/result";
 import type { DeliveryInfo, OrderDetailView, OrderSummaryView } from "./types";
 
 const RESERVATION_TTL_MINUTES = 15;
+
+/** (M26) Same defensive Json->string[] narrowing as modules/vendor-listings/repository.ts's `primaryImage` — `images` is a Prisma Json column, never trusted to already be a string array. */
+function primaryListingImage(images: unknown): string | null {
+  return Array.isArray(images) && images.length > 0 && typeof images[0] === "string" ? images[0] : null;
+}
 
 /** Thrown inside the checkout transaction to trigger a clean rollback with a customer-facing message. */
 class CheckoutValidationError extends Error {}
@@ -530,6 +536,7 @@ export const ordersService = {
         unitPrice: item.unitPrice.toNumber(),
         lineTotal: item.lineTotal.toNumber(),
         vendor: item.vendor,
+        imageKey: primaryListingImage(item.listing?.images),
       };
       if (existing) {
         existing.items.push(view);
@@ -577,20 +584,38 @@ export const ordersService = {
 
   async listOrders(customerProfileId: string): Promise<OrderSummaryView[]> {
     const orders = await ordersRepository.listForCustomer(customerProfileId);
-    return orders.map((order) => {
-      const { overall } = computeOrderDisplayStatus(order.status, toDisplayStatusFulfilments(order.fulfilments), toDisplayStatusCases(order.resolutionCases));
-      return {
-        id: order.id,
-        orderNumber: order.orderNumber,
-        createdAt: order.createdAt,
-        status: order.status,
-        paymentStatus: order.paymentStatus,
-        total: order.total.toNumber(),
-        currency: order.currency,
-        itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
-        displayStatus: overall,
-        displayStatusLabel: ORDER_DISPLAY_STATUS_LABEL[overall],
-      };
-    });
+    return orders.map(toOrderSummaryView);
+  },
+
+  /** (M26) Paginated variant backing the mobile Orders list — newest-first, same view shape as listOrders. */
+  async listOrdersPaginated(customerProfileId: string, page = 1): Promise<{ rows: OrderSummaryView[]; total: number; pageSize: number }> {
+    const { rows, total } = await ordersRepository.listForCustomerPaginated(customerProfileId, page, DEFAULT_PAGE_SIZE);
+    return { rows: rows.map(toOrderSummaryView), total, pageSize: DEFAULT_PAGE_SIZE };
   },
 };
+
+function toOrderSummaryView(order: Awaited<ReturnType<typeof ordersRepository.listForCustomer>>[number]): OrderSummaryView {
+  const { overall, packages } = computeOrderDisplayStatus(order.status, toDisplayStatusFulfilments(order.fulfilments), toDisplayStatusCases(order.resolutionCases));
+  let thumbnailImageKey: string | null = null;
+  for (const item of order.items) {
+    const key = primaryListingImage(item.listing?.images);
+    if (key) {
+      thumbnailImageKey = key;
+      break;
+    }
+  }
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    createdAt: order.createdAt,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    total: order.total.toNumber(),
+    currency: order.currency,
+    itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
+    displayStatus: overall,
+    displayStatusLabel: ORDER_DISPLAY_STATUS_LABEL[overall],
+    thumbnailImageKey,
+    vendorCount: packages.length,
+  };
+}

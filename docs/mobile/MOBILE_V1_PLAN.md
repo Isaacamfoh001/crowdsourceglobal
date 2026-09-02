@@ -3286,3 +3286,139 @@ just not built yet):
 **Admin remains web-only** — nothing in this milestone added a mobile
 admin surface, and no admin-only action became reachable from a
 `VendorMembership` alone.
+
+# 56. M26 — Native Orders, Fulfilment & Delivery Tracking (Implemented)
+
+Completes the customer post-purchase experience. Not a new order
+architecture — `modules/orders`, `modules/fulfilment`, `modules/payments`,
+`modules/resolutions`, `modules/refunds` remain exactly as authoritative as
+they are for web/M27 Vendor Mode; this milestone only exposes their
+existing customer-scoped read paths (`ordersService.getOrderDetail`/
+`listOrders*`, `fulfilmentService.getCustomerTracking`,
+`resolutionsService.listForCustomer`/`getForCustomer`) over `/api/v1`.
+
+**APIs.** `GET /api/v1/orders` (new — paginated, newest-first,
+`ordersService.listOrdersPaginated`) and `GET /api/v1/orders/:id` (extended
+in place — the M24 minimal shape, `{id, orderNumber, status, paymentStatus,
+total, currency, createdAt}`, is now a strict subset of the full response,
+so the M25 checkout-confirmation/payment screens that only read those
+fields kept working unmodified). `GET /api/v1/resolutions/:id` (new,
+read-only) backs a case-detail screen — see "Resolution/refund visibility"
+below.
+
+**Orders list.** `src/app/orders/index.tsx` — paginated (`useInfiniteQuery`,
+same shape as M27's `useVendorOrders`), product-thumbnail card per order
+(first line item's current listing image, `null`-safe fallback — an
+`OrderItem` never snapshots an image, only price/description do), overall
+customer status pill, item/vendor counts, total. `(tabs)/account.tsx`'s
+"Orders" row — inert since M20.2 — now routes here.
+
+**Order detail.** `src/app/orders/[id].tsx` — order reference, payment
+status, a "Complete payment" card for a genuinely `PENDING_PAYMENT` order
+(routes into the existing M25 `/checkout/[orderId]/payment` flow, so a
+retried payment can never create a second Order — `Payment`'s one-active-
+attempt-per-Order constraint already guarantees this), one tracking
+timeline per vendor package, items grouped by vendor, order totals
+(historical `OrderItem`/`Order` snapshot values only — never recomputed
+from live `VendorListing` pricing), latest payment summary
+(brand/last4/masked-phone only, never a raw provider reference beyond
+CrownSourceGlobal's own `Payment.reference`), and delivery address.
+
+**Multi-vendor representation.** A `packages[]`/`tracking[]` entry per
+Fulfilment, never collapsed into one status — mirrors
+`computeOrderDisplayStatus`'s existing "overall status = the
+least-advanced package" rule (already used by web `account/orders`) rather
+than inventing a second aggregation. Reused completely unmodified.
+
+**Customer status mapping.** `src/lib/orderStatus.ts` — label/tone lookup
+keyed on the backend's own `OrderDisplayStatus` enum
+(`modules/orders/display-status.ts`, M11.1), the exact resolution-aware
+status the web account pages already show (`ORDER_CONFIRMED` →
+`REFUNDED`/`PARTIALLY_REFUNDED`/`ISSUE_UNDER_REVIEW`/etc.) — no new or
+mobile-only status was invented, same discipline `lib/vendorStatus.ts`
+already follows for vendor-facing enums.
+
+**Fulfilment timeline / timestamps.** `fulfilmentService.getCustomerTracking`
+(reused, extended) now attaches a real timestamp to each step where the
+domain actually records one: `confirmed` ← `Fulfilment.createdAt`,
+`collected`/`to_crownsource`/`received`/`out_for_delivery`/`delivered` ←
+the matching `Shipment` column. A step with no dedicated column (e.g.
+`PREPARING` has none) or a step never reached renders with `at: null` —
+never fabricated from `updatedAt` or interpolated. This required widening
+`findForCustomerOrder`'s existing Prisma `select` (more columns off the
+same row, no schema change) and adding `carrier`/`trackingReference` to
+`CustomerPackageTracking` — the same operational fields M27's vendor
+detail already exposes, now readable (never writable) by the owning
+customer too. Selectable/copyable via RN's built-in `Text
+selectable={true}` — no new clipboard dependency was added for this.
+
+**Payment integration.** No new payment logic — `latestPayment`/
+`latestPaymentStatus` on the order-detail response are
+`ordersService.getOrderDetail`'s existing fields, unchanged. "Pay now"
+reuses the exact M25 card/mobile-money flow and its idempotency
+guarantees; nothing here can create a duplicate Payment or Order.
+
+**Resolution/refund visibility.** Deliberately **read-only** this
+milestone. `order.cases[]` (case number + status pill, from
+`resolutionsService.listForCustomer` filtered by `orderId` — the same
+in-memory filter the web Order Detail page already does, not a new
+repository method) tap through to `src/app/resolutions/[id].tsx`, backed
+by the new `GET /api/v1/resolutions/:id` → `resolutionsService.getForCustomer`
+verbatim: what was reported, CrownSourceGlobal's customer-safe decision
+reason, per-item approved outcome, and the real `Refund`/`Return`/
+`Replacement` status/amount — never a fabricated "processing" state.
+**Case creation (report-a-problem/cancellation) was NOT built for mobile
+this milestone** — the web form's item/quantity multi-select plus evidence
+upload has no mobile equivalent yet, and building one was judged too broad
+for M26's scope per the brief's own escape hatch ("at minimum surface
+existing resolution status and provide the smallest legitimate action").
+The smallest legitimate action taken instead: full read visibility into
+whatever case/refund/return state already exists, reusing
+`resolutionsService`'s customer-scoped methods exactly, with zero new
+authorization or business logic. Report-a-problem creation, and by
+extension customer-initiated cancellation (which is one `issueType` on the
+same form), are recommended M28+ scope. Attachment thumbnails reuse the
+already-private `app/api/resolutions/attachments/[id]` download route
+(`lib/media/attachmentImageSource.ts`'s existing cookie-forwarding
+pattern — no new endpoint).
+
+**Vendor/customer synchronization.** No new mobile state anywhere — the
+customer and vendor mobile surfaces, and the web account/vendor-portal/
+admin pages, all read the same `Fulfilment`/`Shipment`/`Payment`/
+`ResolutionCase` rows through their respective already-existing service
+methods. A vendor's `mark-ready`/`ship`/`report-issue` action is visible
+to the customer on their next `GET /api/v1/orders/:id` (pull-to-refresh or
+remount — no sockets, per the brief's explicit "polling/refetch is
+enough" call).
+
+**Privacy.** `ordersService.getOrderDetail`/`resolutionsService.getForCustomer`
+already scope every query to `(id, customerProfileId)` together — an
+unknown or another customer's id resolves 404, never 403 (anti-
+enumeration, same convention M27 established). Covered by new IDOR tests
+in `app/api/v1/orders/[id]/route.test.ts` and
+`app/api/v1/resolutions/[id]/route.test.ts`. No vendor-cost
+(`vendorPayableBasis`), payout (`payoutHold`), or internal
+(`responsibility`) field is reachable through any new DTO — verified both
+by DTO-mapper code review and by a raw-JSON regex assertion in the new
+route tests.
+
+**M27 vendor-order UX audit (§24 of the brief).** Reviewed against the
+now-complete customer tracking model: `vendor-orders/[id].tsx` renders
+exactly one next-valid-action button per current `status`/`origin`
+combination (never more), the backend's `fromStatuses` allowlist is the
+independent source of truth regardless of what the UI shows, and every
+mutation hook invalidates both the detail and list query keys. No
+integration defects found — no changes made to M27 files.
+
+**Deferred out of this pass** (per the brief's explicit "do not build"
+list — none of these change any business rule, just not built):
+
+- Report-a-problem / cancellation case creation from mobile (see
+  "Resolution/refund visibility" above).
+- GPS/map delivery tracking, carrier API integrations, a new logistics
+  provider.
+- Customer↔vendor chat (the platform's messaging boundary — CLAUDE.md §13
+  — is unaffected either way).
+- Push notifications for order/fulfilment events (M28's scope; this
+  milestone only left tracking screens ready to be a deep-link target).
+- Any new refund, payout, or payment architecture.

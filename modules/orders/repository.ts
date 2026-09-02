@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/db";
+import { paginationSkip } from "../../lib/pagination";
 import type { DisplayStatusCase, DisplayStatusFulfilment } from "./display-status";
 
 /** (M11.1) Shared across order list/detail — see modules/orders/display-status.ts for what this feeds. */
@@ -72,6 +73,16 @@ const orderItemSelect = {
   unitPrice: true,
   lineTotal: true,
   vendor: { select: { companyName: true, storefrontSlug: true } },
+  // (M26) Current listing image only — OrderItem never snapshots one, so
+  // this is best-effort ("Order imagery" §21): null once the listing is
+  // gone, never a stand-in for the historical unitPrice/lineTotal snapshot.
+  listing: { select: { images: true } },
+} as const;
+
+/** (M26) Order list rows need only enough of each item to derive a single list-row thumbnail and the item count — never the full detail select above. */
+const orderListItemSelect = {
+  quantity: true,
+  listing: { select: { images: true } },
 } as const;
 
 const orderDetailSelect = {
@@ -190,12 +201,38 @@ export const ordersRepository = {
         paymentStatus: true,
         total: true,
         currency: true,
-        items: { select: { quantity: true } },
+        items: { select: orderListItemSelect, orderBy: { id: "asc" as const } },
         fulfilments: { select: displayStatusFulfilmentSelect },
         resolutionCases: { select: displayStatusCaseSelect },
       },
       orderBy: { createdAt: "desc" },
     });
+  },
+
+  /** (M26) Paginated variant backing the mobile Orders list — same shape as listForCustomer's rows, skip/take + count. */
+  async listForCustomerPaginated(customerProfileId: string, page: number, pageSize: number) {
+    const [rows, total] = await Promise.all([
+      prisma.order.findMany({
+        where: { customerProfileId },
+        select: {
+          id: true,
+          orderNumber: true,
+          createdAt: true,
+          status: true,
+          paymentStatus: true,
+          total: true,
+          currency: true,
+          items: { select: orderListItemSelect, orderBy: { id: "asc" as const } },
+          fulfilments: { select: displayStatusFulfilmentSelect },
+          resolutionCases: { select: displayStatusCaseSelect },
+        },
+        orderBy: { createdAt: "desc" },
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.order.count({ where: { customerProfileId } }),
+    ]);
+    return { rows, total };
   },
 };
 

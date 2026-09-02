@@ -36,6 +36,8 @@ export type OrderItemView = {
   unitPrice: number;
   lineTotal: number;
   vendor: { companyName: string; storefrontSlug: string } | null;
+  /** (M26) The listing's current primary image, if the listing still exists — never a snapshot (OrderItem never stored one). Null once a listing is deleted; render a graceful fallback, never a broken image. */
+  imageKey: string | null;
 };
 
 export type OrderVendorGroupView = {
@@ -56,6 +58,10 @@ export type OrderSummaryView = {
   /** (M11.1) Derived, resolution-aware display status — see modules/orders/display-status.ts. */
   displayStatus: OrderDisplayStatus;
   displayStatusLabel: string;
+  /** (M26) First available line item's listing image, for a list-row thumbnail — null when every item's listing has since been deleted. */
+  thumbnailImageKey: string | null;
+  /** (M26) Distinct vendor packages on this order — mirrors packages.length on OrderDetailView, without needing the full per-package breakdown for a list row. */
+  vendorCount: number;
 };
 
 export type OrderDetailView = {

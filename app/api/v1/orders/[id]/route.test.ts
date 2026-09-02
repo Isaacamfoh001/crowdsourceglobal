@@ -42,6 +42,13 @@ describe("GET /api/v1/orders/[id]", () => {
   });
 
   afterAll(async () => {
+    // Same explicit teardown order as modules/fulfilment/service.test.ts —
+    // FulfilmentItem/VendorEarning have no onDelete: Cascade back to
+    // OrderItem, so they must be removed before Order/OrderItem deletion.
+    await prisma.shipment.deleteMany({ where: { fulfilment: { orderId: { in: createdOrderIds } } } });
+    await prisma.vendorEarning.deleteMany({ where: { orderId: { in: createdOrderIds } } });
+    await prisma.fulfilmentItem.deleteMany({ where: { fulfilment: { orderId: { in: createdOrderIds } } } });
+    await prisma.fulfilment.deleteMany({ where: { orderId: { in: createdOrderIds } } });
     await prisma.inventoryReservation.deleteMany({ where: { orderId: { in: createdOrderIds } } });
     await prisma.orderItem.deleteMany({ where: { orderId: { in: createdOrderIds } } });
     await prisma.order.deleteMany({ where: { id: { in: createdOrderIds } } });
@@ -88,7 +95,7 @@ describe("GET /api/v1/orders/[id]", () => {
     expect(response.status).toBe(401);
   });
 
-  it("returns the owner's own order, pending payment, DTO-safe", async () => {
+  it("returns the owner's own order, pending payment, full DTO-safe (M26)", async () => {
     const { user, orderId } = await setup("owner");
     vi.mocked(getCurrentSession).mockResolvedValue(sessionFor(user));
 
@@ -98,10 +105,65 @@ describe("GET /api/v1/orders/[id]", () => {
     expect(body.data.orderNumber).toEqual(expect.any(String));
     expect(body.data.status).toBe("PENDING_PAYMENT");
     expect(body.data.paymentStatus).toBe("UNPAID");
-    expect(Object.keys(body.data).sort()).toEqual(["createdAt", "currency", "id", "orderNumber", "paymentStatus", "status", "total"].sort());
+    // Every M24 field is still present (checkout confirmation/payment
+    // screens only read a subset), plus the M26 full-detail additions.
+    expect(Object.keys(body.data).sort()).toEqual(
+      [
+        "id",
+        "orderNumber",
+        "createdAt",
+        "status",
+        "paymentStatus",
+        "subtotal",
+        "total",
+        "currency",
+        "deliveryInfo",
+        "displayStatus",
+        "displayStatusLabel",
+        "vendorGroups",
+        "packages",
+        "latestPaymentStatus",
+        "latestPayment",
+        "tracking",
+        "cases",
+      ].sort(),
+    );
+    // No Fulfilment exists yet (still PENDING_PAYMENT) — never fabricated.
+    expect(body.data.tracking).toEqual([]);
+    expect(body.data.packages).toEqual([]);
+    expect(body.data.cases).toEqual([]);
+    // Never a vendor-cost/finance field, on the item or anywhere else.
+    const raw = JSON.stringify(body.data);
+    expect(raw).not.toMatch(/vendorPayableBasis|vendorCost|payoutHold/i);
   });
 
-  it("returns 404 for another customer's order", async () => {
+  it("returns per-package tracking with real timestamps once confirmed, never vendor cost", async () => {
+    const { user, orderId } = await setup("confirmed");
+    vi.mocked(getCurrentSession).mockResolvedValue(sessionFor(user));
+
+    await ordersService.confirmOrderPayment(orderId);
+
+    const response = await GET(new Request(`http://localhost/api/v1/orders/${orderId}`), { params: Promise.resolve({ id: orderId }) });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.data.status).toBe("CONFIRMED");
+    expect(body.data.tracking).toHaveLength(1);
+    expect(body.data.tracking[0].vendorName).toEqual(expect.any(String));
+    expect(body.data.tracking[0].steps[0].key).toBe("confirmed");
+    // Freshly-created Fulfilment is still PENDING — "confirmed" is the
+    // CURRENT step (not yet done; "preparing" is next), but it already has
+    // a real timestamp: Fulfilment.createdAt, set the instant payment
+    // confirmed this Order.
+    expect(body.data.tracking[0].steps[0].current).toBe(true);
+    expect(body.data.tracking[0].steps[0].at).toEqual(expect.any(String));
+    const lastStep = body.data.tracking[0].steps.at(-1);
+    expect(lastStep.done).toBe(false);
+    expect(lastStep.at).toBeNull();
+    expect(body.data.packages).toHaveLength(1);
+    expect(body.data.packages[0].status).toBe("ORDER_CONFIRMED");
+  });
+
+  it("returns 404 for another customer's order (IDOR)", async () => {
     const { orderId } = await setup("victim");
     const attacker = await setup("attacker");
 
