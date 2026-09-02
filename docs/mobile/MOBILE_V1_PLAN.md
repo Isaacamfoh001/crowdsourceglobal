@@ -1342,6 +1342,175 @@ Do not recreate quotation calculations in React Native.
 
 ---
 
+# 16A. Native Sourcing & Quotation Flow — implemented M24
+
+M24 replaced the Source tab's placeholder with the real photo-first
+sourcing flow, and added customer-facing quotation viewing/acceptance.
+Everything below is built on the EXISTING M6 sourcing/quotation backend —
+no second business layer.
+
+## 16A.1 Backend architecture reused unchanged
+
+- **Entities**: `CustomSourcingRequest` (+ `SourcingRequestAttachment`,
+  `SourcingOption`, `SourcingAllocation`, `SourcingRequestActivity`, all
+  staff/admin-only) and `Quotation`/`QuotationItem` (M5/M6, shared between
+  INSTANT bulk-cart quotes and CUSTOM_SOURCING quotes).
+- **Sourcing state machine**: `SUBMITTED → UNDER_REVIEW → SOURCING →
+  (AWAITING_CUSTOMER ⇄ SOURCING) → QUOTED → ACCEPTED`, with
+  `UNABLE_TO_SOURCE`/`CANCELLED` terminal branches — unchanged, owned by
+  `modules/sourcing/service.ts`.
+- **Quotation state machine**: `ISSUED → ACCEPTED`, or `ISSUED → EXPIRED`
+  (derived, not a background sweep) or `ISSUED → SUPERSEDED` (reissue) —
+  unchanged, owned by `modules/quotation/service.ts`. There is no "reject"
+  action on either the web or mobile customer surface — an unwanted
+  CUSTOM_SOURCING quote is simply left to expire; mobile does not invent one.
+- **Quote acceptance → Order**: `ordersService.createOrderFromQuotation`
+  (unchanged) — same atomic Quotation-status claim, same idempotency
+  guarantee (a repeat accept call returns the existing `orderId`), same
+  `InventoryReservation`/Fulfilment-fan-out path a web-originated Order
+  already used. Mobile calls this exact function through a new route; it
+  does not re-derive or duplicate any of this logic.
+- **Storage**: sourcing attachments stay on the EXISTING private,
+  session-authenticated download route
+  (`app/api/sourcing/attachments/[id]`) — deliberately NOT the
+  unauthenticated-but-unguessable-key convention listing/explore-post/
+  service-request images use, because a sourcing attachment can be a
+  non-image document and was already scoped to "owning customer or staff
+  only". A native client attaches its session cookie itself when fetching
+  these URLs (see `attachmentImageSource.ts` on mobile) — same requirement
+  a browser already satisfies automatically. Up to
+  `MAX_ATTACHMENTS_PER_REQUEST` (5) images were already supported before
+  M24 — no schema change was needed to support multiple reference photos.
+
+## 16A.2 One shared-layer domain change: photo-first submission
+
+`modules/sourcing/service.ts`'s `submitRequest` validation changed from
+"title AND description both required" to "description required only when
+no attachment is present" (`SourcingRequestInput.title` is now optional).
+When `title` is omitted, it's derived server-side from the description's
+first line (truncated) or a generic "Photo sourcing request"/"Sourcing
+request" fallback — never invented on the client, never duplicated between
+web and mobile. The web form is unaffected (it still always submits a
+title). This is the one change to shared business logic M24 made; every
+other engineering rule (checkout integrity, quotation snapshots, financial
+separation) was left untouched.
+
+## 16A.3 Mobile APIs added (all thin — call the existing services only)
+
+```text
+GET  /api/v1/sourcing-requests            paginated, own requests, newest first
+POST /api/v1/sourcing-requests            multipart, up to 5 `attachments` file parts
+GET  /api/v1/sourcing-requests/:id        ownership-scoped detail
+
+GET  /api/v1/quotations                   paginated, own quotations, newest first
+GET  /api/v1/quotations/:id               ownership-scoped detail
+POST /api/v1/quotations/:id/accept        JSON body = lib/delivery-schema.ts's deliverySchema
+
+GET  /api/v1/me/addresses                 saved delivery addresses, for the accept-flow prefill
+
+GET  /api/v1/orders/:id                   DELIBERATELY MINIMAL (orderNumber/status/paymentStatus/
+                                           total/currency only) — added ONLY to back the honest
+                                           "order pending payment" confirmation after acceptance.
+                                           Not a general Orders API — no list route, no vendor/
+                                           fulfilment breakdown. Full native Orders is M25's scope.
+```
+
+## 16A.4 Native image upload — same proven M23 pipeline
+
+`prepareImage.ts` (`src/lib/media/prepareImage.ts`) generalizes M23's
+Careers `prepareWorkPhoto.ts` (1600px longest-side resize, 0.7 JPEG
+recompression) so Source reuses the exact same proven pipeline; Careers'
+`prepareWorkPhoto.ts` is now a one-line wrapper around it (regression-
+verified: `tsc`/`lint` pass, behavior unchanged). Photos are appended to
+`FormData` as `expo-file-system` `File` instances — `new File(photo.uri)`
+— never the legacy React Native `{ uri, name, type }` shape, which Expo's
+spec-compliant Winter fetch rejects (`useCreateSourcingRequest.ts` mirrors
+`useSubmitTalentApplication.ts`'s exact pattern, including the `__DEV__`
+FormData-part-shape console log). Content-Type/multipart boundary is left
+to `fetch` — never set manually. No base64.
+
+Note for a future pass: `beauty-services`'s M22-era
+`useCreateServiceRequest.ts` still uses the legacy `{ uri, name, type }`
+pattern (it predates the M23 fix) — not touched in M24 (out of scope), but
+flagged here since it's a real latent physical-device bug in an existing
+feature, same class as the one M23 fixed.
+
+## 16A.5 Photo-first Source screen
+
+`src/app/(tabs)/source.tsx` — Photo (camera or library, up to 5, resized/
+compressed) → Description (optional once a photo exists, required
+otherwise) → Quantity stepper → Delivery country (searchable picker —
+`src/constants/countries.ts`, mirrors the web `CountrySelect` list
+exactly) + optional region/city free text → Submit. No title field, no
+specifications/budget/category/required-by fields — those stayed
+web-only (richer RFQ detail), consistent with "do not turn this into a
+giant enterprise RFQ form" and "minimize typing". Visible and fully
+fillable while signed out; sign-in is only required at Submit
+(`promptSignInRequired`) — because Source is a tab screen rather than a
+pushed route, the filled-in draft simply stays mounted underneath the
+sign-in screen and is intact on return, which satisfies "preserve draft
+where reasonably simple" without a server-side draft mechanism.
+
+## 16A.6 History, detail, and quotation screens
+
+- `src/app/sourcing/my-requests.tsx` — paginated history (reachable from
+  Account → "Sourcing requests" and a header icon on Source itself),
+  thumbnail + customer-friendly status badge, mirrors
+  `beauty-services/my-requests.tsx`'s list pattern exactly.
+- `src/app/sourcing/[id].tsx` — consumer request tracker: swipeable photo
+  gallery, description, quantity, delivery, status, and a "Your quotation
+  is ready" card linking into the quotation screen when one exists.
+- `src/app/quotations/index.tsx` / `src/app/quotations/[id].tsx` — list and
+  detail (reference, line items, subtotal/total, status, expiry). Detail
+  exposes "Accept quotation" (ISSUED only) behind a delivery-details form
+  (saved-address quick-select from `/api/v1/me/addresses`, region picker
+  constrained to `GHANA_REGIONS` — the same list `DeliveryInfo.region`
+  server-side validation already enforces). EXPIRED shows an explanatory
+  notice; ACCEPTED shows the real order number/total via
+  `useOrderSummary` and an explicit "in-app payment is coming soon" note —
+  never a faked "paid" state (M25 owns native payment).
+
+## 16A.7 Status label mapping
+
+Backend enum values are never shown raw. `SourcingStatusBadge`/
+`QuotationStatusBadge` (mobile) consume the already-humanized
+`statusLabel` the backend computes (`modules/sourcing/service.ts`'s
+`STATUS_LABELS`) — the mobile components only choose a badge tone, never
+re-derive customer copy.
+
+## 16A.8 Admin fix: attachment review (§15 of the M24 brief)
+
+The admin sourcing detail page's attachment section was a bare filename
+link list — staff had to open every file in a new tab to compare photos
+before an operational decision, the same gap already flagged for Listing
+moderation. `components/sourcing/AttachmentGallery.tsx` now renders a
+thumbnail grid with a lightbox for images (non-image files stay a plain
+download list), still pointed at the same private, session-authenticated
+`/api/sourcing/attachments/[id]` route — no new storage/access path.
+
+## 16A.9 Explicitly deferred / known limitations
+
+- No reject/decline action for a quotation — none exists on the web
+  customer surface either (see §16A.1); an unwanted quote just expires.
+- No push notifications for "quotation ready"/"quotation expiring" — no
+  native push infrastructure exists yet (§21.2 is still unimplemented).
+- No native payment after quote acceptance — the created Order is
+  correctly `PENDING_PAYMENT`; full native checkout/Paystack is M25.
+- No general native Orders feature (list, tracking, fulfilment
+  breakdown) — `GET /api/v1/orders/:id` added in M24 is intentionally
+  minimal, only for the post-acceptance confirmation card.
+- `specifications`/`budgetAmount`/`budgetCurrency`/`categoryId`/
+  `requiredByDate` are not collected on mobile (web-only richness) — the
+  backend already treats every one of them as optional, so omitting them
+  client-side is fully backward compatible.
+- Non-image sourcing attachments (PDF/CSV/XLSX) are accepted by the
+  shared backend validator (unchanged) but the mobile detail screen only
+  renders image attachments — a customer submitting from mobile only ever
+  produces images (camera/library), so this only matters for a request
+  that also has a document attached via the web form.
+
+---
+
 # 17. Cart and Checkout
 
 Mobile cart must use the same backend pricing and inventory rules as
@@ -1412,6 +1581,235 @@ digital app content, so platform in-app-purchase rules must be evaluated
 against the exact V1 offering at release time.
 
 Do not assume rules; verify immediately before submission.
+
+---
+
+# 18A. Native Cart, Checkout & Payments — implemented M25
+
+M25 completed the standard commerce journey (Shop → Product → Cart →
+Checkout → Paystack → Order Confirmation) on mobile, entirely on the
+EXISTING web/backend cart, checkout, pricing, inventory-reservation,
+order, and Paystack payment services — no second business layer, no new
+payment provider.
+
+## 18A.1 Backend architecture reused unchanged
+
+- **Cart**: `Cart`/`CartItem` (`modules/cart/service.ts`) — Cart is
+  `CustomerProfile`-owned with no anonymous/guest cart in the approved
+  model (see `prisma/schema.prisma`'s `Cart` doc comment). No price is
+  stored on `CartItem`; unit price is always resolved live against current
+  `VendorListing`/`BulkPriceTier` data at read time
+  (`resolveUnitPrice.ts`).
+- **Checkout transaction**: `ordersService.createOrderFromCart`
+  (unchanged) — inside one Prisma transaction: re-reads each listing fresh
+  (never trusts the cart snapshot), re-validates `listingStatus === "ACTIVE"`/MOQ/maxOq,
+  atomically conditional-decrements `VendorListing.availableQuantity`
+  (`updateMany` with a `gte` guard — the actual oversell guard), creates
+  the `Order` + `OrderItem`s (first point standard-path pricing becomes
+  authoritative, per CLAUDE.md §33.3), creates one `InventoryReservation`
+  per line with a 15-minute `expiresAt`, and marks the source `Cart`
+  `CONVERTED`.
+- **Payments**: `modules/payments/service.ts` — Mobile Money
+  (`initiateMobileMoneyPayment`/`submitMobileMoneyOtp`, provider-neutral,
+  Paystack primary as of M10A.2) and Card (`initiateCardPayment`, always
+  Paystack-hosted Checkout regardless of `env.PAYMENT_PROVIDER`). Every
+  verification path — customer poll, card return, and the Paystack
+  webhook — funnels through the same `applyVerifyOutcome`, which
+  independently re-verifies via the provider's own Verify Transaction
+  endpoint before ever confirming an Order (a webhook body's claimed
+  status is never sufficient alone), checks amount/currency match, and
+  guards the SUCCEEDED transition with a `updateMany` on
+  `status IN (INITIATED, PENDING)` so a duplicate caller can only ever win
+  once. `ordersService.confirmOrderPayment` (unchanged) then commits the
+  reservations, fans out one `Fulfilment` per distinct vendor, and creates
+  `VendorEarning` rows — identical to the web path.
+- **Quotation-originated orders**: `ordersService.createOrderFromQuotation`
+  (M24, unchanged) already produces a normal `PENDING_PAYMENT` Order with
+  no `originQuotationId`-specific payment branch — it pays through the
+  exact same `/orders/:id/payments/*` endpoints M25 added, so the M24
+  "Pay now" gap (previously an honest "in-app payment is coming soon"
+  note) is now closed without any quotation-specific payment code.
+
+## 18A.2 Guest cart decision
+
+Cart requires a signed-in customer (matches the schema comment above and
+the existing web behavior). Catalogue browsing (Shop, Product Detail)
+stays fully public; only *Add to Cart* gates on auth, using the same
+`promptSignInRequired(action, redirectTo)` pattern M21/M22/M24 already
+established for likes/saves/sourcing/service-request submission — no
+local-only guest cart, no client-side cart/server-cart reconciliation
+engine. This is the "reuse the backend's own guest/session-cart support if
+it exists, otherwise don't build a synchronization engine" call from the
+M25 brief: the backend has no guest-cart support at all, so there is
+nothing to reconcile.
+
+## 18A.3 Mobile APIs added (all thin — call the existing services only)
+
+```text
+GET    /api/v1/cart                                  vendor-grouped CartView, live-resolved pricing
+POST   /api/v1/cart/items                             { listingId, quantity } → refreshed CartView
+PATCH  /api/v1/cart/items/:id                          { quantity } → refreshed CartView (0 removes the line)
+DELETE /api/v1/cart/items/:id                          → refreshed CartView
+
+POST   /api/v1/checkout                                deliverySchema body → { orderId } (cart → PENDING_PAYMENT Order)
+
+POST   /api/v1/orders/:id/payments/mobile-money         { network, phone }
+POST   /api/v1/orders/:id/payments/mobile-money/otp     { paymentId, phone, otpcode }
+POST   /api/v1/orders/:id/payments/card                 → { payment, authorizationUrl }
+GET    /api/v1/payments/:id                             bounded customer status poll (re-verifies when stale)
+```
+
+Every route: `getCurrentSession`/`getCurrentCustomerProfile` auth gate,
+then a thin call into the existing `cartService`/`ordersService`/
+`paymentsService` — no route contains business logic. Money fields are
+serialized as `{ amount: "12.34", currency: "GHS" }` via the existing
+`serializeMoney` convention (`lib/api/dto/cart.ts`,
+`lib/api/dto/payments.ts`). `checkout` and both payment-initiation routes
+reuse the exact same rate limits as their web server-action equivalents
+(`lib/actions/checkout.ts`/`lib/actions/payment.ts`); the client-IP key
+they need is read directly off the Route Handler's own `Request`
+(`lib/api/request-ip.ts`) rather than `next/headers()`'s `headers()`,
+mirroring the pattern `app/api/v1/talent-applications/route.ts` (M23)
+already established — `headers()` requires Next's request-scope async
+storage, which breaks calling a route handler directly in a test.
+
+There is deliberately no `GET /api/v1/orders/:id/payments/card/return`
+route — see §18A.4.
+
+## 18A.4 Native Paystack flow
+
+**Mobile Money** is a fully native form (network picker, phone number,
+optional OTP step) — no WebView, no redirect. Same state machine as the
+web `MobileMoneyPaymentForm`: form → (otp) → pending/poll → succeeded
+(navigate to confirmation) / failed (retry) / stalled (manual "Check now"
+after ~2 minutes of polling, same ceiling as web's `MAX_POLLS`).
+
+**Card** is always Paystack-hosted Checkout, opened via
+`expo-web-browser`'s `WebBrowser.openBrowserAsync(authorizationUrl)` (a
+dismissible in-app browser tab, not a custom-scheme redirect flow).
+CrownSourceGlobal's mobile app never collects, sees, or stores a card
+number/CVV/PIN/OTP.
+
+**Why there is no deep-link return path for payment**: the backend's
+`initiateCardPayment` hard-codes its Paystack `callback_url` to the WEB
+confirmation page (`${NEXT_PUBLIC_APP_URL}/checkout/:orderId/payment/callback`),
+and that page requires a Better-Auth WEB browser session cookie — which
+the in-app browser tab does not share with the native app's own
+SecureStore-based session. Reusing or redirecting that callback into the
+app via `crownsourceglobal://` would have meant either (a) modifying
+shared backend payment-initiation logic to accept a caller-supplied
+callback URL (touching business logic children other than mobile
+consume), or (b) wiring a new deep-link route and reconciling it with
+Better Auth's own existing `crownsourceglobal://` auth deep links (the
+M25 brief's explicit "use separate, explicit payment return paths, don't
+break auth deep links" warning). Instead, the moment
+`WebBrowser.openBrowserAsync` resolves (the customer dismisses the tab —
+whether they completed payment, closed it, or Paystack's own page
+redirected there), the mobile client independently polls
+`GET /api/v1/payments/:id` using its own authenticated app session. That
+poll re-verifies against Paystack itself through the exact same
+`applyVerifyOutcome` funnel the web callback page and the webhook both
+use — so the result is honest regardless of what the browser tab
+displayed, and regardless of whether the web callback page could even
+render (it usually can't, for a mobile-only customer with no browser
+session). This is simpler than a deep-link round trip and makes the same
+correctness guarantee.
+
+## 18A.5 Verification / webhook authority / idempotency
+
+Unchanged from the existing architecture, reused as-is:
+
+- The mobile app **never** calls Paystack directly — every status check
+  goes through CrownSourceGlobal's own server
+  (`GET /api/v1/payments/:id` → `paymentsService.getPaymentStatusForCustomer`),
+  which only calls out to the provider when its last verification is
+  stale (>4s), exactly like the web polling action.
+- The Paystack **webhook** (`app/api/payments/paystack/webhook/route.ts`,
+  unchanged) remains authoritative independent of whatever the mobile
+  client's poll shows — both paths converge on the same
+  `applyVerifyOutcome`/`ordersService.confirmOrderPayment`, so a
+  confirmation can arrive via the webhook even if the customer's device
+  never successfully polls (e.g. they closed the app after payment).
+- **Idempotency**: a duplicate mobile-money/card initiation resumes the
+  same active attempt via the existing `payment_one_active_per_order`
+  partial unique index (unchanged) — no separate mobile-side idempotency
+  key was added, none was needed. A duplicate webhook delivery, a race
+  between the mobile poll and the webhook, and a retried failed attempt
+  all still confirm the Order at most once, guarded by the existing
+  `updateMany(status IN (INITIATED, PENDING))` claim in
+  `applyVerifyOutcome` — this is exactly what
+  `modules/payments/paystack.service.test.ts`'s pre-existing
+  "duplicate webhook callbacks confirm the order exactly once" and
+  "retry... confirms the order exactly once" tests already prove, and M25
+  added no new confirmation path for those tests to miss.
+
+## 18A.6 Security boundaries verified
+
+- Cart/checkout/payment routes are ownership-scoped exactly like every
+  other `/api/v1` route (`customerProfileId` from the session, never a
+  client-supplied id) — IDOR attempts (Customer B mutating/reading
+  Customer A's cart item, initiating/polling Customer A's payment) return
+  `NOT_FOUND`/a validation error, never another customer's data (see
+  regression coverage in §18A.7).
+- The client sends only `listingId`/`quantity` (cart) and delivery details
+  (checkout) — never a price or total; checkout/payment amounts are always
+  server-derived from the live `Order`/`Payment` row.
+- The Paystack secret key and webhook signing behavior stay entirely
+  server-side (`env.PAYSTACK_SECRET_KEY`, never `NEXT_PUBLIC_*`) — nothing
+  payment-provider-secret reaches the mobile bundle. The only value that
+  ever reaches the client is Paystack's own hosted `authorizationUrl`
+  (opened in a browser, never parsed for secrets).
+
+## 18A.7 Backend regression coverage added
+
+8 new route test files (30 tests), integration-style against the real
+local Postgres dev DB, same convention as every existing `/api/v1` route
+test:
+
+```text
+app/api/v1/cart/route.test.ts                                    GET: auth required, Money-shaped DTO
+app/api/v1/cart/items/route.test.ts                               POST: auth, MOQ rejection, happy path, validation
+app/api/v1/cart/items/[id]/route.test.ts                          PATCH/DELETE: IDOR, owner success, qty-0 removal
+app/api/v1/checkout/route.test.ts                                 empty cart, invalid delivery, happy path
+                                                                    (reservation + atomic decrement + cart CONVERTED),
+                                                                    oversell rejection (never partially decrements)
+app/api/v1/orders/[id]/payments/mobile-money/route.test.ts        auth, invalid network, IDOR, happy path
+app/api/v1/orders/[id]/payments/mobile-money/otp/route.test.ts    auth, IDOR, OTP resubmission, validation
+app/api/v1/orders/[id]/payments/card/route.test.ts                auth, IDOR, authorizationUrl passthrough
+app/api/v1/payments/[id]/route.test.ts                            auth, IDOR, Money-shaped DTO
+```
+
+The Paystack HTTP boundary is mocked at the adapter
+(`modules/payments/providers/paystack/adapter`) exactly like the existing
+`modules/payments/paystack.service.test.ts` does — these route tests
+verify routing/auth/ownership/DTO-shape, not business logic the
+service-layer tests already cover exhaustively (MOQ, bulk pricing,
+multi-vendor, duplicate webhooks, forged amounts, etc. — untouched by
+M25, still passing).
+
+## 18A.8 Explicitly deferred / known limitations
+
+- No Apple Pay/Google Pay/saved cards/BNPL/wallet/new payment provider —
+  not built, per the M25 brief.
+- No general native Orders feature (list, vendor/fulfilment breakdown,
+  shipment tracking, messaging) — `src/app/orders/[id].tsx` added in M25
+  is intentionally minimal (order number/status/payment status/total/date
+  only, reusing M24's existing minimal `GET /api/v1/orders/:id`), solely
+  so checkout confirmation's "View Order" action and a quotation-order's
+  "Pay now" retry have somewhere honest to go. Full Orders/Fulfilment is
+  M26's scope; do not extend this screen ahead of that decision.
+- No native push notifications for payment/order events — existing
+  in-app/email notifications (`notificationsService`) continue to fire
+  unchanged; no mobile-specific notification path was added.
+- No physical-device or simulator manual E2E was performed this
+  milestone (no device/simulator available in this environment) — see the
+  M25 final report's AE/AG items. `npx tsc --noEmit`, `npx expo lint`, and
+  `npx expo export` (a full Metro/React Compiler bundle pass) all succeed
+  with the changes in place.
+- The account tab's "Orders" menu item remains an intentional
+  non-functional placeholder (pre-existing, not touched) — it needs a real
+  order LIST endpoint, which does not exist yet and is M26 scope, not a
+  single-order detail screen.
 
 ---
 
@@ -2477,6 +2875,16 @@ Deliver:
 - fulfilment visibility;
 - resolution entry points where appropriate.
 
+**Scope note (delivered as the real M25, not M23):** the actual build
+sequence renumbered milestones (see the real M19-M25 list at the top of
+this file / §18A) — Careers/Talent shipped as the real M23, and this
+slot's content (delivery, checkout, Paystack, server verification, orders)
+shipped as the real **M25**, documented in full at §18A. "Payment
+return/deep link" was deliberately NOT built as a deep link — see §18A.4
+for why an independent status poll after the in-app browser closes was
+chosen instead. "Fulfilment visibility" and "resolution entry points"
+remain undelivered (M26 scope, per §18A.8).
+
 ---
 
 ## M24 --- Custom Sourcing + Quotations
@@ -2502,6 +2910,13 @@ Deliver:
 - universal/app links;
 - notification-to-screen routing;
 - preference enforcement.
+
+**Scope note (this slot's content not yet delivered under this number):**
+the real milestone numbered M25 delivered Cart/Checkout/Paystack instead
+(this old roadmap's M23 slot — see the scope note there and §18A). Nothing
+in this entry (notification center, push tokens, push delivery, universal
+links, preference enforcement) has been built; it remains future work
+under whatever milestone number picks it up next.
 
 ---
 
@@ -2747,3 +3162,127 @@ It should be:
 
 That principle should guide every implementation decision made after
 this document.
+
+---
+
+# 55. M27 — Native Vendor Experience (Implemented)
+
+One mobile app. No separate Vendor app, no second authentication system.
+A `User` may hold a `CustomerProfile`, an approved `VendorMembership`
+(role `OWNER`/`STAFF`), or both — same session throughout. `GET
+/api/v1/me` already carried `vendor.available`/`vendor.memberships`/
+`vendorApplication` (M18.1); M27 wires that data into an actual entry
+point instead of just displaying it.
+
+**Role model / Account.** `(tabs)/account.tsx` is the role-switching
+surface: no vendor capability and no application → "Start selling"; an
+in-flight application → tap-through to its live status; `vendor.available`
+→ an "Enter Vendor Mode" button. `requireVendorPortalContext`'s existing
+"first membership only" limitation (no multi-vendor switcher) applies to
+mobile too — `resolveVendorContext` (`lib/api/vendor-context.ts`) mirrors
+it exactly, non-redirecting, for every `/api/v1/vendor/*` route.
+
+**Onboarding.** `src/app/vendor-onboarding/index.tsx` — one mobile-
+appropriate multi-step screen (seller type → contact → business →
+what-you-sell → review) over the exact same persisted `VendorApplication`
+draft and per-step save/validate/submit behavior the web wizard uses
+(`/api/v1/vendor-application*`, mirroring `lib/actions/vendor-application.ts`
+field-for-field). Honest states only: `DRAFT`/`SUBMITTED`/`UNDER_REVIEW`/
+`CHANGES_REQUESTED`/`APPROVED`/`REJECTED`, editable only in
+`EDITABLE_STATUSES`, `decisionReason` shown verbatim when present.
+
+**Vendor Mode shell.** `src/app/(vendor)/_layout.tsx` — a Tabs navigator
+(Dashboard / Listings / Orders / Finance / More) distinct from the
+customer TabBar, gated by `useVendorModeGuard` (a UI-affordance check
+only — every `/api/v1/vendor/*` route re-verifies membership server-side).
+Detail screens are flat top-level `vendor-*` routes in the root Stack
+(`vendor-listings/[id]`, `vendor-orders/[id]`, `vendor-finance/**`,
+`vendor-store`, `vendor-beauty-professional/**`, `vendor-explore-posts`) —
+not nested inside the tab group, so pushing/popping into Vendor Mode
+detail screens works exactly like the rest of the app. "More" → "Switch to
+shopping" returns to `(tabs)/account` — same User, same session, no
+re-auth.
+
+**Listings.** List/detail/create/edit against `vendorListingsService`
+unchanged. The M21.2 invariant (`pendingChanges` staged on an edit to a
+live `APPROVED`+`ACTIVE` listing; the public row stays untouched pending
+re-review) is surfaced explicitly in the UI as a "LIVE, pending changes"
+notice. Images: gallery picker → `prepareImage` (resize/recompress,
+proven M23.4/M24 pipeline) → `expo-file-system` `File` → `FormData` →
+`PATCH /api/v1/vendor/listings/:id` — never `{ uri, name, type }`, never a
+pasted URL. `VendorListingDetailDTO.images` is `{ key, url }[]`, not a
+resolved-URL array — the edit form needs the raw storage key back
+verbatim as `existingImages` on save (an image is "removed" by omitting
+its key); this shape was a real bug caught and fixed during
+implementation. Inventory (`availableQuantity`/`availabilityStatus`) is
+its own always-editable action, independent of moderation status. Bulk
+price tiers round-trip through the same save call; there is no mobile
+bulk-tier editor UI yet (deferred — see below).
+
+**Orders / fulfilment.** Vendor mutation surface is exactly the four
+methods `fulfilmentService` already exposed: `startPreparing`
+(PENDING→PREPARING), `markReady` (PREPARING→READY),
+`recordVendorShipment` (READY→DISPATCHED, `INTERNATIONAL_INBOUND` only),
+`reportIssue`. The order detail screen renders only the single next valid
+action for the fulfilment's current status/origin — never multiple status
+buttons at once, and the backend independently enforces the same
+`fromStatuses` allowlist regardless of what the UI shows. Domestic
+collection, transit, delivery remain admin/logistics-driven, exactly as
+on web.
+
+**Multi-vendor privacy.** Every `/api/v1/vendor/*` service call passes
+`resolveVendorContext(...).vendorId` — never a client-supplied vendor id
+— into an already vendor-scoped repository query (`findDetailForVendor`,
+`findForVendor`, etc.), so a fulfilment/listing belonging to another
+vendor resolves as 404, never 403 (no enumeration signal). Verified for
+every one of the 33 new routes by direct grep audit, and covered by three
+new integration test files exercising real cross-vendor requests against
+the dev database: `app/api/v1/vendor/orders/[id]/route.test.ts`,
+`app/api/v1/vendor/listings/[id]/route.test.ts`, and OWNER-only
+enforcement in `app/api/v1/vendor/finance/payout-destination/route.test.ts`.
+
+**Earnings / payout.** Read-only `VendorEarning`/`VendorSettlement`
+summaries and detail, real backend values only. Payout destination is
+display (masked — `momoPhoneMasked`/`bankAccountNumberMasked`, never a
+full number) + OWNER-only edit
+(`vendorFinanceService.upsertPayoutDestinationForVendor` already enforces
+this — the route only passes the caller's real membership role through).
+**No "Withdraw" action exists anywhere in mobile** — automated Paystack
+vendor payouts remain on manual fallback (Starter Business tier, per
+`docs/deployment/railway.md`); this was verified against current backend
+truth, not assumed.
+
+**Beauty Professional / Explore.** Profile (create/edit, real photo
+upload only), offered services (add/edit/show-hide), and the
+CrownSourceGlobal-mediated service-request queue (accept/decline) are new
+— `beautyProfessionalsService`/`beautyServicesService`/
+`serviceRequestsService` were already vendor-scoped with no
+customer/provider contact-detail leakage; M27 only added thin route
+wrappers. `serviceRequestsService.listForProfessional` is keyed by
+`BeautyProfessionalProfile.id`, not `vendorId` — every new route resolves
+that via `getForVendor(vendorId)` first, same as the web portal page.
+Explore's vendor-management API (`mine`/create/edit/archive) already
+existed in full from M21 — mobile's "My Explore posts" screen
+(`vendor-explore-posts.tsx`) reuses `useMyExplorePosts` and the existing
+`explore/create.tsx` creation flow unchanged; it adds archive but not a
+new edit UI (deferred — see below). No direct customer/provider chat or
+contact-detail exposure was added anywhere in this milestone.
+
+**Deferred out of this pass** (none of these change any business rule —
+just not built yet):
+
+- A dedicated mobile Explore-post edit screen (`PATCH
+  /api/v1/explore-posts/[id]` already exists and works; only the mobile
+  UI to drive it is missing — "archive" is the only mutation mobile
+  exposes today).
+- A mobile bulk-price-tier editor (tiers persist through listing saves,
+  but there's no UI to add/remove a tier yet).
+- A `specs` (key/value spec sheet) editor for listings.
+- A multi-vendor-membership switcher — matches the web Vendor Portal's
+  own current "first membership only" limitation exactly; not a
+  regression introduced here.
+- Native push notifications (M28's scope per the existing plan).
+
+**Admin remains web-only** — nothing in this milestone added a mobile
+admin surface, and no admin-only action became reachable from a
+`VendorMembership` alone.

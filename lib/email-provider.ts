@@ -11,10 +11,30 @@ export type EmailProvider = {
   send(message: EmailMessage): Promise<void>;
 };
 
-/** Dev/test adapter — zero configuration required, matches every prior milestone's behavior. */
+/**
+ * Dev/test adapter — zero configuration required, matches every prior
+ * milestone's behavior. Prints an unmistakable, greppable banner (every
+ * line prefixed `[DEV EMAIL]`) rather than a single console.log call —
+ * M25.1.1 finding: a plain multi-line log easily gets lost when it lands
+ * between several interleaved `GET/POST ... 200` request-log lines in a
+ * busy dev terminal, or is filtered out entirely by a `| grep GET\|POST`-
+ * style pipe some developers run on their dev server output.
+ */
 class ConsoleEmailProvider implements EmailProvider {
   async send(message: EmailMessage): Promise<void> {
-    console.log(`[email] to=${message.to} subject="${message.subject}"\n${message.text}`);
+    const url = message.text.match(/https?:\/\/\S+/)?.[0];
+    const lines = [
+      "",
+      "[DEV EMAIL] ================================================",
+      `[DEV EMAIL] to=${message.to}`,
+      `[DEV EMAIL] subject="${message.subject}"`,
+      ...(url ? [`[DEV EMAIL] link: ${url}`] : []),
+      "[DEV EMAIL] ------------------------------------------------",
+      ...message.text.split("\n").map((line) => `[DEV EMAIL] ${line}`),
+      "[DEV EMAIL] ================================================",
+      "",
+    ];
+    console.log(lines.join("\n"));
   }
 }
 
@@ -60,8 +80,15 @@ function buildProvider(): EmailProvider {
           "Set EMAIL_PROVIDER=console for local development instead.",
       );
     }
+    // Never logs the key itself — see the M25.1.1 finding above: a
+    // developer expecting console output but silently running against
+    // resend (e.g. EMAIL_PROVIDER inherited from a shell profile rather
+    // than .env) should see that immediately at startup, not infer it from
+    // a missing log line.
+    console.log(`[email] provider=resend from="${env.EMAIL_FROM}" — emails are sent for real, not printed here.`);
     return new ResendEmailProvider(env.RESEND_API_KEY, env.EMAIL_FROM);
   }
+  console.log("[email] provider=console — verification/reset links print to this terminal as [DEV EMAIL] blocks.");
   return new ConsoleEmailProvider();
 }
 

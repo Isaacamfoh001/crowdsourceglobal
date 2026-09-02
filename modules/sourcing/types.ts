@@ -11,7 +11,9 @@ export type SourcingRequestStatus =
 export type SourcingOptionSourceType = "VENDOR_LISTING" | "VENDOR" | "EXTERNAL_SUPPLIER";
 
 export type SourcingRequestInput = {
-  title: string;
+  /** Optional for a photo-first submission (mobile) — derived from the description/photo when omitted. See submitRequest's doc comment. */
+  title?: string;
+  /** Required only when no reference image is attached — see submitRequest's doc comment. */
   description: string;
   quantity: number;
   quantityUnit?: string;
@@ -44,6 +46,8 @@ export type SourcingRequestSummaryView = {
   statusLabel: string;
   submittedAt: Date;
   hasQuotation: boolean;
+  /** First uploaded attachment, if any — feeds the mobile "My Sourcing Requests" thumbnail (M24). Not necessarily an image; callers check mimeType. */
+  primaryAttachment: { id: string; mimeType: string } | null;
 };
 
 export type QuotationRefView = {
@@ -134,6 +138,27 @@ export type AdminSourcingActivityView = {
   metadata: Record<string, unknown> | null;
 };
 
+// --- Factory solicitation (M25.2) -------------------------------------
+
+export type SourcingSolicitationStatus = "SENT" | "RESPONDED" | "CANNOT_FULFIL";
+
+/** Admin's side of a solicitation — one row per factory asked, for the response-comparison view. */
+export type AdminSourcingSolicitationView = {
+  id: string;
+  vendorId: string;
+  vendorName: string;
+  status: SourcingSolicitationStatus;
+  sentAt: Date;
+  respondedAt: Date | null;
+  proposedQuantity: number | null;
+  unitPrice: number | null;
+  currency: string;
+  leadTimeDays: number | null;
+  notes: string | null;
+  /** Set once admin has converted this response into a SourcingOption — disables a repeat "Use for quotation" click. */
+  convertedToOptionId: string | null;
+};
+
 export type AdminSourcingRequestDetailView = {
   id: string;
   requestNumber: string;
@@ -157,6 +182,7 @@ export type AdminSourcingRequestDetailView = {
   customerEmail: string;
   assignedStaffId: string | null;
   assignedStaffName: string | null;
+  solicitations: AdminSourcingSolicitationView[];
   options: AdminSourcingOptionView[];
   allocations: AdminSourcingAllocationView[];
   allocatedTotal: number;
@@ -167,6 +193,60 @@ export type AdminSourcingRequestDetailView = {
 export type StaffOption = { id: string; name: string };
 export type VendorOption = { id: string; companyName: string };
 export type VendorListingOption = { id: string; title: string; vendorId: string; vendorName: string };
+
+/** A quote-pricing suggestion computed server-side (Decimal) from a chosen SourcingOption — a prefill default, never trusted if echoed back by a client. */
+export type QuotePricingSuggestion = {
+  factoryUnitPrice: number;
+  factoryQuantity: number;
+  factorySubtotal: number;
+  markupPercent: number;
+  customerUnitPrice: number;
+  customerSubtotal: number;
+  currency: string;
+};
+
+// --- Factory (vendor) portal views --------------------------------------
+
+/** Factory's queue entry — never carries customer identity/contact. */
+export type VendorSolicitationSummaryView = {
+  id: string;
+  status: SourcingSolicitationStatus;
+  sentAt: Date;
+  requestReference: string;
+  requestTitle: string;
+  quantity: number;
+  quantityUnit: string | null;
+};
+
+/** Factory's detail view of one solicitation — the request fields a factory legitimately needs, and nothing else. */
+export type VendorSolicitationDetailView = {
+  id: string;
+  status: SourcingSolicitationStatus;
+  sentAt: Date;
+  respondedAt: Date | null;
+  requestReference: string;
+  title: string;
+  description: string;
+  quantity: number;
+  quantityUnit: string | null;
+  specifications: Record<string, string> | null;
+  deliveryCountry: string;
+  deliveryRegion: string | null;
+  deliveryCity: string | null;
+  requiredByDate: Date | null;
+  attachments: SourcingRequestAttachmentView[];
+  response: {
+    proposedQuantity: number | null;
+    unitPrice: number | null;
+    currency: string;
+    leadTimeDays: number | null;
+    notes: string | null;
+  } | null;
+};
+
+export type RespondToSolicitationInput =
+  | { canFulfil: false }
+  | { canFulfil: true; proposedQuantity: number; unitPrice: number; leadTimeDays?: number; notes?: string };
 
 export type AddSourcingOptionInput = {
   sourceType: SourcingOptionSourceType;

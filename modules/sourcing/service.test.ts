@@ -152,8 +152,16 @@ describe("sourcingService", () => {
     expect(detail?.statusLabel).toBe("Request received");
   });
 
-  it("rejects a request with no title", async () => {
-    const result = await submit(customerAId, customerAEmail, { title: "" });
+  it("derives a title from the description when none is provided (M24 photo-first)", async () => {
+    const result = await submit(customerAId, customerAEmail, { title: undefined, description: "500 branded gift bags for a corporate event" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const detail = await sourcingService.getDetailForCustomer(result.value.id, customerAId);
+    expect(detail?.title).toBe("500 branded gift bags for a corporate event");
+  });
+
+  it("rejects a request with neither a description nor an attachment", async () => {
+    const result = await submit(customerAId, customerAEmail, { title: undefined, description: "" });
     expect(result.ok).toBe(false);
   });
 
@@ -655,5 +663,279 @@ describe("sourcingService", () => {
     const files = Array.from({ length: 6 }, (_, i) => ({ buffer: PNG_MAGIC, filename: `f${i}.png`, mimeType: "image/png" }));
     const result = await sourcingService.submitRequest(customerAId, customerAUserId, customerAEmail, baseInput, files);
     expect(result.ok).toBe(false);
+  });
+
+  it("accepts a photo-only request with no title or description (M24 photo-first)", async () => {
+    const result = await sourcingService.submitRequest(
+      customerAId,
+      customerAUserId,
+      customerAEmail,
+      { ...baseInput, title: undefined, description: "" },
+      [{ buffer: PNG_MAGIC, filename: "item.png", mimeType: "image/png" }],
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    createdRequestIds.push(result.value.id);
+    const detail = await sourcingService.getDetailForCustomer(result.value.id, customerAId);
+    expect(detail?.title).toBe("Photo sourcing request");
+    expect(detail?.attachments).toHaveLength(1);
+  });
+
+  it("surfaces the first attachment as primaryAttachment on the customer summary list (M24)", async () => {
+    const created = await sourcingService.submitRequest(customerAId, customerAUserId, customerAEmail, baseInput, [
+      { buffer: PNG_MAGIC, filename: "item.png", mimeType: "image/png" },
+    ]);
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    createdRequestIds.push(created.value.id);
+
+    const { rows } = await sourcingService.listForCustomer(customerAId);
+    const summary = rows.find((r) => r.id === created.value.id);
+    expect(summary?.primaryAttachment).toEqual({ id: expect.any(String), mimeType: "image/png" });
+  });
+
+  // ---- Factory solicitation (M25.2) ----------------------------------------
+
+  describe("factory solicitation", () => {
+    let vendorTwoId: string;
+
+    beforeEach(async () => {
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const vendorTwo = await prisma.vendor.create({
+        data: { companyName: "M25.2 Factory Two", storefrontSlug: `m252-factory-two-${suffix}`, verificationStatus: "APPROVED", country: "Ghana" },
+      });
+      vendorTwoId = vendorTwo.id;
+      createdVendorIds.push(vendorTwo.id);
+
+      const ownerOne = await prisma.user.create({
+        data: { id: `m252-owner-one-${suffix}`, name: "Factory One Owner", email: `m252.owner.one.${suffix}@example.com` },
+      });
+      createdUserIds.push(ownerOne.id);
+      await prisma.vendorMembership.create({ data: { userId: ownerOne.id, vendorId, role: "OWNER" } });
+
+      const ownerTwo = await prisma.user.create({
+        data: { id: `m252-owner-two-${suffix}`, name: "Factory Two Owner", email: `m252.owner.two.${suffix}@example.com` },
+      });
+      createdUserIds.push(ownerTwo.id);
+      await prisma.vendorMembership.create({ data: { userId: ownerTwo.id, vendorId: vendorTwoId, role: "OWNER" } });
+    });
+
+    async function submitAndSendToFactories(vendorIds: string[], overrides: Partial<SourcingRequestInput> = {}) {
+      const created = await submit(customerAId, customerAEmail, overrides);
+      if (!created.ok) throw new Error("submit failed");
+      const id = created.value.id;
+      await sourcingService.moveToUnderReview(id);
+      await sourcingService.moveToSourcing(id);
+      const sent = await sourcingService.sendToFactories(id, vendorIds, staffUserId);
+      return { id, sent };
+    }
+
+    it("sends the same request to selected factories and each factory can read only its own solicitation", async () => {
+      const { id, sent } = await submitAndSendToFactories([vendorId, vendorTwoId]);
+      expect(sent.ok).toBe(true);
+
+      const { rows: factoryOneQueue } = await sourcingService.listSolicitationsForVendor(vendorId);
+      const { rows: factoryTwoQueue } = await sourcingService.listSolicitationsForVendor(vendorTwoId);
+      expect(factoryOneQueue.some((r) => r.requestReference && factoryOneQueue.length > 0)).toBe(true);
+      const solicitationOne = factoryOneQueue[0]!;
+      const solicitationTwo = factoryTwoQueue[0]!;
+      expect(solicitationOne.id).not.toBe(solicitationTwo.id);
+
+      const detailForOwner = await sourcingService.getSolicitationDetailForVendor(solicitationOne.id, vendorId);
+      expect(detailForOwner).not.toBeNull();
+      expect(detailForOwner?.quantity).toBe(baseInput.quantity);
+
+      // IDOR: factory two cannot read factory one's solicitation.
+      const crossAccess = await sourcingService.getSolicitationDetailForVendor(solicitationOne.id, vendorTwoId);
+      expect(crossAccess).toBeNull();
+
+      const detail = await sourcingService.getDetailForAdmin(id);
+      expect(detail?.solicitations).toHaveLength(2);
+    });
+
+    it("never exposes customer name/email/private data on the factory-facing detail view", async () => {
+      const { id } = await submitAndSendToFactories([vendorId]);
+      const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
+      const solicitation = rows.find((r) => r.requestReference)!;
+      const detail = await sourcingService.getSolicitationDetailForVendor(solicitation.id, vendorId);
+      const serialized = JSON.stringify(detail);
+      expect(serialized).not.toContain(customerAEmail);
+      expect(serialized).not.toContain("Customer A");
+      expect(detail).not.toHaveProperty("customerName");
+      expect(detail).not.toHaveProperty("customerEmail");
+      void id;
+    });
+
+    it("is idempotent — re-sending to an already-asked factory does not duplicate the solicitation", async () => {
+      const { id } = await submitAndSendToFactories([vendorId]);
+      const again = await sourcingService.sendToFactories(id, [vendorId], staffUserId);
+      expect(again.ok).toBe(true);
+
+      const detail = await sourcingService.getDetailForAdmin(id);
+      expect(detail?.solicitations).toHaveLength(1);
+    });
+
+    it("records a CAN FULFIL response with the factory's own figures and moves it to RESPONDED", async () => {
+      const { id } = await submitAndSendToFactories([vendorId]);
+      const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
+      const solicitationId = rows[0]!.id;
+
+      const responded = await sourcingService.respondToSolicitation(solicitationId, vendorId, {
+        canFulfil: true,
+        proposedQuantity: 10000,
+        unitPrice: 32,
+        leadTimeDays: 14,
+        notes: "Can start immediately.",
+      });
+      expect(responded.ok).toBe(true);
+
+      const detail = await sourcingService.getDetailForAdmin(id);
+      const solicitation = detail!.solicitations.find((s) => s.id === solicitationId)!;
+      expect(solicitation.status).toBe("RESPONDED");
+      expect(solicitation.proposedQuantity).toBe(10000);
+      expect(solicitation.unitPrice).toBe(32);
+      expect(solicitation.leadTimeDays).toBe(14);
+    });
+
+    it("records a CANNOT FULFIL response distinctly from a can-fulfil response", async () => {
+      const { id } = await submitAndSendToFactories([vendorId]);
+      const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
+      const solicitationId = rows[0]!.id;
+
+      const responded = await sourcingService.respondToSolicitation(solicitationId, vendorId, { canFulfil: false });
+      expect(responded.ok).toBe(true);
+
+      const detail = await sourcingService.getDetailForAdmin(id);
+      const solicitation = detail!.solicitations.find((s) => s.id === solicitationId)!;
+      expect(solicitation.status).toBe("CANNOT_FULFIL");
+      expect(solicitation.proposedQuantity).toBeNull();
+      expect(solicitation.unitPrice).toBeNull();
+    });
+
+    it("rejects a second response to an already-answered solicitation", async () => {
+      const { id } = await submitAndSendToFactories([vendorId]);
+      const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
+      const solicitationId = rows[0]!.id;
+
+      await sourcingService.respondToSolicitation(solicitationId, vendorId, { canFulfil: false });
+      const secondAttempt = await sourcingService.respondToSolicitation(solicitationId, vendorId, {
+        canFulfil: true,
+        proposedQuantity: 100,
+        unitPrice: 10,
+      });
+      expect(secondAttempt.ok).toBe(false);
+      void id;
+    });
+
+    it("rejects a factory responding to another factory's solicitation (IDOR)", async () => {
+      const { id } = await submitAndSendToFactories([vendorId]);
+      const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
+      const solicitationId = rows[0]!.id;
+
+      const forged = await sourcingService.respondToSolicitation(solicitationId, vendorTwoId, {
+        canFulfil: true,
+        proposedQuantity: 100,
+        unitPrice: 10,
+      });
+      expect(forged.ok).toBe(false);
+
+      const detail = await sourcingService.getDetailForAdmin(id);
+      expect(detail?.solicitations.find((s) => s.id === solicitationId)?.status).toBe("SENT");
+    });
+
+    it("converts a RESPONDED solicitation into a SourcingOption automatically, and that option flows through allocation and quote issuance", async () => {
+      const { id } = await submitAndSendToFactories([vendorId], { quantity: 10000 });
+      const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
+      const solicitationId = rows[0]!.id;
+
+      await sourcingService.respondToSolicitation(solicitationId, vendorId, {
+        canFulfil: true,
+        proposedQuantity: 10000,
+        unitPrice: 32,
+        leadTimeDays: 14,
+        notes: "Factory notes.",
+      });
+
+      const conversion = await sourcingService.useSolicitationForOption(id, solicitationId);
+      expect(conversion.ok).toBe(true);
+      if (!conversion.ok) return;
+
+      const detail = await sourcingService.getDetailForAdmin(id);
+      const option = detail!.options.find((o) => o.id === conversion.value.optionId)!;
+      expect(option.sourceType).toBe("VENDOR");
+      expect(option.vendorId).toBe(vendorId);
+      expect(option.proposedQuantity).toBe(10000);
+      expect(option.unitSupplyCost).toBe(32);
+      expect(option.leadTimeDays).toBe(14);
+
+      await sourcingService.setAllocations(id, [{ sourcingOptionId: option.id, allocatedQuantity: 10000 }]);
+      const suggestion = await sourcingService.getQuotePricingSuggestion(option.id);
+      expect(suggestion?.customerUnitPrice).toBe(36.8); // 32 * 1.15
+
+      const quote = await sourcingService.prepareAndIssueQuote(id, {
+        description: "10,000 units",
+        unitPrice: suggestion!.customerUnitPrice,
+      });
+      expect(quote.ok).toBe(true);
+      if (!quote.ok) return;
+      const customerQuote = await quotationService.getDetailForCustomer(quote.value.quotationId, customerAId);
+      expect(customerQuote?.total).toBe(368000); // 10,000 * 36.80
+      // Never leaks factory identity/cost/markup to the customer quote.
+      const serialized = JSON.stringify(customerQuote);
+      expect(serialized).not.toContain("32");
+      expect(customerQuote?.items[0]?.vendor).toBeNull();
+    });
+
+    it("is idempotent under a repeat click — using the same response twice returns the same option, never a duplicate", async () => {
+      const { id } = await submitAndSendToFactories([vendorId]);
+      const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
+      const solicitationId = rows[0]!.id;
+      await sourcingService.respondToSolicitation(solicitationId, vendorId, { canFulfil: true, proposedQuantity: 100, unitPrice: 10 });
+
+      const first = await sourcingService.useSolicitationForOption(id, solicitationId);
+      const second = await sourcingService.useSolicitationForOption(id, solicitationId);
+      expect(first.ok && second.ok && first.value.optionId === second.value.optionId).toBe(true);
+
+      const detail = await sourcingService.getDetailForAdmin(id);
+      expect(detail?.options).toHaveLength(1);
+    });
+
+    it("rejects converting a solicitation that hasn't responded yet, or cannot fulfil", async () => {
+      const { id } = await submitAndSendToFactories([vendorId]);
+      const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
+      const solicitationId = rows[0]!.id;
+
+      const beforeResponse = await sourcingService.useSolicitationForOption(id, solicitationId);
+      expect(beforeResponse.ok).toBe(false);
+
+      await sourcingService.respondToSolicitation(solicitationId, vendorId, { canFulfil: false });
+      const afterDecline = await sourcingService.useSolicitationForOption(id, solicitationId);
+      expect(afterDecline.ok).toBe(false);
+    });
+
+    it("computes the customer markup price with 2dp Decimal rounding, not floating-point drift", async () => {
+      const { id } = await submitAndSendToFactories([vendorId], { quantity: 3 });
+      const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
+      const solicitationId = rows[0]!.id;
+      await sourcingService.respondToSolicitation(solicitationId, vendorId, { canFulfil: true, proposedQuantity: 3, unitPrice: 32.33 });
+      const conversion = await sourcingService.useSolicitationForOption(id, solicitationId);
+      if (!conversion.ok) throw new Error("conversion failed");
+
+      const suggestion = await sourcingService.getQuotePricingSuggestion(conversion.value.optionId, 15);
+      // 32.33 * 1.15 = 37.1795 -> rounds to 37.18 (2dp, never a raw float like 37.17949999999999)
+      expect(suggestion?.customerUnitPrice).toBe(37.18);
+      expect(suggestion?.factorySubtotal).toBe(96.99); // 32.33 * 3
+    });
+
+    it("never exposes solicitation/factory data on the customer-facing request detail", async () => {
+      const { id } = await submitAndSendToFactories([vendorId]);
+      const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
+      await sourcingService.respondToSolicitation(rows[0]!.id, vendorId, { canFulfil: true, proposedQuantity: 100, unitPrice: 30, notes: "Confidential factory note" });
+
+      const customerDetail = await sourcingService.getDetailForCustomer(id, customerAId);
+      const serialized = JSON.stringify(customerDetail);
+      expect(serialized).not.toContain("Confidential factory note");
+      expect(customerDetail).not.toHaveProperty("solicitations");
+    });
   });
 });

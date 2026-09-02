@@ -39,3 +39,18 @@ export function absoluteBeautyProfessionalImageUrl(entry: string): string {
   const resolved = beautyProfessionalImageUrl(entry);
   return resolved.startsWith("/") ? `${env.NEXT_PUBLIC_APP_URL}${resolved}` : resolved;
 }
+
+/**
+ * Sourcing-request attachment URL (M24). Unlike the other image helpers
+ * above, this points at the EXISTING private, session-authenticated
+ * download route (app/api/sourcing/attachments/[id]/route.ts) — sourcing
+ * attachments can include non-image documents and were deliberately kept
+ * private (owning customer or staff only), never the unauthenticated-but-
+ * unguessable-key convention the other media types use. A native client
+ * must attach its session cookie itself when fetching this URL (see the
+ * mobile repo's attachment image-source helper) — same requirement a
+ * browser already satisfies automatically.
+ */
+export function absoluteSourcingAttachmentUrl(attachmentId: string): string {
+  return `${env.NEXT_PUBLIC_APP_URL}/api/sourcing/attachments/${attachmentId}`;
+}

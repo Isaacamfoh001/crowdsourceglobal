@@ -10,12 +10,16 @@ import { administrationRepository } from "../administration/repository";
 import { messagingService } from "../messaging/service";
 import { quotationService } from "../quotation/service";
 import { catalogueService } from "../catalogue/service";
+import { vendorsRepository } from "../vendors/repository";
 import { sourcingRepository } from "./repository";
 import type {
   AddSourcingOptionInput,
   AdminSourcingRequestDetailView,
   AdminSourcingRequestSummaryView,
+  AdminSourcingSolicitationView,
   PrepareQuoteInput,
+  QuotePricingSuggestion,
+  RespondToSolicitationInput,
   SetAllocationsInput,
   SourcingRequestDetailView,
   SourcingRequestInput,
@@ -24,7 +28,26 @@ import type {
   StaffOption,
   VendorListingOption,
   VendorOption,
+  VendorSolicitationDetailView,
+  VendorSolicitationSummaryView,
 } from "./types";
+
+/**
+ * M25.2 — CrownSource's markup over a factory's quoted unit price when
+ * preparing the customer-facing commercial offer. A single exported
+ * constant is the config point (CLAUDE.md's "avoid a DB config table
+ * nobody touches" guidance, same reasoning as modules/notifications/
+ * policy.ts's POLICY map) — change this one value to adjust the default
+ * shown to admin; it is never enforced against what admin actually submits
+ * to prepareAndIssueQuote, only pre-fills it.
+ */
+export const DEFAULT_SOURCING_MARKUP_PERCENT = 15;
+
+/** Decimal-correct: `factoryUnitPrice * (1 + markupPercent / 100)`, rounded to 2dp — never floating-point multiplication on money. */
+function applyMarkup(factoryUnitPrice: Prisma.Decimal, markupPercent: number): Prisma.Decimal {
+  const multiplier = new Prisma.Decimal(1).plus(new Prisma.Decimal(markupPercent).dividedBy(100));
+  return factoryUnitPrice.times(multiplier).toDecimalPlaces(2);
+}
 
 const STATUS_LABELS: Record<SourcingRequestStatus, string> = {
   SUBMITTED: "Request received",
@@ -38,6 +61,24 @@ const STATUS_LABELS: Record<SourcingRequestStatus, string> = {
 };
 
 const CANCELLABLE_STATUSES: SourcingRequestStatus[] = ["SUBMITTED", "UNDER_REVIEW", "SOURCING", "AWAITING_CUSTOMER"];
+
+const MAX_DERIVED_TITLE_LENGTH = 70;
+
+/**
+ * A photo-first submission (M24, mobile) may omit `title` entirely — the
+ * web form's separate "title" field was never a business rule, just a
+ * display label used in admin lists/activity/notification copy. When
+ * absent, derive one from the description (first line, truncated) or fall
+ * back to a generic photo-request label when there's no description at
+ * all. Never invoked when the caller supplied a real title (web, unchanged).
+ */
+function deriveTitle(description: string, hasAttachment: boolean): string {
+  const firstLine = description.split("\n")[0]?.trim() ?? "";
+  if (firstLine) {
+    return firstLine.length > MAX_DERIVED_TITLE_LENGTH ? `${firstLine.slice(0, MAX_DERIVED_TITLE_LENGTH - 1)}…` : firstLine;
+  }
+  return hasAttachment ? "Photo sourcing request" : "Sourcing request";
+}
 
 type RawAdminSourcingRow = {
   id: string;
@@ -105,6 +146,38 @@ function toQuotationRef(row: RawQuotationRef) {
   return { id: row.id, reference: row.reference, status: row.status, total: row.total.toNumber(), currency: row.currency, issuedAt: row.issuedAt };
 }
 
+type RawAdminSolicitation = {
+  id: string;
+  vendorId: string;
+  vendor: { companyName: string };
+  status: "SENT" | "RESPONDED" | "CANNOT_FULFIL";
+  sentAt: Date;
+  respondedAt: Date | null;
+  proposedQuantity: number | null;
+  unitPrice: Prisma.Decimal | null;
+  currency: string;
+  leadTimeDays: number | null;
+  notes: string | null;
+  sourcingOption: { id: string } | null;
+};
+
+function toAdminSolicitationView(row: RawAdminSolicitation): AdminSourcingSolicitationView {
+  return {
+    id: row.id,
+    vendorId: row.vendorId,
+    vendorName: row.vendor.companyName,
+    status: row.status,
+    sentAt: row.sentAt,
+    respondedAt: row.respondedAt,
+    proposedQuantity: row.proposedQuantity,
+    unitPrice: row.unitPrice?.toNumber() ?? null,
+    currency: row.currency,
+    leadTimeDays: row.leadTimeDays,
+    notes: row.notes,
+    convertedToOptionId: row.sourcingOption?.id ?? null,
+  };
+}
+
 export const sourcingService = {
   // --- Customer ----------------------------------------------------------
 
@@ -115,8 +188,12 @@ export const sourcingService = {
     input: SourcingRequestInput,
     files: { buffer: Buffer; filename: string; mimeType: string }[],
   ): Promise<Result<{ id: string; requestNumber: string }>> {
-    if (!input.title.trim()) return err("Enter a short title for your request.");
-    if (!input.description.trim()) return err("Describe what you need in a bit more detail.");
+    // Photo-first rule (M24): a title is optional (derived below when
+    // absent) and description is required only when no reference image was
+    // supplied — a photo alone is a complete, valid request.
+    if (!input.description.trim() && files.length === 0) {
+      return err("Add a photo or describe what you need.");
+    }
     if (!Number.isInteger(input.quantity) || input.quantity <= 0) return err("Enter a valid quantity.");
     if (!input.deliveryCountry.trim()) return err("Enter a delivery destination.");
     if (files.length > MAX_ATTACHMENTS_PER_REQUEST) {
@@ -144,6 +221,8 @@ export const sourcingService = {
       return err("Something went wrong uploading your attachment. Please try again.");
     }
 
+    const resolvedTitle = input.title?.trim() || deriveTitle(input.description.trim(), files.length > 0);
+
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const requestNumber = generateSourcingRequestNumber();
       try {
@@ -151,7 +230,7 @@ export const sourcingService = {
           customerProfileId,
           requestNumber,
           {
-            title: input.title.trim(),
+            title: resolvedTitle,
             description: input.description.trim(),
             quantity: input.quantity,
             quantityUnit: input.quantityUnit || null,
@@ -182,7 +261,7 @@ export const sourcingService = {
             templateData: { requestNumber: created.requestNumber, requestId: created.id },
           },
         });
-        await notifyStaffOfNewRequest(created.id, created.requestNumber, input.title.trim());
+        await notifyStaffOfNewRequest(created.id, created.requestNumber, resolvedTitle);
 
         return ok({ id: created.id, requestNumber: created.requestNumber });
       } catch (error) {
@@ -210,6 +289,7 @@ export const sourcingService = {
         statusLabel: STATUS_LABELS[row.status],
         submittedAt: row.submittedAt,
         hasQuotation: row.quotations.length > 0,
+        primaryAttachment: row.attachments[0] ? { id: row.attachments[0].id, mimeType: row.attachments[0].mimeType } : null,
       })),
       total,
       pageSize: DEFAULT_PAGE_SIZE,
@@ -262,12 +342,18 @@ export const sourcingService = {
    */
   async getAttachmentForDownload(
     attachmentId: string,
-    accessor: { customerProfileId?: string; isStaff: boolean },
+    accessor: { customerProfileId?: string; isStaff: boolean; vendorId?: string },
   ): Promise<{ storageKey: string; filename: string; mimeType: string } | null> {
     const attachment = await sourcingRepository.findAttachmentForAccess(attachmentId);
     if (!attachment) return null;
     const owns = accessor.customerProfileId === attachment.sourcingRequest.customerProfileId;
-    if (!owns && !accessor.isStaff) return null;
+    // M25.2 — a factory may view a customer's reference images only for a
+    // request it was actually sent (a real SourcingSolicitation row exists
+    // for its own vendorId) — never for any other request, never for
+    // another factory's solicitation.
+    const isSolicitedFactory =
+      !!accessor.vendorId && attachment.sourcingRequest.solicitations.some((s) => s.vendorId === accessor.vendorId);
+    if (!owns && !accessor.isStaff && !isSolicitedFactory) return null;
     return { storageKey: attachment.storageKey, filename: attachment.filename, mimeType: attachment.mimeType };
   },
 
@@ -345,6 +431,7 @@ export const sourcingService = {
       customerEmail: row.customerProfile.user.email,
       assignedStaffId: row.assignedStaffId,
       assignedStaffName: row.assignedStaff?.user.name ?? null,
+      solicitations: row.solicitations.map(toAdminSolicitationView),
       options: row.options.map((option) => ({
         id: option.id,
         sourceType: option.sourceType,
@@ -628,6 +715,225 @@ export const sourcingService = {
           templateData: { requestNumber: context.requestNumber, reason: customerSafeReason.trim(), requestId: id },
         },
       });
+    }
+    return ok(null);
+  },
+
+  // --- Factory solicitation (M25.2) ---------------------------------------
+
+  /**
+   * "Ask factories" — sends the SAME sourcing request to one or more
+   * approved vendors, unmodified (no manual re-entry). Idempotent: a
+   * vendor already asked for this request is silently skipped at the DB
+   * layer (the (sourcingRequestId, vendorId) unique constraint), and
+   * re-notifying an already-asked vendor is a safe no-op too (per-vendor
+   * eventKey below is stable, so notificationsService.notify()'s own
+   * dedup guarantee absorbs a repeat "ask factories" click that includes
+   * them again).
+   */
+  async sendToFactories(id: string, vendorIds: string[], staffUserId: string): Promise<Result<null>> {
+    const uniqueVendorIds = [...new Set(vendorIds)];
+    if (uniqueVendorIds.length === 0) return err("Select at least one factory.");
+
+    const request = await sourcingRepository.findStatusForUpdate(id);
+    if (!request) return err("Request not found.");
+    if (request.status !== "SOURCING") return err("Send this request to factories only while it's in sourcing.");
+
+    await sourcingRepository.createSolicitations(id, uniqueVendorIds);
+    await sourcingRepository.createActivity(id, "sent_to_factories", staffUserId, { vendorIds: uniqueVendorIds });
+
+    const summary = await sourcingRepository.findRequestSummaryForNotification(id);
+    const solicitations = await sourcingRepository.findSolicitationsByRequestAndVendors(id, uniqueVendorIds);
+    for (const solicitation of solicitations) {
+      const owner = await vendorsRepository.findOwnerUserIdAndEmail(solicitation.vendorId);
+      if (!owner) continue;
+      await notificationsService.notify({
+        recipientUserId: owner.userId,
+        type: "VENDOR_SOURCING_SOLICITATION_RECEIVED",
+        title: "New sourcing request from CrownSourceGlobal",
+        body: `CrownSourceGlobal is asking whether you can fulfil a sourcing request for ${summary?.quantity ?? "?"} ${summary?.quantityUnit ?? "units"}.`,
+        targetUrl: notificationLinks.vendorSourcingSolicitation(solicitation.id),
+        eventKey: `sourcing-solicitation-sent:${solicitation.id}`,
+        email: {
+          to: owner.email,
+          subject: "New sourcing request from CrownSourceGlobal",
+          templateKey: "vendor-sourcing-solicitation-received",
+          templateData: { quantity: summary?.quantity ?? "", quantityUnit: summary?.quantityUnit, solicitationId: solicitation.id },
+        },
+      });
+    }
+    return ok(null);
+  },
+
+  /**
+   * Admin selects a factory response and converts it into a SourcingOption
+   * — auto-populated from the response (proposed quantity, unit price,
+   * lead time, notes), never re-typed by admin. Idempotent: a repeat click
+   * returns the SAME option (sourcingSolicitationId is unique) rather than
+   * creating a duplicate, including under a race between two clicks.
+   */
+  async useSolicitationForOption(id: string, solicitationId: string): Promise<Result<{ optionId: string }>> {
+    const solicitation = await sourcingRepository.findSolicitationById(solicitationId);
+    if (!solicitation || solicitation.sourcingRequestId !== id) return err("Response not found.");
+    if (solicitation.sourcingOption) return ok({ optionId: solicitation.sourcingOption.id });
+    if (solicitation.status !== "RESPONDED") return err("This factory hasn't submitted a usable response yet.");
+    if (solicitation.proposedQuantity == null || solicitation.unitPrice == null) {
+      return err("This response is missing required figures.");
+    }
+
+    try {
+      const option = await sourcingRepository.createOptionFromSolicitation({
+        sourcingRequestId: id,
+        sourcingSolicitationId: solicitation.id,
+        vendorId: solicitation.vendorId,
+        proposedQuantity: solicitation.proposedQuantity,
+        unitSupplyCost: solicitation.unitPrice.toNumber(),
+        currency: solicitation.currency,
+        leadTimeDays: solicitation.leadTimeDays,
+        notes: solicitation.notes,
+      });
+      await sourcingRepository.createActivity(id, "factory_response_used_for_option", null, { solicitationId, optionId: option.id });
+      return ok({ optionId: option.id });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        const existing = await sourcingRepository.findOptionBySolicitationId(solicitation.id);
+        if (existing) return ok({ optionId: existing.id });
+      }
+      console.error("Failed to convert factory response into a sourcing option:", error);
+      return err("Something went wrong using this response. Please try again.");
+    }
+  },
+
+  /**
+   * Server-authoritative pricing suggestion for the "Prepare quote" form —
+   * NEVER trusted if a client echoed these numbers back; prepareAndIssueQuote
+   * still independently validates whatever admin actually submits. Uses
+   * Prisma.Decimal throughout (never floating-point) for the markup math.
+   */
+  async getQuotePricingSuggestion(optionId: string, markupPercent: number = DEFAULT_SOURCING_MARKUP_PERCENT): Promise<QuotePricingSuggestion | null> {
+    const option = await sourcingRepository.findOptionForPricing(optionId);
+    if (!option) return null;
+    const customerUnitPrice = applyMarkup(option.unitSupplyCost, markupPercent);
+    const factorySubtotal = option.unitSupplyCost.times(option.proposedQuantity);
+    const customerSubtotal = customerUnitPrice.times(option.proposedQuantity);
+    return {
+      factoryUnitPrice: option.unitSupplyCost.toNumber(),
+      factoryQuantity: option.proposedQuantity,
+      factorySubtotal: factorySubtotal.toNumber(),
+      markupPercent,
+      customerUnitPrice: customerUnitPrice.toNumber(),
+      customerSubtotal: customerSubtotal.toNumber(),
+      currency: option.currency,
+    };
+  },
+
+  // --- Factory (vendor) portal ---------------------------------------------
+
+  async listSolicitationsForVendor(
+    vendorId: string,
+    page = 1,
+  ): Promise<{ rows: VendorSolicitationSummaryView[]; total: number; pageSize: number }> {
+    const [rows, total] = await sourcingRepository.listSolicitationsForVendor(vendorId, page, DEFAULT_PAGE_SIZE);
+    return {
+      rows: rows.map((row) => ({
+        id: row.id,
+        status: row.status,
+        sentAt: row.sentAt,
+        requestReference: row.sourcingRequest.requestNumber,
+        requestTitle: row.sourcingRequest.title,
+        quantity: row.sourcingRequest.quantity,
+        quantityUnit: row.sourcingRequest.quantityUnit,
+      })),
+      total,
+      pageSize: DEFAULT_PAGE_SIZE,
+    };
+  },
+
+  /**
+   * Ownership-scoped (vendorId resolved server-side from the caller's own
+   * vendor membership — never trusted from the client) and privacy-scoped:
+   * only the request fields a factory legitimately needs. Never includes
+   * customerName/customerEmail/other factories' identities or responses.
+   */
+  async getSolicitationDetailForVendor(id: string, vendorId: string): Promise<VendorSolicitationDetailView | null> {
+    const row = await sourcingRepository.findSolicitationForVendor(id, vendorId);
+    if (!row) return null;
+    return {
+      id: row.id,
+      status: row.status,
+      sentAt: row.sentAt,
+      respondedAt: row.respondedAt,
+      requestReference: row.sourcingRequest.requestNumber,
+      title: row.sourcingRequest.title,
+      description: row.sourcingRequest.description,
+      quantity: row.sourcingRequest.quantity,
+      quantityUnit: row.sourcingRequest.quantityUnit,
+      specifications: row.sourcingRequest.specifications as Record<string, string> | null,
+      deliveryCountry: row.sourcingRequest.deliveryCountry,
+      deliveryRegion: row.sourcingRequest.deliveryRegion,
+      deliveryCity: row.sourcingRequest.deliveryCity,
+      requiredByDate: row.sourcingRequest.requiredByDate,
+      attachments: row.sourcingRequest.attachments.map(toAttachmentView),
+      response:
+        row.status === "SENT"
+          ? null
+          : {
+              proposedQuantity: row.proposedQuantity,
+              unitPrice: row.unitPrice?.toNumber() ?? null,
+              currency: row.currency,
+              leadTimeDays: row.leadTimeDays,
+              notes: row.notes,
+            },
+    };
+  },
+
+  /** Ownership + state guard enforced atomically in the repository update — a factory can only ever respond once, to its own solicitation. */
+  async respondToSolicitation(id: string, vendorId: string, input: RespondToSolicitationInput): Promise<Result<null>> {
+    if (input.canFulfil) {
+      if (!Number.isInteger(input.proposedQuantity) || input.proposedQuantity <= 0) {
+        return err("Enter a valid quantity.");
+      }
+      if (!(input.unitPrice > 0)) return err("Enter a unit price greater than zero.");
+      const result = await sourcingRepository.respondToSolicitation(id, vendorId, {
+        status: "RESPONDED",
+        respondedAt: new Date(),
+        proposedQuantity: input.proposedQuantity,
+        unitPrice: input.unitPrice,
+        leadTimeDays: input.leadTimeDays ?? null,
+        notes: input.notes?.trim() || null,
+      });
+      if (result.count === 0) return err("This request is no longer awaiting your response.");
+    } else {
+      const result = await sourcingRepository.respondToSolicitation(id, vendorId, { status: "CANNOT_FULFIL", respondedAt: new Date() });
+      if (result.count === 0) return err("This request is no longer awaiting your response.");
+    }
+
+    const solicitation = await sourcingRepository.findSolicitationById(id);
+    if (solicitation) {
+      const summary = await sourcingRepository.findRequestSummaryForNotification(solicitation.sourcingRequestId);
+      const recipients = summary?.assignedStaff
+        ? [{ userId: summary.assignedStaff.user.id, email: summary.assignedStaff.user.email }]
+        : (await administrationRepository.listAllForNotification()).map((a) => ({ userId: a.userId, email: a.user.email }));
+      for (const recipient of recipients) {
+        await notificationsService.notify({
+          recipientUserId: recipient.userId,
+          type: "ADMIN_SOURCING_SOLICITATION_RESPONDED",
+          title: "A factory responded to your sourcing request",
+          body: `${solicitation.vendor.companyName} responded to sourcing request ${summary?.requestNumber ?? ""}.`,
+          targetUrl: notificationLinks.adminSourcing(solicitation.sourcingRequestId),
+          eventKey: `sourcing-solicitation-responded:${id}`,
+          email: {
+            to: recipient.email,
+            subject: "A factory responded to your sourcing request",
+            templateKey: "admin-sourcing-solicitation-responded",
+            templateData: {
+              vendorName: solicitation.vendor.companyName,
+              requestNumber: summary?.requestNumber ?? "",
+              requestId: solicitation.sourcingRequestId,
+            },
+          },
+        });
+      }
     }
     return ok(null);
   },

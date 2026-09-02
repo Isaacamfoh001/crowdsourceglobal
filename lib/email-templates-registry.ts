@@ -198,6 +198,19 @@ const registry: Record<string, (data: Record<string, unknown>) => TemplateConten
     ctaLabel: "View request",
     ctaPath: `/account/sourcing/${d["requestId"]}`,
   }),
+  "vendor-sourcing-solicitation-received": (d) => ({
+    title: "New sourcing request from CrownSourceGlobal",
+    intro: `CrownSourceGlobal is asking whether you can fulfil a sourcing request for ${d["quantity"]} ${d["quantityUnit"] ?? "units"}.`,
+    bodyLines: ["Review the details and let us know if you can fulfil it from your Vendor Portal."],
+    ctaLabel: "View request",
+    ctaPath: `/vendor/portal/sourcing/${d["solicitationId"]}`,
+  }),
+  "admin-sourcing-solicitation-responded": (d) => ({
+    title: "A factory responded to your sourcing request",
+    intro: `${d["vendorName"]} responded to sourcing request ${d["requestNumber"]}.`,
+    ctaLabel: "Compare responses",
+    ctaPath: `/admin/sourcing/${d["requestId"]}`,
+  }),
   "staff-reply": (d) => ({
     title: "CrownSourceGlobal replied to your message",
     intro: "You have a new reply from CrownSourceGlobal.",

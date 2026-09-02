@@ -56,11 +56,27 @@ const adminOptionSelect = {
   allocations: { select: { allocatedQuantity: true } },
 } as const;
 
+const adminSolicitationSelect = {
+  id: true,
+  vendorId: true,
+  vendor: { select: { companyName: true } },
+  status: true,
+  sentAt: true,
+  respondedAt: true,
+  proposedQuantity: true,
+  unitPrice: true,
+  currency: true,
+  leadTimeDays: true,
+  notes: true,
+  sourcingOption: { select: { id: true } },
+} as const;
+
 const adminDetailSelect = {
   ...customerDetailSelect,
   assignedStaffId: true,
   assignedStaff: { select: { user: { select: { name: true } } } },
   customerProfile: { select: { displayName: true, user: { select: { email: true } } } },
+  solicitations: { select: adminSolicitationSelect, orderBy: { sentAt: "asc" as const } },
   options: { select: adminOptionSelect, orderBy: { createdAt: "asc" as const } },
   allocations: {
     select: {
@@ -131,6 +147,7 @@ export const sourcingRepository = {
           status: true,
           submittedAt: true,
           quotations: { select: { id: true }, take: 1 },
+          attachments: { select: { id: true, mimeType: true }, orderBy: { createdAt: "asc" }, take: 1 },
         },
         orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
         skip: paginationSkip(page, pageSize),
@@ -173,7 +190,9 @@ export const sourcingRepository = {
         storageKey: true,
         filename: true,
         mimeType: true,
-        sourcingRequest: { select: { id: true, customerProfileId: true } },
+        sourcingRequest: {
+          select: { id: true, customerProfileId: true, solicitations: { select: { vendorId: true } } },
+        },
       },
     });
   },
@@ -320,6 +339,154 @@ export const sourcingRepository = {
         customerProfileId: true,
         customerProfile: { select: { userId: true, user: { select: { email: true } } } },
       },
+    });
+  },
+
+  // --- Factory solicitation (M25.2) ---------------------------------------
+
+  /** "Ask factories" — idempotent: a factory already asked for this request is silently skipped, never duplicated (the (sourcingRequestId, vendorId) unique constraint is the real guarantee; skipDuplicates just avoids a P2002 on an expected re-ask). */
+  createSolicitations(sourcingRequestId: string, vendorIds: string[]) {
+    return prisma.sourcingSolicitation.createMany({
+      data: vendorIds.map((vendorId) => ({ sourcingRequestId, vendorId })),
+      skipDuplicates: true,
+    });
+  },
+
+  findRequestSummaryForNotification(id: string) {
+    return prisma.customSourcingRequest.findUnique({
+      where: { id },
+      select: {
+        requestNumber: true,
+        quantity: true,
+        quantityUnit: true,
+        assignedStaff: { select: { user: { select: { id: true, email: true } } } },
+      },
+    });
+  },
+
+  findSolicitationsByRequestAndVendors(sourcingRequestId: string, vendorIds: string[]) {
+    return prisma.sourcingSolicitation.findMany({
+      where: { sourcingRequestId, vendorId: { in: vendorIds } },
+      select: { id: true, vendorId: true },
+    });
+  },
+
+  findOptionBySolicitationId(sourcingSolicitationId: string) {
+    return prisma.sourcingOption.findUnique({ where: { sourcingSolicitationId }, select: { id: true } });
+  },
+
+  findSolicitationById(id: string) {
+    return prisma.sourcingSolicitation.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        sourcingRequestId: true,
+        vendorId: true,
+        status: true,
+        proposedQuantity: true,
+        unitPrice: true,
+        currency: true,
+        leadTimeDays: true,
+        notes: true,
+        vendor: { select: { companyName: true } },
+        sourcingOption: { select: { id: true } },
+      },
+    });
+  },
+
+  /** Ownership-scoped — a factory may only ever read/respond to its own solicitation. */
+  findSolicitationForVendor(id: string, vendorId: string) {
+    return prisma.sourcingSolicitation.findFirst({
+      where: { id, vendorId },
+      select: {
+        id: true,
+        status: true,
+        sentAt: true,
+        respondedAt: true,
+        proposedQuantity: true,
+        unitPrice: true,
+        currency: true,
+        leadTimeDays: true,
+        notes: true,
+        sourcingRequest: {
+          select: {
+            requestNumber: true,
+            title: true,
+            description: true,
+            quantity: true,
+            quantityUnit: true,
+            specifications: true,
+            deliveryCountry: true,
+            deliveryRegion: true,
+            deliveryCity: true,
+            requiredByDate: true,
+            attachments: { select: attachmentSelect, orderBy: { createdAt: "asc" as const } },
+          },
+        },
+      },
+    });
+  },
+
+  listSolicitationsForVendor(vendorId: string, page: number, pageSize: number) {
+    const where = { vendorId };
+    return Promise.all([
+      prisma.sourcingSolicitation.findMany({
+        where,
+        select: {
+          id: true,
+          status: true,
+          sentAt: true,
+          sourcingRequest: { select: { requestNumber: true, title: true, quantity: true, quantityUnit: true } },
+        },
+        orderBy: [{ sentAt: "desc" }, { id: "desc" }],
+        skip: paginationSkip(page, pageSize),
+        take: pageSize,
+      }),
+      prisma.sourcingSolicitation.count({ where }),
+    ]);
+  },
+
+  /** Ownership + state-guarded in one atomic update — a factory can only respond once, to its own solicitation, while it's still SENT. */
+  respondToSolicitation(
+    id: string,
+    vendorId: string,
+    data:
+      | { status: "CANNOT_FULFIL"; respondedAt: Date }
+      | {
+          status: "RESPONDED";
+          respondedAt: Date;
+          proposedQuantity: number;
+          unitPrice: number;
+          leadTimeDays: number | null;
+          notes: string | null;
+        },
+  ) {
+    return prisma.sourcingSolicitation.updateMany({
+      where: { id, vendorId, status: "SENT" },
+      data,
+    });
+  },
+
+  findOptionForPricing(optionId: string) {
+    return prisma.sourcingOption.findUnique({
+      where: { id: optionId },
+      select: { unitSupplyCost: true, proposedQuantity: true, currency: true },
+    });
+  },
+
+  /** Auto-populates a SourcingOption FROM a factory's response — never a second manual entry of the same figures. Idempotent via sourcingSolicitationId's unique constraint. */
+  createOptionFromSolicitation(data: {
+    sourcingRequestId: string;
+    sourcingSolicitationId: string;
+    vendorId: string;
+    proposedQuantity: number;
+    unitSupplyCost: number;
+    currency: string;
+    leadTimeDays: number | null;
+    notes: string | null;
+  }) {
+    return prisma.sourcingOption.create({
+      data: { ...data, sourceType: "VENDOR" },
     });
   },
 };

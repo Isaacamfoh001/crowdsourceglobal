@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   assignResolutionStaffAction,
@@ -37,13 +37,37 @@ function ErrorMessage({ state }: { state: Result<unknown> | null }) {
 }
 
 export function AssignResolutionStaffForm({ id, staff, assignedStaffId }: { id: string; staff: StaffOption[]; assignedStaffId: string | null }) {
-  const [state, formAction, isPending] = useActionState(assignResolutionStaffAction, null);
+  // Not `<form action={fn}>` — see the identical fix/comment on
+  // AssignStaffForm in components/admin/SourcingActions.tsx (M25.2 finding):
+  // React's native form.reset() after a successful form-action submit
+  // silently reset this select back to "Unassigned" even though the write
+  // was already durably persisted. Calling the action directly via
+  // useTransition never enters that codepath.
+  const [isPending, startTransition] = useTransition();
+  const [state, setState] = useState<Result<null> | null>(null);
+  const [selected, setSelected] = useState(assignedStaffId ?? "");
+  // Adjusting state during render rather than in a useEffect — see the
+  // identical pattern/comment on AssignStaffForm in SourcingActions.tsx.
+  const [prevAssignedStaffId, setPrevAssignedStaffId] = useState(assignedStaffId);
+  if (assignedStaffId !== prevAssignedStaffId) {
+    setPrevAssignedStaffId(assignedStaffId);
+    setSelected(assignedStaffId ?? "");
+  }
+
+  function handleSave() {
+    const formData = new FormData();
+    formData.set("caseId", id);
+    formData.set("staffId", selected);
+    startTransition(async () => {
+      setState(await assignResolutionStaffAction(null, formData));
+    });
+  }
+
   return (
-    <form action={formAction} className="flex flex-wrap items-center gap-2">
-      <input type="hidden" name="caseId" value={id} />
+    <div className="flex flex-wrap items-center gap-2">
       <select
-        name="staffId"
-        defaultValue={assignedStaffId ?? ""}
+        value={selected}
+        onChange={(e) => setSelected(e.target.value)}
         disabled={isPending}
         className="rounded-lg border border-ivory-400 px-3 py-2 text-sm"
       >
@@ -54,11 +78,11 @@ export function AssignResolutionStaffForm({ id, staff, assignedStaffId }: { id: 
           </option>
         ))}
       </select>
-      <Button type="submit" variant="outline" size="sm" disabled={isPending}>
+      <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={handleSave}>
         {isPending ? "Saving…" : "Save"}
       </Button>
       <ErrorMessage state={state} />
-    </form>
+    </div>
   );
 }
 

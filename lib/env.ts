@@ -17,6 +17,17 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   NEXT_PUBLIC_APP_URL: z.url(),
   /**
+   * Comma-separated list of additional origins Better Auth should trust
+   * beyond BETTER_AUTH_URL (which is always implicitly trusted) — e.g. the
+   * mobile app's custom scheme `crownsourceglobal://` for a dev-client/
+   * standalone build's OAuth redirect (Expo Go's `exp://` origin is
+   * already auto-trusted by the `expo()` plugin when NODE_ENV=development,
+   * with no config needed). Optional and empty by default: never widen
+   * this to "*", and never add an origin here that isn't a scheme/URL you
+   * actually control.
+   */
+  BETTER_AUTH_TRUSTED_ORIGINS: z.string().optional(),
+  /**
    * How many days an instant quotation stays acceptable after issuance
    * (docs/workflows/workflows.md Workflow Q). PROJECT.md does not mandate an
    * exact figure, so this is a documented, configurable V1 default rather
@@ -138,6 +149,7 @@ function loadEnv() {
     GOOGLE_CLIENT_ID: process.env["GOOGLE_CLIENT_ID"] || undefined,
     GOOGLE_CLIENT_SECRET: process.env["GOOGLE_CLIENT_SECRET"] || undefined,
     NEXT_PUBLIC_APP_URL: process.env["NEXT_PUBLIC_APP_URL"],
+    BETTER_AUTH_TRUSTED_ORIGINS: process.env["BETTER_AUTH_TRUSTED_ORIGINS"] || undefined,
     QUOTE_VALIDITY_DAYS: process.env["QUOTE_VALIDITY_DAYS"] || undefined,
     EMAIL_PROVIDER: process.env["EMAIL_PROVIDER"] || undefined,
     EMAIL_FROM: process.env["EMAIL_FROM"] || undefined,
@@ -278,3 +290,9 @@ if (
 export const googleOAuthConfigured = Boolean(
   env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,
 );
+
+/** Parsed BETTER_AUTH_TRUSTED_ORIGINS — see the schema comment above. Empty when unset. */
+export const additionalTrustedOrigins = (env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter((origin) => origin.length > 0);

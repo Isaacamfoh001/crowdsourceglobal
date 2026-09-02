@@ -210,6 +210,28 @@ export async function prepareQuoteAction(_prevState: Result<null> | null, formDa
   return ok(null);
 }
 
+export async function sendToFactoriesAction(_prevState: Result<null> | null, formData: FormData): Promise<Result<null>> {
+  const { session } = await requireAdminSession("/admin/sourcing", [...ADMIN_OPS_ROLES]);
+  const id = String(formData.get("id") ?? "");
+  const vendorIds = formData.getAll("vendorId").map(String).filter(Boolean);
+  const result = await sourcingService.sendToFactories(id, vendorIds, session.user.id);
+  if (result.ok) revalidatePath(`/admin/sourcing/${id}`);
+  return result;
+}
+
+export async function convertSolicitationToOptionAction(
+  _prevState: Result<null> | null,
+  formData: FormData,
+): Promise<Result<null>> {
+  await requireAdminSession("/admin/sourcing", [...ADMIN_OPS_ROLES]);
+  const id = String(formData.get("id") ?? "");
+  const solicitationId = String(formData.get("solicitationId") ?? "");
+  const result = await sourcingService.useSolicitationForOption(id, solicitationId);
+  if (!result.ok) return result;
+  revalidatePath(`/admin/sourcing/${id}`);
+  return ok(null);
+}
+
 export async function markUnableToSourceAction(
   _prevState: Result<null> | null,
   formData: FormData,

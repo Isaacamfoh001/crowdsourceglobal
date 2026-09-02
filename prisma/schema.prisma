@@ -293,14 +293,17 @@ model Vendor {
   pickupHours        String?
   pickupNotes        String?
 
-  listings        VendorListing[]
-  fulfilments     Fulfilment[]
-  orderItems      OrderItem[]
-  quotationItems  QuotationItem[]
+  listings              VendorListing[]
+  fulfilments           Fulfilment[]
+  orderItems            OrderItem[]
+  quotationItems        QuotationItem[]
   /// Internal-only (M6) — CrownSource operations considering this Vendor as
   /// a custom sourcing supply option. Never a public/self-serve bidding
   /// mechanism (see docs/workflows/workflows.md Workflow R).
-  sourcingOptions SourcingOption[]
+  sourcingOptions       SourcingOption[]
+  /// M25.2 — sourcing requests CrownSource has asked this vendor/factory to
+  /// respond to. See SourcingSolicitation's own doc comment.
+  sourcingSolicitations SourcingSolicitation[]
 
   memberships VendorMembership[]
   application VendorApplication?
@@ -1782,6 +1785,7 @@ model CustomSourcingRequest {
   activities    SourcingRequestActivity[]
   quotations    Quotation[]
   conversations Conversation[]
+  solicitations SourcingSolicitation[]
 
   @@index([customerProfileId, createdAt])
   @@index([status, createdAt])
@@ -1856,8 +1860,70 @@ model SourcingOption {
 
   allocations SourcingAllocation[]
 
+  /// M25.2 — set when this option was created FROM a factory's structured
+  /// response (sourceType VENDOR) rather than typed by an admin. Admin
+  /// clicking "Use for quotation" on a RESPONDED SourcingSolicitation
+  /// auto-creates the option from it — never a second manual entry of the
+  /// same figures. @unique makes that conversion idempotent: a repeat click
+  /// looks up the existing option instead of creating a duplicate.
+  sourcingSolicitationId String?               @unique
+  sourcingSolicitation   SourcingSolicitation? @relation(fields: [sourcingSolicitationId], references: [id])
+
   @@index([sourcingRequestId])
   @@map("sourcing_option")
+}
+
+enum SourcingSolicitationStatus {
+  /// Sent to the factory; awaiting their response.
+  SENT
+  /// Factory reported they can fulfil, with proposed terms below.
+  RESPONDED
+  /// Factory reported they cannot fulfil this request.
+  CANNOT_FULFIL
+}
+
+/// M25.2 — "CrownSource asked factory X to quote this sourcing request."
+/// One row per (request, factory) pair. Deliberately separate from
+/// SourcingOption: this is the factory's OWN structured reply (their
+/// proposed quantity/price/lead time/notes), never edited by admin on the
+/// factory's behalf; SourcingOption stays CrownSource's internal
+/// commercial/allocation record, populated FROM a response once admin picks
+/// one (see the sourcingSolicitationId back-reference above), not a
+/// factory-authored table. Never exposed to the customer, and a factory may
+/// only ever read/write its own rows here — never another factory's.
+model SourcingSolicitation {
+  id     String                     @id @default(cuid())
+  status SourcingSolicitationStatus @default(SENT)
+
+  sourcingRequestId String
+  sourcingRequest   CustomSourcingRequest @relation(fields: [sourcingRequestId], references: [id], onDelete: Cascade)
+
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id])
+
+  sentAt      DateTime  @default(now())
+  respondedAt DateTime?
+
+  /// Set only when status = RESPONDED — the factory's own figures.
+  proposedQuantity Int?
+  unitPrice        Decimal? @db.Decimal(12, 2)
+  currency         String   @default("GHS")
+  leadTimeDays     Int?
+  /// Factory's own optional note — distinct from SourcingOption.notes
+  /// (CrownSource staff-only), this one is factory-authored.
+  notes            String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sourcingOption SourcingOption?
+
+  /// One solicitation per factory per request — "Ask factories" is
+  /// idempotent, never creates a duplicate row for a factory already asked.
+  @@unique([sourcingRequestId, vendorId])
+  @@index([sourcingRequestId])
+  @@index([vendorId, status])
+  @@map("sourcing_solicitation")
 }
 
 /// A committed quantity+cost snapshot against one SourcingOption, at the
@@ -1987,6 +2053,9 @@ enum NotificationType {
   SERVICE_REQUEST_SUBMITTED
   SERVICE_REQUEST_ACCEPTED
   SERVICE_REQUEST_DECLINED
+  /// M25.2 — factory solicitation lifecycle (modules/sourcing).
+  VENDOR_SOURCING_SOLICITATION_RECEIVED
+  ADMIN_SOURCING_SOLICITATION_RESPONDED
 }
 
 /// A structured, typed in-app notification. `title`/`body` are plain text

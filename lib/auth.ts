@@ -4,7 +4,7 @@ import { nextCookies } from "better-auth/next-js";
 import { bearer } from "better-auth/plugins";
 import { expo } from "@better-auth/expo";
 import { prisma } from "./db";
-import { env, googleOAuthConfigured } from "./env";
+import { env, googleOAuthConfigured, additionalTrustedOrigins } from "./env";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./email";
 import { identityService } from "../modules/identity/service";
 
@@ -17,6 +17,15 @@ import { identityService } from "../modules/identity/service";
 export const auth = betterAuth({
   baseURL: env.BETTER_AUTH_URL,
   secret: env.BETTER_AUTH_SECRET,
+  // BETTER_AUTH_URL is always implicitly trusted; this adds any extra
+  // origins from BETTER_AUTH_TRUSTED_ORIGINS (lib/env.ts) — e.g. the mobile
+  // app's `crownsourceglobal://` scheme, required below by the expo()
+  // plugin to append the session cookie on a native Google OAuth redirect.
+  // M25.1 finding: this env var was previously set/documented (see the
+  // expo() plugin comment below) but never actually passed to betterAuth()
+  // — a no-op. An empty array here is itself a no-op, so this is safe to
+  // pass unconditionally.
+  trustedOrigins: additionalTrustedOrigins,
 
   database: prismaAdapter(prisma, { provider: "postgresql" }),
 
@@ -25,6 +34,24 @@ export const auth = betterAuth({
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
       await sendPasswordResetEmail({ to: user.email, url });
+    },
+    // M25.1.2 finding: with requireEmailVerification: true, Better Auth's
+    // built-in anti-enumeration protection makes sign-up against an
+    // already-registered email return a synthetic 200 (see
+    // shouldReturnGenericDuplicateResponse in
+    // node_modules/better-auth/dist/api/routes/sign-up.mjs) and never calls
+    // emailVerification.sendVerificationEmail below — by design, so a
+    // sign-up attempt can't be used to probe which emails are registered.
+    // Without this hook, that path was also silent in server logs, which is
+    // indistinguishable from a genuinely broken verification pipeline. This
+    // hook is purely observational: Better Auth discards its return value
+    // and builds the synthetic response independently either way, so it
+    // changes no security behavior or client-visible response.
+    onExistingUserSignUp: async ({ user }) => {
+      console.log(
+        `[email] sign-up attempted for already-registered ${user.email} — no verification email sent ` +
+          `(anti-enumeration); use the sign-in page's "Resend verification email" action instead.`,
+      );
     },
   },
 

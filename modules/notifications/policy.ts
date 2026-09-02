@@ -86,6 +86,13 @@ const POLICY: Record<NotificationType, Policy> = {
   SERVICE_REQUEST_SUBMITTED: { required: true },
   SERVICE_REQUEST_ACCEPTED: { required: true },
   SERVICE_REQUEST_DECLINED: { required: true },
+  // M25.2 — factory solicitation lifecycle. The factory-facing notice is a
+  // sourcing-adjacent commerce opportunity, same category as QUOTE_ISSUED/
+  // SOURCING_QUOTE_READY; the admin-facing "a factory responded" notice is
+  // a narrow, low-volume admin event, same reasoning as the other ADMIN_*
+  // rows above.
+  VENDOR_SOURCING_SOLICITATION_RECEIVED: { required: false, category: "QUOTATIONS_SOURCING" },
+  ADMIN_SOURCING_SOLICITATION_RESPONDED: { required: true },
 };
 
 const CATEGORY_FIELD: Record<NotificationCategory, keyof PreferencesView> = {

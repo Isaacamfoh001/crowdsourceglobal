@@ -17,6 +17,7 @@ export const notificationLinks = {
   /// the same management page rather than an id-scoped route.
   vendorBeautyProfessionalProfile: () => "/vendor/portal/beauty-professional",
   vendorServiceRequest: (requestId: string) => `/vendor/portal/beauty-professional/requests/${requestId}`,
+  vendorSourcingSolicitation: (solicitationId: string) => `/vendor/portal/sourcing/${solicitationId}`,
 
   customerOrder: (orderId: string) => `/account/orders/${orderId}`,
   customerQuote: (quotationId: string) => `/account/quotes/${quotationId}`,

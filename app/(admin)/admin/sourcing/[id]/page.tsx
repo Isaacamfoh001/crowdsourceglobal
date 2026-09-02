@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Paperclip } from "lucide-react";
 import { requireAdminSession } from "../../../../../modules/administration/policy";
 import { sourcingService } from "../../../../../modules/sourcing/service";
 import { SourcingStatusBadge } from "../../../../../components/sourcing/SourcingStatusBadge";
+import { AttachmentGallery } from "../../../../../components/sourcing/AttachmentGallery";
 import { BackLink } from "../../../../../components/ui/BackLink";
 import {
   AssignStaffForm,
   MoveToUnderReviewButton,
   MoveToSourcingButton,
   RequestClarificationForm,
+  AskFactoriesForm,
+  FactoryResponsesSection,
   AddSourcingOptionForm,
   RemoveSourcingOptionButton,
   AllocationForm,
@@ -40,6 +42,11 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
   if (!request) notFound();
 
   const allocationCost = request.allocations.reduce((sum, a) => sum + a.allocatedQuantity * a.unitSupplyCostSnapshot, 0);
+  const alreadyAskedVendorIds = request.solicitations.map((s) => s.vendorId);
+  // Only a single-factory allocation has one clear "the" factory price to suggest a markup from — a mixed
+  // multi-vendor allocation keeps the existing manual entry, unchanged.
+  const pricingSuggestion =
+    request.allocations.length === 1 ? await sourcingService.getQuotePricingSuggestion(request.allocations[0]!.sourcingOptionId) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -106,21 +113,9 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
               </dl>
             ) : null}
             {request.attachments.length > 0 ? (
-              <ul className="mt-4 flex flex-col gap-2">
-                {request.attachments.map((attachment) => (
-                  <li key={attachment.id}>
-                    <a
-                      href={`/api/sourcing/attachments/${attachment.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm font-medium text-espresso-800 hover:underline"
-                    >
-                      <Paperclip className="size-3.5" />
-                      {attachment.filename}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <div className="mt-4">
+                <AttachmentGallery attachments={request.attachments} />
+              </div>
             ) : null}
           </div>
 
@@ -139,6 +134,26 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
               </div>
             ) : null}
           </div>
+
+          {(request.status === "SOURCING" || request.status === "QUOTED") ? (
+            <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
+              <h2 className="font-display text-base font-medium text-espresso-950">Ask factories</h2>
+              <p className="mt-1 text-sm text-espresso-900/50">
+                Send this request — as the customer submitted it — to one or more approved factories for a
+                quote.
+              </p>
+              {request.status === "SOURCING" ? (
+                <div className="mt-4">
+                  <AskFactoriesForm id={request.id} vendors={vendors} alreadyAskedVendorIds={alreadyAskedVendorIds} />
+                </div>
+              ) : null}
+              {request.solicitations.length > 0 ? (
+                <div className="mt-6 border-t border-ivory-300 pt-4">
+                  <FactoryResponsesSection id={request.id} solicitations={request.solicitations} />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {(request.status === "SOURCING" || request.status === "QUOTED") ? (
             <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
@@ -196,7 +211,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
                   : "Allocated quantity must equal the requested quantity before issuing."}
               </p>
               <div className="mt-4">
-                <PrepareQuoteForm id={request.id} allocationCost={allocationCost} currency="GHS" />
+                <PrepareQuoteForm id={request.id} allocationCost={allocationCost} currency="GHS" pricingSuggestion={pricingSuggestion} />
               </div>
             </div>
           ) : null}
