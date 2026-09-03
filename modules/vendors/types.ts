@@ -49,7 +49,6 @@ export type VendorStoreProfile = {
 export type StoreProfileInput = {
   companyName: string;
   description?: string;
-  logoUrl?: string;
   country?: string;
   region?: string;
   city?: string;

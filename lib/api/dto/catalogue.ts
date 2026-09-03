@@ -1,5 +1,5 @@
 import { serializeMoney } from "../response";
-import { absoluteImageUrl } from "../images";
+import { absoluteImageUrl, absoluteVendorLogoUrl } from "../images";
 import type {
   PublicCategory,
   PublicCategoryWithChildren,
@@ -97,7 +97,9 @@ export function toVendorStorefrontDTO(vendor: PublicVendorProfile) {
     description: vendor.description,
     storefrontSlug: vendor.storefrontSlug,
     sellerType: vendor.sellerType,
-    logoUrl: vendor.logoUrl,
+    // logoUrl holds either a legacy pasted URL or a real uploaded storage
+    // key (M29.1) — absoluteVendorLogoUrl resolves either case correctly.
+    logoUrl: vendor.logoUrl ? absoluteVendorLogoUrl(vendor.logoUrl) : null,
     country: vendor.country,
     region: vendor.region,
     city: vendor.city,

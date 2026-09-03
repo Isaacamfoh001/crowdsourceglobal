@@ -9,7 +9,6 @@ import { err, ok, type Result } from "../result";
 const storeProfileSchema = z.object({
   companyName: z.string().trim().min(2, "Enter a store name."),
   description: z.string().trim().optional(),
-  logoUrl: z.string().trim().optional(),
   country: z.string().trim().optional(),
   region: z.string().trim().optional(),
   city: z.string().trim().optional(),
@@ -31,7 +30,6 @@ export async function updateStoreProfileAction(
   const parsed = storeProfileSchema.safeParse({
     companyName: formData.get("companyName"),
     description: formData.get("description") || undefined,
-    logoUrl: formData.get("logoUrl") || undefined,
     country: formData.get("country") || undefined,
     region: formData.get("region") || undefined,
     city: formData.get("city") || undefined,
@@ -49,6 +47,36 @@ export async function updateStoreProfileAction(
   const categorySlugs = formData.getAll("categorySlugs").map(String);
 
   const result = await vendorsService.updateStoreProfile(vendorId, { ...parsed.data, categorySlugs });
+  if (!result.ok) return result;
+  revalidatePath("/vendor/portal/store");
+  return ok(null);
+}
+
+/**
+ * Real store-logo upload (M29.1) — replaces the old "paste a URL" field.
+ * A separate small action from updateStoreProfileAction above so the
+ * existing, well-tested text-field form/action stays untouched.
+ */
+export async function updateStoreLogoAction(_prevState: Result<null> | null, formData: FormData): Promise<Result<null>> {
+  const { vendorId } = await requireVendorPortalContext("/vendor/portal/store");
+
+  const logo = formData.get("logo");
+  if (!(logo instanceof File) || logo.size === 0) {
+    return err("Choose a logo image to upload.");
+  }
+
+  const result = await vendorsService.updateLogo(vendorId, {
+    buffer: Buffer.from(await logo.arrayBuffer()),
+    mimeType: logo.type,
+  });
+  if (!result.ok) return result;
+  revalidatePath("/vendor/portal/store");
+  return ok(null);
+}
+
+export async function removeStoreLogoAction(): Promise<Result<null>> {
+  const { vendorId } = await requireVendorPortalContext("/vendor/portal/store");
+  const result = await vendorsService.removeLogo(vendorId);
   if (!result.ok) return result;
   revalidatePath("/vendor/portal/store");
   return ok(null);

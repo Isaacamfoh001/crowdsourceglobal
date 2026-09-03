@@ -2,6 +2,7 @@ import { listingImageUrl } from "../listing-images";
 import { explorePostImageUrl } from "../explore-post-images";
 import { serviceRequestImageUrl } from "../service-request-images";
 import { beautyProfessionalImageUrl } from "../beauty-professional-images";
+import { vendorLogoImageUrl } from "../vendor-logo-images";
 import { env } from "../env";
 
 /**
@@ -37,6 +38,12 @@ export function absoluteServiceRequestImageUrl(entry: string): string {
 /** Same absolute-URL requirement (M22.1) — see absoluteImageUrl's doc comment above. */
 export function absoluteBeautyProfessionalImageUrl(entry: string): string {
   const resolved = beautyProfessionalImageUrl(entry);
+  return resolved.startsWith("/") ? `${env.NEXT_PUBLIC_APP_URL}${resolved}` : resolved;
+}
+
+/** Same absolute-URL requirement (M29.1) — see absoluteImageUrl's doc comment above. Handles both a legacy pasted URL and a real uploaded storage key — see vendor-logo-images.ts. */
+export function absoluteVendorLogoUrl(entry: string): string {
+  const resolved = vendorLogoImageUrl(entry);
   return resolved.startsWith("/") ? `${env.NEXT_PUBLIC_APP_URL}${resolved}` : resolved;
 }
 

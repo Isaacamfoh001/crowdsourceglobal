@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { StoreProfileForm } from "../../../../components/vendor-portal/StoreProfileForm";
+import { VendorLogoUploader } from "../../../../components/vendor-portal/VendorLogoUploader";
 import { requireVendorPortalContext } from "../../../../modules/vendors/policy";
 import { vendorsService } from "../../../../modules/vendors/service";
 import { catalogueService } from "../../../../modules/catalogue/service";
+import { vendorLogoImageUrl } from "../../../../lib/vendor-logo-images";
 
 export const metadata = { title: "Store profile — Vendor Portal" };
 export const dynamic = "force-dynamic";
@@ -25,6 +27,9 @@ export default async function VendorStoreProfilePage() {
         <p className="mt-1 text-[15px] text-espresso-900/50">
           What customers see on your storefront, plus how CrownSourceGlobal reaches you.
         </p>
+      </div>
+      <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5 sm:p-8">
+        <VendorLogoUploader logoUrl={profile.logoUrl ? vendorLogoImageUrl(profile.logoUrl) : null} />
       </div>
       <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5 sm:p-8">
         <StoreProfileForm profile={profile} categories={categories} />

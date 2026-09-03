@@ -8,6 +8,7 @@ import { Breadcrumbs } from "../../../../components/catalogue/Breadcrumbs";
 import { AskAboutButton } from "../../../../components/messaging/AskAboutButton";
 import { Pagination } from "../../../../components/shared/Pagination";
 import { parsePage } from "../../../../lib/pagination";
+import { vendorLogoImageUrl } from "../../../../lib/vendor-logo-images";
 import { vendorsService } from "../../../../modules/vendors/service";
 import { CATALOGUE_PAGE_SIZE } from "../../../../modules/catalogue/service";
 import { getCurrentSession } from "../../../../modules/identity/policy";
@@ -57,9 +58,9 @@ export default async function VendorStorefrontPage({
 
           <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-center">
             {vendor.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- vendor-supplied external logo URL, not our optimized image pipeline
+              // eslint-disable-next-line @next/next/no-img-element -- resolves either a legacy pasted URL or an uploaded storage key (M29.1), not our optimized image pipeline
               <img
-                src={vendor.logoUrl}
+                src={vendorLogoImageUrl(vendor.logoUrl)}
                 alt=""
                 className="size-16 shrink-0 rounded-full border border-ivory-300 object-cover sm:size-20"
               />

@@ -1,5 +1,5 @@
 import { serializeMoney, serializeDate } from "../response";
-import { absoluteImageUrl, absoluteBeautyProfessionalImageUrl, absoluteServiceRequestImageUrl, absoluteSourcingAttachmentUrl } from "../images";
+import { absoluteImageUrl, absoluteBeautyProfessionalImageUrl, absoluteServiceRequestImageUrl, absoluteSourcingAttachmentUrl, absoluteVendorLogoUrl } from "../images";
 import type { VendorApplicationView } from "../../../modules/vendor-applications/types";
 import type { VendorListingSummary, VendorListingDetail } from "../../../modules/vendor-listings/types";
 import type { VendorFulfilmentSummary, VendorFulfilmentDetail } from "../../../modules/fulfilment/types";
@@ -309,10 +309,9 @@ export function toVendorStoreProfileDTO(profile: VendorStoreProfile) {
     description: profile.description,
     storefrontSlug: profile.storefrontSlug,
     sellerType: profile.sellerType,
-    // logoUrl is stored as a plain URL, not a storage key (see PublicVendorProfile's
-    // own toVendorStorefrontDTO, which passes it through unchanged too) — never
-    // wrap it in absoluteImageUrl().
-    logoUrl: profile.logoUrl,
+    // logoUrl holds either a legacy pasted URL or a real uploaded storage key
+    // (M29.1) — absoluteVendorLogoUrl resolves either case correctly.
+    logoUrl: profile.logoUrl ? absoluteVendorLogoUrl(profile.logoUrl) : null,
     country: profile.country,
     region: profile.region,
     city: profile.city,

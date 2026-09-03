@@ -1,4 +1,4 @@
-import { absoluteExplorePostImageUrl, absoluteBeautyProfessionalImageUrl } from "../images";
+import { absoluteExplorePostImageUrl, absoluteBeautyProfessionalImageUrl, absoluteVendorLogoUrl } from "../images";
 import { serializeDate } from "../response";
 import type { PublicBeautyProfessionalDetail, PublicBeautyProfessionalSummary } from "../../../modules/beauty-professionals/types";
 
@@ -18,7 +18,9 @@ export function toBeautyProfessionalSummaryDTO(profile: PublicBeautyProfessional
     id: profile.id,
     displayName: profile.displayName,
     bio: profile.bio,
-    avatarUrl: profile.avatarUrl,
+    // avatarUrl (Vendor.logoUrl) holds either a legacy pasted URL or a real
+    // uploaded storage key (M29.1) — absoluteVendorLogoUrl resolves either.
+    avatarUrl: profile.avatarUrl ? absoluteVendorLogoUrl(profile.avatarUrl) : null,
     heroImageUrl: profile.heroImage ? absoluteBeautyProfessionalImageUrl(profile.heroImage) : null,
     location: profile.location,
     specialties: profile.specialties,

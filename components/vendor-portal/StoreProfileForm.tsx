@@ -34,14 +34,6 @@ export function StoreProfileForm({ profile, categories }: { profile: VendorStore
             className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
           />
         </div>
-        <Input
-          label="Logo URL (optional)"
-          name="logoUrl"
-          defaultValue={profile.logoUrl ?? ""}
-          placeholder="https://…"
-          hint="No image upload yet — paste a hosted image link."
-          disabled={isPending}
-        />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <CountrySelect label="Country" name="country" defaultValue={profile.country ?? ""} disabled={isPending} />
           <Input label="Region" name="region" defaultValue={profile.region ?? ""} disabled={isPending} />

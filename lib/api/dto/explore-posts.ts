@@ -1,4 +1,4 @@
-import { absoluteExplorePostImageUrl } from "../images";
+import { absoluteExplorePostImageUrl, absoluteVendorLogoUrl } from "../images";
 import { serializeDate } from "../response";
 import type { PublicExplorePost } from "../../../modules/explore-posts/types";
 
@@ -25,11 +25,9 @@ export function toExplorePostDTO(
     publisher: {
       id: post.vendor.id,
       name: post.vendor.companyName,
-      // Vendor.logoUrl is always a plain external URL a vendor pastes in
-      // their store settings (never a storage key) — see
-      // app/(public)/vendors/[slug]/page.tsx, which renders it identically
-      // as-is. No absoluteExplorePostImageUrl resolution needed/applicable.
-      avatarUrl: post.vendor.logoUrl,
+      // Vendor.logoUrl holds either a legacy pasted URL or a real uploaded
+      // storage key (M29.1) — absoluteVendorLogoUrl resolves either case.
+      avatarUrl: post.vendor.logoUrl ? absoluteVendorLogoUrl(post.vendor.logoUrl) : null,
       storefrontSlug: post.vendor.storefrontSlug,
     },
     engagement: {

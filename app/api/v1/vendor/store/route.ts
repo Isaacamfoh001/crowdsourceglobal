@@ -21,7 +21,6 @@ export async function GET() {
 const schema = z.object({
   companyName: z.string().trim().min(2, "Enter a store name."),
   description: z.string().trim().optional(),
-  logoUrl: z.string().trim().optional(),
   country: z.string().trim().optional(),
   region: z.string().trim().optional(),
   city: z.string().trim().optional(),
