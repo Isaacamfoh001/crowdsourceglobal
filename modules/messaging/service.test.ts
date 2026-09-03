@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "../../lib/db";
 import { messagingService } from "./service";
+import { resolutionsService } from "../resolutions/service";
 
 /** Integration tests against the real local Postgres dev database. */
 describe("messagingService", () => {
@@ -108,6 +109,13 @@ describe("messagingService", () => {
   afterAll(async () => {
     await prisma.message.deleteMany({ where: { conversationId: { in: createdConversationIds } } });
     await prisma.conversation.deleteMany({ where: { id: { in: createdConversationIds } } });
+    await prisma.resolutionCaseItem.deleteMany({ where: { orderItem: { orderId: { in: createdOrderIds } } } });
+    await prisma.resolutionCase.deleteMany({ where: { orderId: { in: createdOrderIds } } });
+    await prisma.fulfilmentItem.deleteMany({ where: { fulfilment: { orderId: { in: createdOrderIds } } } });
+    await prisma.shipment.deleteMany({ where: { fulfilment: { orderId: { in: createdOrderIds } } } });
+    await prisma.fulfilment.deleteMany({ where: { orderId: { in: createdOrderIds } } });
+    await prisma.orderItem.deleteMany({ where: { orderId: { in: createdOrderIds } } });
+    await prisma.order.deleteMany({ where: { id: { in: createdOrderIds } } });
     await prisma.vendorListing.deleteMany({ where: { id: { in: createdListingIds } } });
     await prisma.category.deleteMany({ where: { id: { in: createdCategoryIds } } });
     await prisma.vendorMembership.deleteMany({ where: { vendorId: { in: createdVendorIds } } });
@@ -116,6 +124,41 @@ describe("messagingService", () => {
     await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
     await prisma.$disconnect();
   });
+
+  const createdOrderIds: string[] = [];
+
+  /** Minimal order+fulfilment+resolution-case fixture for a given vendor, mirroring app/api/v1/vendor/resolutions/[id]/route.test.ts's setup. */
+  async function makeResolutionCaseForVendor(forVendorId: string, label: string) {
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const order = await prisma.order.create({
+      data: {
+        customerProfileId: customerAProfileId,
+        orderNumber: `MSG-RC-${label}-${suffix}`,
+        status: "CONFIRMED",
+        paymentStatus: "PAID",
+        subtotal: 25,
+        total: 25,
+        fulfilmentsCreatedAt: new Date(),
+        deliveryInfo: { recipientName: "Customer A", phone: "0240000000", addressLine1: "1 Test St", city: "Accra", region: "Greater Accra" },
+      },
+    });
+    createdOrderIds.push(order.id);
+    const orderItem = await prisma.orderItem.create({
+      data: { orderId: order.id, listingId, vendorId: forVendorId, description: "Messaging Resolution Item", quantity: 1, unitPrice: 25, vendorPayableBasis: 17.5, lineTotal: 25 },
+    });
+    const fulfilment = await prisma.fulfilment.create({ data: { orderId: order.id, vendorId: forVendorId, origin: "DOMESTIC_COLLECTION" } });
+    await prisma.fulfilmentItem.create({ data: { fulfilmentId: fulfilment.id, orderItemId: orderItem.id, quantity: 1, unitPrice: 25, vendorPayableBasis: 17.5 } });
+    await prisma.shipment.create({ data: { fulfilmentId: fulfilment.id } });
+
+    const submitted = await resolutionsService.submitCase(customerAProfileId, customerAUserId, {
+      orderId: order.id,
+      issueType: "ITEM_DAMAGED",
+      description: "Item arrived damaged for the messaging ownership-check test.",
+      items: [{ orderItemId: orderItem.id, quantity: 1 }],
+    });
+    if (!submitted.ok) throw new Error(submitted.error);
+    return submitted.value.caseId;
+  }
 
   it("creates a contextual conversation about a listing, preserving vendor + listing context", async () => {
     const result = await messagingService.startOrContinueContextual({
@@ -349,6 +392,40 @@ describe("messagingService", () => {
 
     const { rows: summary } = await messagingService.listForCustomer(customerAProfileId);
     expect(JSON.stringify(summary)).not.toContain("private-owner@example.com");
+  });
+
+  it("a vendor can message CrownSourceGlobal about its own resolution case, preserving the case context", async () => {
+    const caseId = await makeResolutionCaseForVendor(vendorId, "own");
+
+    const result = await messagingService.startOrContinueVendorContextual({
+      vendorId,
+      senderUserId: vendorUserId,
+      contextResolutionCaseId: caseId,
+      body: "Can you tell me more about this case?",
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    createdConversationIds.push(result.value.conversationId);
+
+    const detail = await messagingService.getForVendor(vendorId, result.value.conversationId);
+    expect(detail?.contextType).toBe("RESOLUTION_CASE");
+    expect(detail?.contextLabel).toContain("About case");
+  });
+
+  it("rejects a vendor tagging a conversation with a resolution case that belongs to a different vendor (IDOR)", async () => {
+    const otherVendor = await prisma.vendor.create({
+      data: { companyName: "Other Vendor Ltd", storefrontSlug: `msg-other-vendor-${Date.now()}`, verificationStatus: "APPROVED" },
+    });
+    createdVendorIds.push(otherVendor.id);
+    const caseId = await makeResolutionCaseForVendor(otherVendor.id, "other");
+
+    const forged = await messagingService.startOrContinueVendorContextual({
+      vendorId, // vendor A, trying to attach vendor B's case
+      senderUserId: vendorUserId,
+      contextResolutionCaseId: caseId,
+      body: "Trying to probe another vendor's case.",
+    });
+    expect(forged.ok).toBe(false);
   });
 
   it("a vendor conversation with CrownSourceGlobal works independently of any customer conversation", async () => {

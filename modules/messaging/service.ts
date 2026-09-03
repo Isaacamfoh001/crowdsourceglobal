@@ -230,7 +230,18 @@ export const messagingService = {
     return ok({ conversationId: created.id });
   },
 
-  /** Vendor-initiated equivalent of startOrContinueContextual (M9) — a Vendor proactively messaging CrownSource about a resolution case, before staff has necessarily asked anything. */
+  /**
+   * Vendor-initiated equivalent of startOrContinueContextual (M9) — a Vendor proactively messaging CrownSource about a resolution case, before staff has necessarily asked anything.
+   *
+   * `contextResolutionCaseId` is client-submitted (M30 exposes this over
+   * `/api/v1/vendor/messages`), so — same reasoning as every context check
+   * in `startOrContinueContextual` above — it is never trusted as-is: it
+   * must resolve to a case that actually involves this vendor's own
+   * fulfilment items, via the same ownership check
+   * `resolutionsService.getForVendor` already enforces for the read side.
+   * Without this, a vendor could tag a conversation with an arbitrary
+   * (possibly another vendor's) case id.
+   */
   async startOrContinueVendorContextual(input: {
     vendorId: string;
     senderUserId: string;
@@ -238,6 +249,10 @@ export const messagingService = {
     body: string;
   }): Promise<Result<{ conversationId: string }>> {
     if (input.body.trim().length === 0) return err("Write a message before sending.");
+
+    const { resolutionsService } = await import("../resolutions/service");
+    const resolutionCase = await resolutionsService.getForVendor(input.vendorId, input.contextResolutionCaseId);
+    if (!resolutionCase) return err("Case not found.");
 
     const existing = await messagingRepository.findOpenVendorConversationByContext(input.vendorId, input.contextResolutionCaseId);
     if (existing) {
