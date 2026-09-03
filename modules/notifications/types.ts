@@ -92,3 +92,11 @@ export type PreferencesView = {
 };
 
 export type PreferencesInput = Partial<PreferencesView>;
+
+/** M31 — matches the Prisma `DevicePlatform` enum; kept as a plain string union here so this module never imports the generated Prisma client types directly (same convention as every other `type.ts` in this codebase). */
+export type DevicePlatform = "IOS" | "ANDROID";
+
+export type RegisterDeviceInput = {
+  expoPushToken: string;
+  platform: DevicePlatform;
+};

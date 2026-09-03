@@ -22,6 +22,7 @@
     "bootstrap:reference-data": "tsx scripts/bootstrap-reference-data.ts",
     "admin:grant": "tsx scripts/grant-admin.ts",
     "jobs:email": "tsx scripts/process-email-jobs.ts",
+    "jobs:push": "tsx scripts/process-push-jobs.ts",
     "jobs:sweep-payments": "tsx scripts/sweep-abandoned-payments.ts",
     "jobs:sweep-earnings": "tsx scripts/sweep-earnings-eligibility.ts"
   },

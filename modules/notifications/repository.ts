@@ -1,14 +1,14 @@
 import { prisma } from "../../lib/db";
 import { Prisma } from "../../generated/prisma/client";
 import { paginationSkip } from "../../lib/pagination";
-import type { NotifyInput } from "./types";
+import type { NotifyInput, RegisterDeviceInput } from "./types";
 
 export const notificationsRepository = {
   /**
    * Returns the created Notification, or `null` when the (recipientUserId,
    * eventKey) pair already exists — the dedup guarantee, not an error.
    */
-  async create(input: NotifyInput) {
+  async create(input: NotifyInput, pushWorthy: boolean) {
     try {
       return await prisma.$transaction(async (tx) => {
         const notification = await tx.notification.create({
@@ -31,6 +31,9 @@ export const notificationsRepository = {
               templateData: input.email.templateData as Prisma.InputJsonValue,
             },
           });
+        }
+        if (pushWorthy) {
+          await tx.pushDeliveryJob.create({ data: { notificationId: notification.id } });
         }
         return notification;
       });
@@ -144,6 +147,80 @@ export const notificationsRepository = {
 
   markJobFailed(id: string, error: string, nextAvailableAt: Date | null) {
     return prisma.emailDeliveryJob.update({
+      where: { id },
+      data: nextAvailableAt
+        ? { status: "FAILED", lastError: error, availableAt: nextAvailableAt }
+        : { status: "FAILED", lastError: error },
+    });
+  },
+
+  // --- Push devices (M31) ------------------------------------------------
+
+  /**
+   * `expoPushToken` is the natural key (upsert on it, not on
+   * `[userId, expoPushToken]`) — see PushDevice's schema doc comment: a
+   * token identifies one physical app install, and re-registering an
+   * already-known token under a different `userId` (someone else signing
+   * in on the same device) must reassign ownership in place, never create
+   * a second row that could still receive the previous account's pushes.
+   */
+  upsertDevice(userId: string, input: RegisterDeviceInput) {
+    return prisma.pushDevice.upsert({
+      where: { expoPushToken: input.expoPushToken },
+      create: { userId, expoPushToken: input.expoPushToken, platform: input.platform },
+      update: { userId, platform: input.platform, lastSeenAt: new Date() },
+    });
+  },
+
+  /** Ownership-scoped — a user can only ever remove a device row that is currently theirs. */
+  async removeDevice(userId: string, expoPushToken: string): Promise<boolean> {
+    const result = await prisma.pushDevice.deleteMany({ where: { userId, expoPushToken } });
+    return result.count > 0;
+  },
+
+  findActiveDevicesForUser(userId: string) {
+    return prisma.pushDevice.findMany({ where: { userId }, select: { expoPushToken: true } });
+  },
+
+  /** Called when the push provider reports a token as permanently invalid (uninstalled app, revoked registration) — never scoped by userId, since the token alone is enough to know it's dead regardless of who currently owns it. */
+  deleteDeviceByToken(expoPushToken: string) {
+    return prisma.pushDevice.deleteMany({ where: { expoPushToken } });
+  },
+
+  // --- Push job worker (M31) ---------------------------------------------
+
+  /** Same guarded-claim pattern as claimNextJob (email) above — see that method's doc comment for the concurrency reasoning, identical here. */
+  async claimNextPushJob() {
+    const candidates = await prisma.pushDeliveryJob.findMany({
+      where: { status: { in: ["PENDING", "FAILED"] }, availableAt: { lte: new Date() } },
+      orderBy: { availableAt: "asc" },
+      take: 20,
+    });
+
+    for (const candidate of candidates) {
+      if (candidate.attempts >= candidate.maxAttempts) continue;
+
+      const claimed = await prisma.pushDeliveryJob.updateMany({
+        where: { id: candidate.id, status: candidate.status },
+        data: { status: "SENDING", attempts: { increment: 1 } },
+      });
+      if (claimed.count === 1) {
+        return prisma.pushDeliveryJob.findUnique({
+          where: { id: candidate.id },
+          include: { notification: { select: { recipientUserId: true, title: true, body: true, targetUrl: true, type: true } } },
+        });
+      }
+      // Lost the race to another concurrent drain — try the next candidate.
+    }
+    return null;
+  },
+
+  markPushJobSent(id: string) {
+    return prisma.pushDeliveryJob.update({ where: { id }, data: { status: "SENT", sentAt: new Date(), lastError: null } });
+  },
+
+  markPushJobFailed(id: string, error: string, nextAvailableAt: Date | null) {
+    return prisma.pushDeliveryJob.update({
       where: { id },
       data: nextAvailableAt
         ? { status: "FAILED", lastError: error, availableAt: nextAvailableAt }

@@ -40,6 +40,7 @@ model User {
 
   notifications          Notification[]
   notificationPreference NotificationPreference?
+  pushDevices            PushDevice[]
 
   /// M21 — Explore engagement. A User (not CustomerProfile) is the owner
   /// here, same reasoning as Notification.recipientUserId: a Vendor owner
@@ -2087,6 +2088,7 @@ model Notification {
   createdAt DateTime  @default(now())
 
   emailJob EmailDeliveryJob?
+  pushJob  PushDeliveryJob?
 
   @@unique([recipientUserId, eventKey])
   @@index([recipientUserId, createdAt])
@@ -2136,6 +2138,82 @@ model EmailDeliveryJob {
 
   @@index([status, availableAt])
   @@map("email_delivery_job")
+}
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+}
+
+/// M31 — a registered Expo push token for one physical app install. One row
+/// per install, not per (user, install): `expoPushToken` is the natural key
+/// (`@unique`, not composite with userId) because a token identifies a
+/// specific app install on a specific device, and that install can only
+/// ever belong to whichever CrownSourceGlobal account is currently signed
+/// in on it. Re-registering an already-known token under a different
+/// userId (a sign-out/sign-in as someone else on the same device)
+/// reassigns `userId` in place via upsert — see
+/// modules/notifications/service.ts's `registerDevice` — which is exactly
+/// what stops a previous account's private pushes from continuing to reach
+/// a device after someone else signs in on it. A row's mere existence
+/// means "active"; sign-out and provider-reported-invalid both delete the
+/// row outright rather than soft-disabling it (CLAUDE.md §6 — no audit
+/// trail is needed for a value that's trivially re-registered).
+model PushDevice {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expoPushToken String         @unique
+  platform      DevicePlatform
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("push_device")
+}
+
+enum PushDeliveryStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+}
+
+/// Durable, retryable push delivery — the exact same shape/claim pattern as
+/// EmailDeliveryJob above, deliberately not merged into one generic
+/// "DeliveryJob" table (push and email have different provider APIs and
+/// different failure semantics — one row per notification per channel
+/// keeps each worker simple). Unlike EmailDeliveryJob, this never
+/// duplicates title/body/targetUrl onto the job row: push always reuses
+/// the parent Notification's fields verbatim (M31 §6's "reuse
+/// Notification.type/title/body/target data" requirement), so the worker
+/// reads them via the relation instead of risking a second, driftable copy.
+/// `notificationId` is required + unique (not nullable like
+/// EmailDeliveryJob's) because — unlike auth email, which bypasses
+/// `notify()` entirely — there is no push send path that doesn't originate
+/// from a Notification.
+model PushDeliveryJob {
+  id String @id @default(cuid())
+
+  notificationId String       @unique
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  status      PushDeliveryStatus @default(PENDING)
+  attempts    Int                @default(0)
+  maxAttempts Int                @default(5)
+  availableAt DateTime           @default(now())
+  lastError   String?
+  sentAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, availableAt])
+  @@map("push_delivery_job")
 }
 
 /// One row per User (not per role) — a User who is both a Customer and a

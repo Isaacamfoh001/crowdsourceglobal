@@ -47,6 +47,22 @@ const envSchema = z.object({
   EMAIL_FROM: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   /**
+   * M31 push delivery. "console" (default) logs to the server console —
+   * safe for dev/test with zero configuration, same shape as
+   * EMAIL_PROVIDER=console. "expo" sends real pushes via Expo's push
+   * service (https://exp.host/--/api/v2/push/send) — no API key is
+   * required by Expo itself, but EXPO_ACCESS_TOKEN is strongly
+   * recommended (Expo's "Enhanced Security for Push Notifications") and,
+   * if set, is sent as a bearer token. Unlike EMAIL_PROVIDER/
+   * PAYMENT_PROVIDER/STORAGE_PROVIDER, there is no production fail-closed
+   * check here: push is a best-effort, additive delivery channel on top of
+   * the always-created in-app Notification (M31 §15) — an operator who
+   * hasn't finished push setup yet must not be blocked from deploying
+   * everything else.
+   */
+  PUSH_PROVIDER: z.enum(["console", "expo"]).default("console"),
+  EXPO_ACCESS_TOKEN: z.string().optional(),
+  /**
    * M8 admin operations dashboard. These are operational defaults for
    * staff-attention ageing, NOT contractual SLAs — PROJECT.md does not
    * mandate exact figures, so they're documented, configurable V1 values
@@ -154,6 +170,8 @@ function loadEnv() {
     EMAIL_PROVIDER: process.env["EMAIL_PROVIDER"] || undefined,
     EMAIL_FROM: process.env["EMAIL_FROM"] || undefined,
     RESEND_API_KEY: process.env["RESEND_API_KEY"] || undefined,
+    PUSH_PROVIDER: process.env["PUSH_PROVIDER"] || undefined,
+    EXPO_ACCESS_TOKEN: process.env["EXPO_ACCESS_TOKEN"] || undefined,
     OPS_VENDOR_APPLICATION_WARNING_HOURS: process.env["OPS_VENDOR_APPLICATION_WARNING_HOURS"] || undefined,
     OPS_LISTING_REVIEW_WARNING_HOURS: process.env["OPS_LISTING_REVIEW_WARNING_HOURS"] || undefined,
     OPS_MESSAGE_RESPONSE_WARNING_HOURS: process.env["OPS_MESSAGE_RESPONSE_WARNING_HOURS"] || undefined,

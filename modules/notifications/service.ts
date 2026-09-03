@@ -1,9 +1,9 @@
 import { notificationsRepository } from "./repository";
-import { shouldSendEmail } from "./policy";
+import { shouldSendEmail, shouldSendPush } from "./policy";
 import { processEmailQueue } from "../../lib/email-worker";
 import { ok, err, type Result } from "../../lib/result";
 import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
-import type { NotifyInput, NotificationView, PreferencesView, PreferencesInput } from "./types";
+import type { NotifyInput, NotificationView, PreferencesView, PreferencesInput, RegisterDeviceInput } from "./types";
 
 function toView(row: {
   id: string;
@@ -42,10 +42,24 @@ export const notificationsService = {
    *
    * Creates the Notification (in-app, always) and, only if `input.email` is
    * present AND the recipient's preference allows it (REQUIRED types always
-   * do), a durable EmailDeliveryJob in the same transaction. Actual email
-   * *sending* is fire-and-forget from here — `processEmailQueue()` is a
-   * dev-convenience drain, never the source of delivery correctness; the
-   * persisted job row is.
+   * do), a durable EmailDeliveryJob in the same transaction — plus, if
+   * `shouldSendPush(input.type)` says this type is push-worthy (M31), a
+   * durable PushDeliveryJob in that same transaction too. Both channels are
+   * strictly additive on top of the Notification write: a failure in
+   * either never rolls back or blocks the in-app notification, which
+   * remains the source of truth regardless of delivery outcome.
+   *
+   * Only email gets the fire-and-forget `processEmailQueue()` dev-
+   * convenience kick here. Push deliberately does not: receiving a real
+   * push requires a physical device + a dev build regardless of what runs
+   * locally (Expo Go cannot receive one — see M31's audit), so there is no
+   * "arrives instantly with zero setup" win to preserve the way there is
+   * for a console-logged verification email link. Draining
+   * PushDeliveryJob is `processPushQueue()` (lib/push-worker.ts), run on a
+   * schedule via `npm run jobs:push` — same production-appropriate,
+   * durable-job-row-is-the-source-of-truth pattern `jobs:email` already
+   * uses, just without an extra always-on background query added to every
+   * single `notify()` call in the app.
    */
   async notify(input: NotifyInput): Promise<void> {
     try {
@@ -57,7 +71,7 @@ export const notificationsService = {
         }
       }
 
-      await notificationsRepository.create({ ...input, email });
+      await notificationsRepository.create({ ...input, email }, shouldSendPush(input.type));
       void processEmailQueue();
     } catch (error) {
       console.error("Notification dispatch failed:", error);
@@ -108,5 +122,37 @@ export const notificationsService = {
   async updatePreferences(userId: string, input: PreferencesInput): Promise<Result<PreferencesView>> {
     const row = await notificationsRepository.upsertPreferences(userId, input);
     return ok({ ordersDeliveryEmail: row.ordersDeliveryEmail, quotationsSourcingEmail: row.quotationsSourcingEmail, messagesEmail: row.messagesEmail });
+  },
+
+  // --- Push devices (M31) --------------------------------------------------
+
+  /**
+   * Registers (or re-registers) the calling user's own device for push —
+   * called right after sign-in and on every cold start while signed in,
+   * mirroring the token-refresh guidance in Expo's push docs. `userId`
+   * always comes from the caller's own session (see the API route), never
+   * from the request body — a client can only ever register a device for
+   * itself. Upserting on `expoPushToken` (not a composite key) is what
+   * makes signing in as a different person on the same device correctly
+   * reassign that device's future pushes — see PushDevice's schema doc
+   * comment.
+   */
+  async registerDevice(userId: string, input: RegisterDeviceInput): Promise<Result<null>> {
+    if (!input.expoPushToken.trim()) return err("A push token is required.");
+    await notificationsRepository.upsertDevice(userId, input);
+    return ok(null);
+  },
+
+  /**
+   * Unregisters one of the calling user's own devices — called on sign-out
+   * so a device stops receiving that account's pushes the moment the user
+   * signs out of it (M31 §11's privacy boundary). Scoped by `userId` in
+   * the repository, so a token that isn't currently this user's own is
+   * left untouched rather than removed out from under whoever it actually
+   * belongs to.
+   */
+  async unregisterDevice(userId: string, expoPushToken: string): Promise<Result<null>> {
+    await notificationsRepository.removeDevice(userId, expoPushToken);
+    return ok(null);
   },
 };

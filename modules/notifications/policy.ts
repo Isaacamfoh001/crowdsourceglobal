@@ -107,3 +107,98 @@ export function shouldSendEmail(type: NotificationType, preferences: Preferences
   if (policy.required) return true;
   return preferences[CATEGORY_FIELD[policy.category]];
 }
+
+/**
+ * (M31) Which NotificationTypes are worth a lock-screen interruption vs.
+ * in-app-inbox-only. A fixed, evidence-based classification — not a user
+ * preference (no push-preferences UI exists; same "don't redesign
+ * preferences" scope boundary M31 draws) and not simply "required ===
+ * push" (email's REQUIRED flag answers a different question — "must this
+ * reach an inbox the user might not open for days" — than push's "is this
+ * worth interrupting someone right now"). `false` below falls into one of
+ * three evidence-based groups, read from each type's actual `notify()`
+ * call site rather than assumed:
+ *
+ * 1. Self-acknowledgements — the recipient IS the user who just performed
+ *    the action (VENDOR_APPLICATION_SUBMITTED, SOURCING_REQUEST_SUBMITTED,
+ *    RESOLUTION_CASE_RECEIVED all notify `submittedByUserId`/`userId`, the
+ *    submitter themselves — see modules/vendor-applications/service.ts,
+ *    modules/sourcing/service.ts, modules/resolutions/service.ts). They're
+ *    typically still looking at the confirmation screen that action just
+ *    produced — a push adds no information.
+ * 2. ADMIN_* types — every one targets a web-only `/admin/*` targetUrl
+ *    (modules/notifications/links.ts), and M30 established there is no
+ *    mobile admin surface at all; a push would open the app to a dead end
+ *    (mobile's destination.ts returns null for every `/admin/*` path).
+ * 3. RESOLUTION_VENDOR_CASE_UPDATE — the non-required, informational
+ *    sibling of RESOLUTION_VENDOR_RESPONSE_NEEDED (which IS pushed,
+ *    because it needs the vendor to act); pushing both would double-notify
+ *    the same case for what is really one actionable event.
+ *
+ * Everything mapped `true` is a genuine "something changed that this
+ * specific person doesn't yet know and may want to act on" event —
+ * order/payment progress, moderation/application outcomes, quotation/
+ * sourcing readiness, resolution/refund outcomes, a staff/CrownSource
+ * reply, or an order/request now requiring the recipient's action.
+ */
+const PUSH_POLICY: Record<NotificationType, boolean> = {
+  VENDOR_APPLICATION_SUBMITTED: false, // self-ack
+  VENDOR_APPLICATION_APPROVED: true,
+  VENDOR_APPLICATION_CHANGES_REQUESTED: true,
+  VENDOR_APPLICATION_REJECTED: true,
+  LISTING_APPROVED: true,
+  LISTING_CHANGES_REQUESTED: true,
+  LISTING_REJECTED: true,
+  ORDER_CONFIRMED: true,
+  VENDOR_NEW_ORDER: true,
+  COLLECTION_SCHEDULED: true,
+  PACKAGE_COLLECTED: true,
+  OUT_FOR_DELIVERY: true,
+  DELIVERED: true,
+  DELIVERY_ISSUE: true,
+  FULFILMENT_ISSUE_RESOLVED: true,
+  QUOTE_ISSUED: true,
+  SOURCING_REQUEST_SUBMITTED: false, // self-ack
+  SOURCING_CLARIFICATION_NEEDED: true,
+  SOURCING_QUOTE_READY: true,
+  SOURCING_UNABLE_TO_SOURCE: true,
+  STAFF_REPLY: true,
+  VENDOR_STAFF_REPLY: true,
+  ADMIN_NEW_VENDOR_APPLICATION: false, // admin/web-only
+  ADMIN_NEW_SOURCING_REQUEST: false, // admin/web-only
+  ADMIN_NEW_MESSAGE: false, // admin/web-only
+  RESOLUTION_CASE_RECEIVED: false, // self-ack
+  RESOLUTION_CLARIFICATION_NEEDED: true,
+  RESOLUTION_APPROVED: true,
+  RETURN_APPROVED: true,
+  REFUND_APPROVED: true,
+  REFUND_COMPLETED: true,
+  REPLACEMENT_CREATED: true,
+  RESOLUTION_CASE_RESOLVED: true,
+  RESOLUTION_VENDOR_RESPONSE_NEEDED: true,
+  RESOLUTION_VENDOR_CASE_UPDATE: false, // informational sibling of RESPONSE_NEEDED
+  ADMIN_NEW_RESOLUTION_CASE: false, // admin/web-only
+  ADMIN_REFUND_FAILED: false, // admin/web-only
+  PAYMENT_FAILED: true,
+  ADMIN_PAYMENT_REQUIRES_ATTENTION: false, // admin/web-only
+  VENDOR_EARNING_ON_HOLD: true,
+  VENDOR_SETTLEMENT_APPROVED: true,
+  VENDOR_SETTLEMENT_PAID: true,
+  ADMIN_NEW_TALENT_APPLICATION: false, // admin/web-only
+  EXPLORE_POST_APPROVED: true,
+  EXPLORE_POST_CHANGES_REQUESTED: true,
+  EXPLORE_POST_REJECTED: true,
+  BEAUTY_PROFESSIONAL_APPROVED: true,
+  BEAUTY_PROFESSIONAL_CHANGES_REQUESTED: true,
+  BEAUTY_PROFESSIONAL_REJECTED: true,
+  SERVICE_REQUEST_SUBMITTED: true, // notifies the professional/vendor — needs their action
+  SERVICE_REQUEST_ACCEPTED: true,
+  SERVICE_REQUEST_DECLINED: true,
+  VENDOR_SOURCING_SOLICITATION_RECEIVED: true, // notifies the vendor — needs their action
+  ADMIN_SOURCING_SOLICITATION_RESPONDED: false, // admin/web-only
+};
+
+/** Push is best-effort and additive on top of the always-created in-app Notification — never gated by user preference (no push-preferences UI exists yet). */
+export function shouldSendPush(type: NotificationType): boolean {
+  return PUSH_POLICY[type];
+}

@@ -1,10 +1,13 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../lib/db";
 import { notificationsService } from "./service";
 import { notificationsRepository } from "./repository";
 import { notificationLinks } from "./links";
+import { shouldSendPush } from "./policy";
 import * as emailProviderModule from "../../lib/email-provider";
+import * as pushProviderModule from "../../lib/push-provider";
 import { processEmailQueue } from "../../lib/email-worker";
+import { processPushQueue } from "../../lib/push-worker";
 import type { NotifyInput } from "./types";
 
 /** Integration tests against the real local Postgres dev database. */
@@ -422,7 +425,7 @@ describe("notificationsService", () => {
       body: "There was an issue with your delivery.",
       targetUrl: notificationLinks.customerOrder("order-retry"),
       eventKey: key,
-    });
+    }, false);
     expect(notification).not.toBeNull();
     const job = await prisma.emailDeliveryJob.create({
       data: {
@@ -464,7 +467,7 @@ describe("notificationsService", () => {
       body: "There was an issue with your delivery.",
       targetUrl: notificationLinks.customerOrder("order-exhausted"),
       eventKey: key,
-    });
+    }, false);
     expect(notification).not.toBeNull();
     const maxAttempts = 5;
     const job = await prisma.emailDeliveryJob.create({
@@ -484,5 +487,236 @@ describe("notificationsService", () => {
     const afterDrain = await prisma.emailDeliveryJob.findUnique({ where: { id: job.id } });
     expect(afterDrain?.status).toBe("FAILED");
     expect(afterDrain?.attempts).toBe(maxAttempts); // never reclaimed
+  });
+
+  // ---- Push devices / delivery (M31) -------------------------------------
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Same reasoning/shape as waitForJobStatus above, for the independent push job queue. */
+  async function waitForPushJobStatus(jobId: string, timeoutMs = 3000): Promise<{ status: string; attempts: number; lastError: string | null }> {
+    const deadline = Date.now() + timeoutMs;
+    let last = await prisma.pushDeliveryJob.findUniqueOrThrow({ where: { id: jobId } });
+    while (last.status === "PENDING" && Date.now() < deadline) {
+      await processPushQueue();
+      last = await prisma.pushDeliveryJob.findUniqueOrThrow({ where: { id: jobId } });
+    }
+    return last;
+  }
+
+  it("shouldSendPush classifies a representative sample per the documented policy", () => {
+    // Self-acknowledgement — never pushed.
+    expect(shouldSendPush("RESOLUTION_CASE_RECEIVED")).toBe(false);
+    // Admin/web-only — never pushed (no mobile admin surface).
+    expect(shouldSendPush("ADMIN_NEW_MESSAGE")).toBe(false);
+    // Informational sibling of an actionable event — never pushed.
+    expect(shouldSendPush("RESOLUTION_VENDOR_CASE_UPDATE")).toBe(false);
+    // Genuinely actionable/important — pushed.
+    expect(shouldSendPush("ORDER_CONFIRMED")).toBe(true);
+    expect(shouldSendPush("STAFF_REPLY")).toBe(true);
+    expect(shouldSendPush("RESOLUTION_VENDOR_RESPONSE_NEEDED")).toBe(true);
+  });
+
+  it("registerDevice upserts by token, reassigning ownership when a different user re-registers the same token", async () => {
+    const token = `ExponentPushToken[test-${Date.now()}]`;
+    const first = await notificationsService.registerDevice(userAId, { expoPushToken: token, platform: "IOS" });
+    expect(first.ok).toBe(true);
+
+    let devices = await notificationsRepository.findActiveDevicesForUser(userAId);
+    expect(devices.map((d) => d.expoPushToken)).toContain(token);
+
+    // Same physical device, different account signs in — must reassign, not duplicate.
+    const second = await notificationsService.registerDevice(userBId, { expoPushToken: token, platform: "IOS" });
+    expect(second.ok).toBe(true);
+
+    devices = await notificationsRepository.findActiveDevicesForUser(userAId);
+    expect(devices.map((d) => d.expoPushToken)).not.toContain(token);
+    devices = await notificationsRepository.findActiveDevicesForUser(userBId);
+    expect(devices.map((d) => d.expoPushToken)).toContain(token);
+
+    const rowCount = await prisma.pushDevice.count({ where: { expoPushToken: token } });
+    expect(rowCount).toBe(1); // never duplicated
+  });
+
+  it("unregisterDevice only removes a token that currently belongs to the calling user", async () => {
+    const token = `ExponentPushToken[test-${Date.now()}]`;
+    await notificationsService.registerDevice(userAId, { expoPushToken: token, platform: "ANDROID" });
+
+    // User B trying to unregister User A's device — must be a no-op.
+    await notificationsService.unregisterDevice(userBId, token);
+    let devices = await notificationsRepository.findActiveDevicesForUser(userAId);
+    expect(devices.map((d) => d.expoPushToken)).toContain(token);
+
+    // The real owner can remove it.
+    await notificationsService.unregisterDevice(userAId, token);
+    devices = await notificationsRepository.findActiveDevicesForUser(userAId);
+    expect(devices.map((d) => d.expoPushToken)).not.toContain(token);
+  });
+
+  it("notify() enqueues a PushDeliveryJob only for push-worthy types", async () => {
+    const pushedKey = eventKey();
+    await notificationsService.notify({
+      recipientUserId: userAId,
+      type: "ORDER_CONFIRMED", // push-worthy
+      title: "Order confirmed",
+      body: "Your order has been confirmed.",
+      targetUrl: notificationLinks.customerOrder("order-push-1"),
+      eventKey: pushedKey,
+    });
+    const pushedNotification = await prisma.notification.findFirst({ where: { recipientUserId: userAId, eventKey: pushedKey } });
+    const pushedJob = await prisma.pushDeliveryJob.findUnique({ where: { notificationId: pushedNotification!.id } });
+    expect(pushedJob).not.toBeNull();
+
+    const skippedKey = eventKey();
+    await notificationsService.notify({
+      recipientUserId: userAId,
+      type: "RESOLUTION_CASE_RECEIVED", // self-ack — never push-worthy
+      title: "We've received your report",
+      body: "We've received your report.",
+      targetUrl: notificationLinks.customerResolution("case-push-skip"),
+      eventKey: skippedKey,
+    });
+    const skippedNotification = await prisma.notification.findFirst({ where: { recipientUserId: userAId, eventKey: skippedKey } });
+    const skippedJob = await prisma.pushDeliveryJob.findUnique({ where: { notificationId: skippedNotification!.id } });
+    expect(skippedJob).toBeNull();
+  });
+
+  it("a duplicate notify() call for the same eventKey never creates a second PushDeliveryJob", async () => {
+    const key = eventKey();
+    const input: NotifyInput = {
+      recipientUserId: userAId,
+      type: "ORDER_CONFIRMED",
+      title: "Order confirmed",
+      body: "Your order has been confirmed.",
+      targetUrl: notificationLinks.customerOrder("order-dedup"),
+      eventKey: key,
+    };
+    await notificationsService.notify(input);
+    await notificationsService.notify(input); // duplicate call — same event
+
+    const notification = await prisma.notification.findFirst({ where: { recipientUserId: userAId, eventKey: key } });
+    const jobCount = await prisma.pushDeliveryJob.count({ where: { notificationId: notification!.id } });
+    expect(jobCount).toBe(1);
+  });
+
+  it("delivers to every one of a user's registered devices in one job, with only safe fields in the payload", async () => {
+    const tokenA = `ExponentPushToken[multi-a-${Date.now()}]`;
+    const tokenB = `ExponentPushToken[multi-b-${Date.now()}]`;
+    await notificationsService.registerDevice(userAId, { expoPushToken: tokenA, platform: "IOS" });
+    await notificationsService.registerDevice(userAId, { expoPushToken: tokenB, platform: "ANDROID" });
+
+    const sendSpy = vi
+      .spyOn(pushProviderModule.pushProvider, "send")
+      .mockImplementation(async (messages) => messages.map((m) => ({ to: m.to, ok: true, deviceNotRegistered: false })));
+
+    const key = eventKey();
+    await notificationsService.notify({
+      recipientUserId: userAId,
+      type: "ORDER_CONFIRMED",
+      title: "Order confirmed",
+      body: "Your order has been confirmed.",
+      targetUrl: notificationLinks.customerOrder("order-multi-device"),
+      eventKey: key,
+    });
+    const notification = await prisma.notification.findFirst({ where: { recipientUserId: userAId, eventKey: key } });
+    const job = await prisma.pushDeliveryJob.findUnique({ where: { notificationId: notification!.id } });
+    const settled = await waitForPushJobStatus(job!.id);
+    expect(settled.status).toBe("SENT");
+
+    expect(sendSpy).toHaveBeenCalled();
+    const sentMessages = sendSpy.mock.calls.flatMap(([messages]) => messages);
+    const forThisJob = sentMessages.filter((m) => [tokenA, tokenB].includes(m.to));
+    expect(forThisJob.map((m) => m.to).sort()).toEqual([tokenA, tokenB].sort());
+    for (const message of forThisJob) {
+      expect(message.title).toBe("Order confirmed");
+      expect(message.body).toBe("Your order has been confirmed.");
+      expect(Object.keys(message.data).sort()).toEqual(["notificationId", "targetUrl", "type"].sort());
+      const raw = JSON.stringify(message);
+      expect(raw).not.toMatch(/@example\.com|password|secret|token.*paystack/i);
+    }
+  });
+
+  it("removes a device the provider reports as DeviceNotRegistered, without blocking other devices", async () => {
+    const goodToken = `ExponentPushToken[good-${Date.now()}]`;
+    const deadToken = `ExponentPushToken[dead-${Date.now()}]`;
+    await notificationsService.registerDevice(userAId, { expoPushToken: goodToken, platform: "IOS" });
+    await notificationsService.registerDevice(userAId, { expoPushToken: deadToken, platform: "IOS" });
+
+    vi.spyOn(pushProviderModule.pushProvider, "send").mockImplementation(async (messages) =>
+      messages.map((m) => (m.to === deadToken ? { to: m.to, ok: false, deviceNotRegistered: true, error: "DeviceNotRegistered" } : { to: m.to, ok: true, deviceNotRegistered: false })),
+    );
+
+    const key = eventKey();
+    await notificationsService.notify({
+      recipientUserId: userAId,
+      type: "ORDER_CONFIRMED",
+      title: "Order confirmed",
+      body: "Your order has been confirmed.",
+      targetUrl: notificationLinks.customerOrder("order-invalid-token"),
+      eventKey: key,
+    });
+    const notification = await prisma.notification.findFirst({ where: { recipientUserId: userAId, eventKey: key } });
+    const job = await prisma.pushDeliveryJob.findUnique({ where: { notificationId: notification!.id } });
+    const settled = await waitForPushJobStatus(job!.id);
+    expect(settled.status).toBe("SENT"); // the job itself still succeeded — one bad device doesn't fail it
+
+    const remaining = await notificationsRepository.findActiveDevicesForUser(userAId);
+    expect(remaining.map((d) => d.expoPushToken)).toContain(goodToken);
+    expect(remaining.map((d) => d.expoPushToken)).not.toContain(deadToken);
+  });
+
+  it("a push provider outage never affects the in-app Notification (best-effort, never blocking)", async () => {
+    vi.spyOn(pushProviderModule.pushProvider, "send").mockRejectedValue(new Error("simulated push outage"));
+
+    const key = eventKey();
+    // notify() itself must resolve normally even though the fire-and-forget
+    // push drain it kicks off is guaranteed to fail — this is the actual
+    // "payment succeeds, push service unavailable" guarantee M31 §15
+    // requires: the caller (a business workflow) never sees this rejection.
+    await expect(
+      notificationsService.notify({
+        recipientUserId: userAId,
+        type: "ORDER_CONFIRMED",
+        title: "Order confirmed",
+        body: "Your order has been confirmed.",
+        targetUrl: notificationLinks.customerOrder("order-push-outage"),
+        eventKey: key,
+      }),
+    ).resolves.toBeUndefined();
+
+    const notification = await prisma.notification.findFirst({ where: { recipientUserId: userAId, eventKey: key } });
+    expect(notification).not.toBeNull(); // persisted regardless of push outcome
+  });
+
+  it("markPushJobFailed records the error and schedules a bounded future retry (same shape as the email job's backoff)", async () => {
+    // Job inserted directly with a far-future availableAt, exactly like the
+    // equivalent EmailDeliveryJob backoff tests above — never exposed to
+    // the shared, concurrently-drained queue this suite's other tests race
+    // over, so this assertion is fully deterministic.
+    const key = eventKey();
+    const notification = await notificationsRepository.create(
+      {
+        recipientUserId: userAId,
+        type: "ORDER_CONFIRMED",
+        title: "Order confirmed",
+        body: "Your order has been confirmed.",
+        targetUrl: notificationLinks.customerOrder("order-push-retry"),
+        eventKey: key,
+      },
+      false, // create the job manually below, parked out of the eligible window
+    );
+    const job = await prisma.pushDeliveryJob.create({
+      data: { notificationId: notification!.id, availableAt: new Date(Date.now() + 10 * 60_000) },
+    });
+
+    const retryAt = new Date(Date.now() + 5 * 60_000);
+    await notificationsRepository.markPushJobFailed(job.id, "simulated outage", retryAt);
+
+    const updated = await prisma.pushDeliveryJob.findUnique({ where: { id: job.id } });
+    expect(updated?.status).toBe("FAILED");
+    expect(updated?.lastError).toBe("simulated outage");
+    expect(updated?.availableAt.getTime()).toBe(retryAt.getTime());
   });
 });
