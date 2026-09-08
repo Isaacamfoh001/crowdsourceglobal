@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Input } from "../ui/Input";
 import { FormMessage } from "../ui/FormMessage";
 import { getCategoryIcon } from "../catalogue/categoryIcons";
@@ -22,6 +22,7 @@ export function OperationsForm({
   categories: Category[];
   initial: {
     categorySlugs: string[];
+    categoryOther: string | null;
     sellingMode: string | null;
     bulkCapable: boolean;
     leadTimeDaysDefault: number | null;
@@ -29,6 +30,7 @@ export function OperationsForm({
   };
 }) {
   const [state, formAction, isPending] = useActionState(saveOperationsAction, null);
+  const [otherSelected, setOtherSelected] = useState(Boolean(initial.categoryOther));
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
@@ -58,7 +60,27 @@ export function OperationsForm({
               </label>
             );
           })}
+          <label className="flex min-h-[4.5rem] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-ivory-300 p-3 text-center transition-colors has-[:checked]:border-espresso-800 has-[:checked]:bg-champagne-200/20">
+            <input
+              type="checkbox"
+              checked={otherSelected}
+              onChange={(e) => setOtherSelected(e.target.checked)}
+              className="sr-only"
+            />
+            <span className="text-[13px] leading-snug font-medium text-espresso-900">Other / Not listed</span>
+          </label>
         </div>
+        {otherSelected ? (
+          <div className="mt-3">
+            <Input
+              label="What do you sell?"
+              name="categoryOther"
+              defaultValue={initial.categoryOther ?? ""}
+              placeholder="Describe what your business sells"
+              disabled={isPending}
+            />
+          </div>
+        ) : null}
       </fieldset>
 
       <fieldset>

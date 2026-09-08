@@ -9,7 +9,7 @@ afterEach(() => {
 describe("ListingImageReview (M17.1.2 — admin listing image review)", () => {
   it("shows an explicit empty state when the listing has zero images", () => {
     render(<ListingImageReview images={[]} title="Test Listing" />);
-    expect(screen.getByText("No product images uploaded.")).toBeInTheDocument();
+    expect(screen.getByText("No images uploaded.")).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
@@ -29,7 +29,8 @@ describe("ListingImageReview (M17.1.2 — admin listing image review)", () => {
     );
     const images = screen.getAllByRole("img");
     expect(images).toHaveLength(3);
-    expect(screen.getByText("3 product images")).toBeInTheDocument();
+    expect(screen.getByText("Product images")).toBeInTheDocument();
+    expect(screen.getByText((_, node) => node?.textContent === "3 images")).toBeInTheDocument();
   });
 
   it("opens a larger preview on click and lets the admin step through images without mutating the gallery", () => {

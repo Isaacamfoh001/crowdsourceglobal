@@ -26,4 +26,9 @@ export const identityService = {
   getCustomerProfileByUserId(userId: string) {
     return identityRepository.findCustomerProfileByUserId(userId);
   },
+
+  /** M32.3 — persists the mobile app's Experience Mode chooser selection ("BUYER"/"SELLER"/"FACTORY"/"BEAUTY") for cross-device continuity. UI preference only. */
+  updatePreferredExperience(userId: string, preferredExperience: string | null) {
+    return identityRepository.updatePreferredExperience(userId, preferredExperience);
+  },
 };

@@ -43,7 +43,9 @@ async function notifyStaffOfNewApplication(companyName: string, applicationId: s
 
 function validateForSubmission(app: VendorApplicationView): Result<null> {
   if (!app.sellerType) return err("Choose how you sell before submitting.");
-  if (!app.contactName || !app.contactEmail || !app.contactPhone) {
+  // M32.3 — business/contact email is optional end-to-end; Better Auth's
+  // own login email is unaffected and unrelated to this field.
+  if (!app.contactName || !app.contactPhone) {
     return err("Complete your contact details before submitting.");
   }
   if (!app.displayName || !app.storeDescription) {
@@ -55,7 +57,10 @@ function validateForSubmission(app: VendorApplicationView): Result<null> {
   if (REGISTRATION_RELEVANT_SELLER_TYPES.includes(app.sellerType) && !app.registrationNumber) {
     return err("Add your business registration number before submitting.");
   }
-  if (app.categorySlugs.length === 0 || !app.sellingMode) {
+  // M32.3 — "Other / Not listed" (a free-text categoryOther) satisfies this
+  // requirement in place of a real Category selection; never both required.
+  const hasCategory = app.categorySlugs.length > 0 || Boolean(app.categoryOther?.trim());
+  if (!hasCategory || !app.sellingMode) {
     return err("Tell us what you sell before submitting.");
   }
   return ok(null);

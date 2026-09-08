@@ -53,6 +53,7 @@ export default async function AdminVendorApplicationDetailPage({ params }: { par
         <dl className="divide-y divide-ivory-100">
           <Row label="Seller type" value={application.sellerType ?? ""} />
           <Row label="Contact" value={`${application.contactName ?? ""} · ${application.contactPhone ?? ""}`} />
+          <Row label="Contact email" value={application.contactEmail ?? ""} />
           <Row label="Store description" value={application.storeDescription ?? ""} />
           <Row label="Registration number" value={application.registrationNumber ?? ""} />
           <Row label="Tax identifier" value={application.taxIdentifier ?? ""} />
@@ -67,6 +68,7 @@ export default async function AdminVendorApplicationDetailPage({ params }: { par
             label="Categories"
             value={application.categorySlugs.map((slug) => categoryNameBySlug[slug] ?? slug).join(", ")}
           />
+          <Row label="Other (what they sell)" value={application.categoryOther ?? ""} />
           <Row label="Selling mode" value={application.sellingMode ?? ""} />
           <Row label="Bulk capable" value={application.bulkCapable ? "Yes" : "No"} />
           <Row label="Service areas" value={application.serviceAreas ?? ""} />

@@ -72,6 +72,7 @@ export type VendorApplicationView = {
   city: string | null;
   addressLine1: string | null;
   categorySlugs: string[];
+  categoryOther: string | null;
   sellingMode: string | null;
   bulkCapable: boolean;
   leadTimeDaysDefault: number | null;
@@ -88,7 +89,8 @@ export type SellerTypeStepInput = { sellerType: SellerType };
 
 export type ContactStepInput = {
   contactName: string;
-  contactEmail: string;
+  /** M32.3 — optional business/contact email, separate from the authenticated User's login email. */
+  contactEmail?: string | null;
   contactPhone: string;
 };
 
@@ -108,6 +110,8 @@ export type BusinessStepInput = {
 
 export type OperationsStepInput = {
   categorySlugs: string[];
+  /** M32.3 — free-text "what do you sell?" when "Other / Not listed" is chosen instead of (or alongside) a real category. */
+  categoryOther?: string;
   sellingMode: string;
   bulkCapable: boolean;
   leadTimeDaysDefault?: number;

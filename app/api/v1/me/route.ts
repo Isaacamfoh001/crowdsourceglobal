@@ -44,7 +44,9 @@ export async function GET(_request: Request) {
       email: session.user.email,
       emailVerified: session.user.emailVerified,
     },
-    customer: customerProfile ? { id: customerProfile.id } : null,
+    customer: customerProfile
+      ? { id: customerProfile.id, preferredExperience: customerProfile.preferredExperience }
+      : null,
     vendor: {
       available: vendorMemberships.length > 0,
       memberships: vendorMemberships.map((membership) => ({
@@ -52,6 +54,10 @@ export async function GET(_request: Request) {
         role: membership.role,
         companyName: membership.vendor.companyName,
         verificationStatus: membership.vendor.verificationStatus,
+        // M32.3 — UI-only eligibility signal for Experience Mode (Seller/
+        // Factory/Beauty); never used for authorization decisions.
+        sellerType: membership.vendor.sellerType,
+        beautyProfessional: { available: membership.vendor.beautyProfessionalProfile?.status === "APPROVED" },
       })),
     },
     vendorApplication: vendorApplication

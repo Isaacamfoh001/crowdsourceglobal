@@ -20,6 +20,7 @@ export default async function OperationsStepPage() {
         categories={categories}
         initial={{
           categorySlugs: application.categorySlugs,
+          categoryOther: application.categoryOther,
           sellingMode: application.sellingMode,
           bulkCapable: application.bulkCapable,
           leadTimeDaysDefault: application.leadTimeDaysDefault,

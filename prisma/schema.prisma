@@ -137,6 +137,12 @@ model CustomerProfile {
   id          String   @id @default(cuid())
   displayName String
   phone       String?
+  /// M32.3 — which focused mobile experience ("BUYER"/"SELLER"/"FACTORY"/
+  /// "BEAUTY") the app should open into by default. A UI preference only —
+  /// never checked by any authorization path; every `/api/v1/vendor/*`
+  /// route keeps deriving its own vendor context independently. Unset
+  /// (null) until the app's first-run experience chooser is completed.
+  preferredExperience String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -1528,6 +1534,11 @@ model VendorApplication {
   addressLine1 String?
 
   categorySlugs       String[] @default([])
+  /// M32.3 — free-text "what do you sell?" description, set only when the
+  /// applicant picks "Other / Not listed" in the categories step because no
+  /// existing `Category` fits their business. Deliberately separate from
+  /// `categorySlugs` — never written into the canonical taxonomy.
+  categoryOther       String?
   sellingMode         String?
   bulkCapable         Boolean  @default(false)
   leadTimeDaysDefault Int?

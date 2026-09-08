@@ -21,6 +21,7 @@ const applicationSelect = {
   city: true,
   addressLine1: true,
   categorySlugs: true,
+  categoryOther: true,
   sellingMode: true,
   bulkCapable: true,
   leadTimeDaysDefault: true,

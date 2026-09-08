@@ -31,7 +31,8 @@ export async function saveSellerTypeAction(_prevState: Result<null> | null, form
 
 const contactSchema = z.object({
   contactName: z.string().trim().min(2, "Enter your name."),
-  contactEmail: z.email("Enter a valid email address."),
+  // M32.3 — business/contact email is optional; empty means "no business email on file".
+  contactEmail: z.union([z.email("Enter a valid email address."), z.literal("")]).optional(),
   contactPhone: z.string().trim().min(9, "Enter a valid phone number."),
 });
 
@@ -44,7 +45,10 @@ export async function saveContactAction(_prevState: Result<null> | null, formDat
   });
   if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "Check your contact details.");
 
-  const result = await vendorApplicationsService.saveContact(session.user.id, parsed.data);
+  const result = await vendorApplicationsService.saveContact(session.user.id, {
+    ...parsed.data,
+    contactEmail: parsed.data.contactEmail || null,
+  });
   if (!result.ok) return result;
   redirect("/vendor/onboarding/business");
 }
@@ -86,18 +90,27 @@ export async function saveBusinessAction(_prevState: Result<null> | null, formDa
   redirect("/vendor/onboarding/operations");
 }
 
-const operationsSchema = z.object({
-  categorySlugs: z.array(z.string()).min(1, "Choose at least one category."),
-  sellingMode: z.enum(["retail", "wholesale", "both"]),
-  bulkCapable: z.coerce.boolean(),
-  leadTimeDaysDefault: z.coerce.number().int().min(0).optional(),
-  serviceAreas: z.string().trim().optional(),
-});
+const operationsSchema = z
+  .object({
+    categorySlugs: z.array(z.string()),
+    // M32.3 — "Other / Not listed": a free-text description used instead of
+    // (or alongside) a real Category, never written into categorySlugs.
+    categoryOther: z.string().trim().max(200).optional(),
+    sellingMode: z.enum(["retail", "wholesale", "both"]),
+    bulkCapable: z.coerce.boolean(),
+    leadTimeDaysDefault: z.coerce.number().int().min(0).optional(),
+    serviceAreas: z.string().trim().optional(),
+  })
+  .refine((v) => v.categorySlugs.length > 0 || Boolean(v.categoryOther), {
+    message: "Choose at least one category, or describe what you sell.",
+    path: ["categorySlugs"],
+  });
 
 export async function saveOperationsAction(_prevState: Result<null> | null, formData: FormData): Promise<Result<null>> {
   const session = await requireSession("/vendor/onboarding");
   const parsed = operationsSchema.safeParse({
     categorySlugs: formData.getAll("categorySlugs"),
+    categoryOther: formData.get("categoryOther") || undefined,
     sellingMode: formData.get("sellingMode"),
     bulkCapable: formData.get("bulkCapable") === "on",
     leadTimeDaysDefault: formData.get("leadTimeDaysDefault") || undefined,

@@ -45,6 +45,7 @@ export function toVendorApplicationDTO(app: VendorApplicationView) {
     city: app.city,
     addressLine1: app.addressLine1,
     categorySlugs: app.categorySlugs,
+    categoryOther: app.categoryOther,
     sellingMode: app.sellingMode,
     bulkCapable: app.bulkCapable,
     leadTimeDaysDefault: app.leadTimeDaysDefault,

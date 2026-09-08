@@ -79,7 +79,7 @@ describe("GET /api/v1/me", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.data.user).toEqual({ id: user.id, name: user.name, email: user.email, emailVerified: true });
-    expect(body.data.customer).toEqual({ id: expect.any(String) });
+    expect(body.data.customer).toEqual({ id: expect.any(String), preferredExperience: null });
     expect(body.data.vendor).toEqual({ available: false, memberships: [] });
     expect(body.data.vendorApplication).toBeNull();
   });
@@ -115,11 +115,47 @@ describe("GET /api/v1/me", () => {
 
     expect(response.status).toBe(200);
     // Customer capability is untouched by becoming a vendor — no fork.
-    expect(body.data.customer).toEqual({ id: expect.any(String) });
+    expect(body.data.customer).toEqual({ id: expect.any(String), preferredExperience: null });
     expect(body.data.vendor).toEqual({
       available: true,
-      memberships: [{ vendorId: vendor.id, role: "OWNER", companyName: "M18.1 Vendor Co", verificationStatus: "APPROVED" }],
+      memberships: [
+        {
+          vendorId: vendor.id,
+          role: "OWNER",
+          companyName: "M18.1 Vendor Co",
+          verificationStatus: "APPROVED",
+          sellerType: null,
+          beautyProfessional: { available: false },
+        },
+      ],
     });
+  });
+
+  it("M32.3 — reports FACTORY/BEAUTY experience eligibility signals (UI-only) on the membership", async () => {
+    const user = await createUserWithCustomerProfile("factory-beauty-vendor");
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const vendor = await prisma.vendor.create({
+      data: {
+        companyName: "M32.3 Factory Co",
+        storefrontSlug: `m32-3-factory-${suffix}`,
+        verificationStatus: "APPROVED",
+        country: "Ghana",
+        sellerType: "MANUFACTURER",
+      },
+    });
+    createdVendorIds.push(vendor.id);
+    await prisma.vendorMembership.create({ data: { userId: user.id, vendorId: vendor.id, role: "OWNER" } });
+    await prisma.beautyProfessionalProfile.create({
+      data: { vendorId: vendor.id, status: "APPROVED", displayName: "Bridal specialist" },
+    });
+    vi.mocked(getCurrentSession).mockResolvedValue(sessionFor({ id: user.id, email: user.email, name: user.name, emailVerified: true }));
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.vendor.memberships[0].sellerType).toBe("MANUFACTURER");
+    expect(body.data.vendor.memberships[0].beautyProfessional).toEqual({ available: true });
   });
 
   it("never leaks another user's vendor membership or application into this user's response", async () => {
@@ -174,9 +210,16 @@ describe("GET /api/v1/me", () => {
 
     expect(Object.keys(body.data).sort()).toEqual(["customer", "user", "vendor", "vendorApplication"]);
     expect(Object.keys(body.data.user).sort()).toEqual(["email", "emailVerified", "id", "name"]);
-    expect(Object.keys(body.data.customer).sort()).toEqual(["id"]);
+    expect(Object.keys(body.data.customer).sort()).toEqual(["id", "preferredExperience"]);
     expect(Object.keys(body.data.vendor).sort()).toEqual(["available", "memberships"]);
-    expect(Object.keys(body.data.vendor.memberships[0]).sort()).toEqual(["companyName", "role", "vendorId", "verificationStatus"]);
+    expect(Object.keys(body.data.vendor.memberships[0]).sort()).toEqual([
+      "beautyProfessional",
+      "companyName",
+      "role",
+      "sellerType",
+      "vendorId",
+      "verificationStatus",
+    ]);
     expect(Object.keys(body.data.vendorApplication).sort()).toEqual(["id", "status"]);
     expect(JSON.stringify(body)).not.toContain("0000000000");
     expect(JSON.stringify(body)).not.toContain("SECRET-TIN");

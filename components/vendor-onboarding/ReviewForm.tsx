@@ -83,7 +83,10 @@ export function ReviewForm({
         <dl className="mt-1 divide-y divide-ivory-100">
           <Row
             label="Categories"
-            value={application.categorySlugs.map((slug) => categoryNameBySlug[slug] ?? slug).join(", ")}
+            value={[
+              ...application.categorySlugs.map((slug) => categoryNameBySlug[slug] ?? slug),
+              ...(application.categoryOther ? [application.categoryOther] : []),
+            ].join(", ")}
           />
           <Row label="Selling mode" value={application.sellingMode ?? ""} />
           <Row label="Bulk orders" value={application.bulkCapable ? "Yes" : "No"} />

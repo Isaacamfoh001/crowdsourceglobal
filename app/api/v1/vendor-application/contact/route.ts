@@ -5,7 +5,8 @@ import { apiError, apiSuccess } from "../../../../../lib/api/response";
 
 const schema = z.object({
   contactName: z.string().trim().min(2, "Enter your name."),
-  contactEmail: z.email("Enter a valid email address."),
+  // M32.3 — business/contact email is optional; empty string means "clear it".
+  contactEmail: z.union([z.email("Enter a valid email address."), z.literal("")]).optional(),
   contactPhone: z.string().trim().min(9, "Enter a valid phone number."),
 });
 
@@ -23,7 +24,10 @@ export async function PATCH(request: Request) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return apiError("VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Check your contact details.");
 
-  const result = await vendorApplicationsService.saveContact(session.user.id, parsed.data);
+  const result = await vendorApplicationsService.saveContact(session.user.id, {
+    ...parsed.data,
+    contactEmail: parsed.data.contactEmail || null,
+  });
   if (!result.ok) return apiError("VALIDATION_ERROR", result.error);
   return apiSuccess(null);
 }

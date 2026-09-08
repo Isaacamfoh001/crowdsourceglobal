@@ -101,6 +101,53 @@ describe("vendorApplicationsService", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("M32.3 — submits successfully with no business/contact email", async () => {
+    await vendorApplicationsService.getOrCreateForUser(applicantUserId);
+    await trackApplication();
+
+    await vendorApplicationsService.saveSellerType(applicantUserId, { sellerType: "INDIVIDUAL" });
+    await vendorApplicationsService.saveContact(applicantUserId, { ...validContact, contactEmail: null });
+    await vendorApplicationsService.saveBusiness(applicantUserId, validBusiness);
+    await vendorApplicationsService.saveOperations(applicantUserId, validOperations);
+
+    const result = await vendorApplicationsService.submit(applicantUserId);
+    expect(result.ok).toBe(true);
+
+    const application = await vendorApplicationsService.getForUser(applicantUserId);
+    expect(application?.contactEmail).toBeNull();
+  });
+
+  it("M32.3 — 'Other / Not listed' categoryOther satisfies the what-you-sell requirement without a real category", async () => {
+    await vendorApplicationsService.getOrCreateForUser(applicantUserId);
+    await trackApplication();
+
+    await vendorApplicationsService.saveSellerType(applicantUserId, { sellerType: "INDIVIDUAL" });
+    await vendorApplicationsService.saveContact(applicantUserId, validContact);
+    await vendorApplicationsService.saveBusiness(applicantUserId, validBusiness);
+
+    const missingBoth = await vendorApplicationsService.saveOperations(applicantUserId, {
+      categorySlugs: [],
+      sellingMode: "retail",
+      bulkCapable: false,
+    });
+    expect(missingBoth.ok).toBe(true); // saving a step never validates — only submit does
+    const rejectedAtSubmit = await vendorApplicationsService.submit(applicantUserId);
+    expect(rejectedAtSubmit.ok).toBe(false);
+
+    await vendorApplicationsService.saveOperations(applicantUserId, {
+      categorySlugs: [],
+      categoryOther: "Bespoke gele head-wraps",
+      sellingMode: "retail",
+      bulkCapable: false,
+    });
+    const submitted = await vendorApplicationsService.submit(applicantUserId);
+    expect(submitted.ok).toBe(true);
+
+    const application = await vendorApplicationsService.getForUser(applicantUserId);
+    expect(application?.categorySlugs).toEqual([]);
+    expect(application?.categoryOther).toBe("Bespoke gele head-wraps");
+  });
+
   it("rejects invalid state transitions — cannot edit once submitted", async () => {
     await vendorApplicationsService.getOrCreateForUser(applicantUserId);
     await trackApplication();

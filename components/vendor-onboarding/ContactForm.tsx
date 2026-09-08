@@ -26,13 +26,12 @@ export function ContactForm({
         disabled={isPending}
       />
       <Input
-        label="Contact email"
+        label="Contact email (optional)"
         name="contactEmail"
         type="email"
         defaultValue={initial.contactEmail ?? ""}
         autoComplete="email"
-        hint="We'll use this for anything related to your vendor account."
-        required
+        hint="Only if your business has one separate from your CrownSourceGlobal login."
         disabled={isPending}
       />
       <Input

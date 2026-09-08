@@ -74,13 +74,30 @@ export const vendorsRepository = {
    * for the web Vendor Portal, which still only supports one active
    * membership at a time per its own doc comment).
    */
+  /**
+   * M32.3 — also selects `sellerType` and whether an APPROVED
+   * `BeautyProfessionalProfile` exists, so `GET /api/v1/me` can expose
+   * enough for the client to compute which focused "experience" (Seller/
+   * Factory/Beauty) a membership legitimately supports, without a second
+   * endpoint. Never used for authorization — every `/api/v1/vendor/*` route
+   * keeps deriving its own vendor context independently.
+   */
   findAllMembershipsForUser(userId: string) {
     return prisma.vendorMembership.findMany({
       where: { userId },
       select: {
         role: true,
         vendorId: true,
-        vendor: { select: { id: true, companyName: true, storefrontSlug: true, verificationStatus: true } },
+        vendor: {
+          select: {
+            id: true,
+            companyName: true,
+            storefrontSlug: true,
+            verificationStatus: true,
+            sellerType: true,
+            beautyProfessionalProfile: { select: { status: true } },
+          },
+        },
       },
       orderBy: { createdAt: "asc" },
     });

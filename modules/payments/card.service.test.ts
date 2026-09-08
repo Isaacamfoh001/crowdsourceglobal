@@ -92,8 +92,16 @@ describe("paymentsService — card payments (M10B, Paystack-hosted Checkout)", (
     await prisma.$disconnect();
   });
 
-  async function createVendor(suffix: string) {
-    const vendor = await prisma.vendor.create({ data: { companyName: `Card Vendor ${suffix}`, storefrontSlug: `card-vendor-${suffix}`, verificationStatus: "APPROVED" } });
+  async function createVendor(label: string) {
+    // `label` is a human-readable per-test tag, not a uniqueness guarantee —
+    // storefrontSlug is a real unique-constrained column, and this suite runs
+    // against a real local Postgres DB (not per-run reset), so a literal
+    // slug collides with a prior run's leftover row (e.g. one that never
+    // reached afterAll's cleanup because an earlier test in the file timed
+    // out). Always append a run-unique suffix, the same pattern
+    // setupCustomer() already uses.
+    const suffix = `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const vendor = await prisma.vendor.create({ data: { companyName: `Card Vendor ${label}`, storefrontSlug: `card-vendor-${suffix}`, verificationStatus: "APPROVED" } });
     createdVendorIds.push(vendor.id);
     return vendor.id;
   }
