@@ -1,11 +1,13 @@
 import { vendorListingsRepository } from "./repository";
 import { vendorsRepository } from "../vendors/repository";
+import { catalogueRepository } from "../catalogue/repository";
 import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
 import { ok, err, type Result } from "../../lib/result";
 import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import { storageProvider, generateStorageKey } from "../../lib/storage";
 import { validateListingImage, MAX_LISTING_IMAGES } from "./image-validation";
+import { OTHER_CATEGORY_SLUG } from "../../prisma/reference-data";
 import type { BulkTierInput, ListingFormInput, VendorListingDetail } from "./types";
 import type { NotificationType } from "../notifications/types";
 
@@ -89,6 +91,28 @@ function isAwaitingReview(listing: { approvalStatus: string; submittedAt: Date |
   return listing.approvalStatus === "PENDING" && listing.submittedAt !== null;
 }
 
+/**
+ * M32.5 — resolves "Other / Not listed" (a free-text `categoryOther`, no
+ * real `categoryId` from the client) to the shared placeholder Category's
+ * real id, same pattern as beauty-services/service.ts's own
+ * resolveCategory. `categoryId` on the row stays a required, always-valid
+ * FK — `categoryOther` is purely descriptive and never itself a Category.
+ */
+async function resolveCategory(
+  categoryId: string,
+  categoryOther: string | null | undefined,
+): Promise<Result<{ categoryId: string; categoryOther: string | null }>> {
+  const other = categoryOther?.trim();
+  if (other) {
+    if (other.length > 120) return err("Category name is too long.");
+    const placeholder = await catalogueRepository.findCategoryBySlug(OTHER_CATEGORY_SLUG);
+    if (!placeholder) return err("Choose a valid category.");
+    return ok({ categoryId: placeholder.id, categoryOther: other });
+  }
+  if (!categoryId) return err("Choose a category.");
+  return ok({ categoryId, categoryOther: null });
+}
+
 function validateListingContent(input: ListingFormInput): Result<null> {
   if (input.title.trim().length < 3) return err("Enter a listing title (at least 3 characters).");
   if (input.description.trim().length < 10) return err("Add a longer description (at least 10 characters).");
@@ -130,9 +154,11 @@ export const vendorListingsService = {
     return vendorListingsRepository.findDetailForVendor(vendorId, listingId);
   },
 
-  async createDraft(vendorId: string, categoryId: string): Promise<Result<{ listingId: string }>> {
-    if (!categoryId) return err("Choose a category to start a listing.");
-    const listing = await vendorListingsRepository.createDraft(vendorId, categoryId);
+  async createDraft(vendorId: string, categoryId: string, categoryOther?: string): Promise<Result<{ listingId: string }>> {
+    if (!categoryId && !categoryOther) return err("Choose a category to start a listing.");
+    const resolved = await resolveCategory(categoryId, categoryOther);
+    if (!resolved.ok) return resolved;
+    const listing = await vendorListingsRepository.createDraft(vendorId, resolved.value.categoryId, resolved.value.categoryOther);
     return ok({ listingId: listing.id });
   },
 
@@ -156,6 +182,10 @@ export const vendorListingsService = {
     const imagesResult = await resolveImages(input.images, newImageFiles);
     if (!imagesResult.ok) return imagesResult;
     input = { ...input, images: imagesResult.value };
+
+    const categoryResult = await resolveCategory(input.categoryId, input.categoryOther);
+    if (!categoryResult.ok) return categoryResult;
+    input = { ...input, categoryId: categoryResult.value.categoryId, categoryOther: categoryResult.value.categoryOther };
 
     const contentCheck = validateListingContent(input);
     if (!contentCheck.ok) return contentCheck;
@@ -190,6 +220,7 @@ export const vendorListingsService = {
       title: input.title,
       description: input.description,
       categoryId: input.categoryId,
+      categoryOther: input.categoryOther ?? null,
       basePrice: input.basePrice,
       moq: input.moq,
       maxOq: input.maxOq ?? null,
@@ -218,6 +249,7 @@ export const vendorListingsService = {
       title: listing.title,
       description: listing.description,
       categoryId: listing.categoryId,
+      categoryOther: listing.categoryOther,
       basePrice: listing.basePrice,
       moq: listing.moq,
       maxOq: listing.maxOq,
@@ -296,6 +328,7 @@ export const vendorListingsService = {
           title: fields.title,
           description: fields.description,
           categoryId: fields.categoryId,
+          categoryOther: fields.categoryOther ?? null,
           basePrice: fields.basePrice,
           moq: fields.moq,
           maxOq: fields.maxOq ?? null,

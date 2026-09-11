@@ -125,6 +125,11 @@ export type AdminApplicationSummary = {
   sellerType: SellerType | null;
   applicantName: string;
   applicantEmail: string;
+  categorySlugs: string[];
+  categoryOther: string | null;
+  country: string | null;
+  region: string | null;
+  city: string | null;
   submittedAt: Date | null;
   createdAt: Date;
 };

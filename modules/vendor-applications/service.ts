@@ -162,15 +162,16 @@ export const vendorApplicationsService = {
 
   // --- Admin moderation -----------------------------------------------
 
-  listForAdmin(statuses: string[] = REVIEWABLE_STATUSES): Promise<AdminApplicationSummary[]> {
-    return vendorApplicationsRepository.listForAdmin(statuses);
+  listForAdmin(statuses: string[] = REVIEWABLE_STATUSES, sellerTypes?: string[]): Promise<AdminApplicationSummary[]> {
+    return vendorApplicationsRepository.listForAdmin(statuses, sellerTypes);
   },
 
   async listForAdminPaginated(
     statuses: string[] = REVIEWABLE_STATUSES,
     page = 1,
+    sellerTypes?: string[],
   ): Promise<{ rows: AdminApplicationSummary[]; total: number; pageSize: number }> {
-    const { rows, total } = await vendorApplicationsRepository.listForAdminPaginated(statuses, page, PAGE_SIZE);
+    const { rows, total } = await vendorApplicationsRepository.listForAdminPaginated(statuses, page, PAGE_SIZE, sellerTypes);
     return { rows, total, pageSize: PAGE_SIZE };
   },
 

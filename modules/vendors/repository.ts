@@ -81,6 +81,11 @@ export const vendorsRepository = {
    * Factory/Beauty) a membership legitimately supports, without a second
    * endpoint. Never used for authorization — every `/api/v1/vendor/*` route
    * keeps deriving its own vendor context independently.
+   *
+   * M32.8 — also selects `manufacturerApplication` so a Vendor that upgraded
+   * to Manufacturer (rather than being created as one directly — see
+   * ManufacturerApplication's doc comment) also resolves Factory eligibility
+   * here, without touching `sellerType`.
    */
   findAllMembershipsForUser(userId: string) {
     return prisma.vendorMembership.findMany({
@@ -96,6 +101,7 @@ export const vendorsRepository = {
             verificationStatus: true,
             sellerType: true,
             beautyProfessionalProfile: { select: { status: true } },
+            manufacturerApplication: { select: { id: true, status: true, decisionReason: true, categorySlugs: true, categoryOther: true } },
           },
         },
       },

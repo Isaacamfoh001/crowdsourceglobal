@@ -89,6 +89,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<Para
       title: String(formData.get("title") ?? ""),
       description: String(formData.get("description") ?? ""),
       categoryId: String(formData.get("categoryId") ?? ""),
+      categoryOther: formData.get("categoryOther") ? String(formData.get("categoryOther")) : null,
       basePrice: basePriceRaw ? Number(basePriceRaw) : 0,
       moq: moqRaw ? Number(moqRaw) : 1,
       maxOq: maxOqRaw ? Number(maxOqRaw) : null,

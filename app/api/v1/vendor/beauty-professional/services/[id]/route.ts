@@ -6,13 +6,17 @@ import { apiError, apiSuccess } from "../../../../../../../lib/api/response";
 
 type Params = { id: string };
 
-const schema = z.object({
-  name: z.string().trim().min(2, "Enter a service name."),
-  description: z.string().trim().optional(),
-  categoryId: z.string().trim().min(1, "Choose a category."),
-  startingPrice: z.string().trim().optional(),
-  currency: z.string().trim().optional(),
-});
+const schema = z
+  .object({
+    name: z.string().trim().min(2, "Enter a service name."),
+    description: z.string().trim().optional(),
+    categoryId: z.string().trim().optional(),
+    /** M32.5 — "Other / Not listed" free text; mutually exclusive with categoryId, resolved server-side in beautyServicesService. */
+    categoryOther: z.string().trim().min(1).max(120).optional(),
+    startingPrice: z.string().trim().optional(),
+    currency: z.string().trim().optional(),
+  })
+  .refine((data) => Boolean(data.categoryId) || Boolean(data.categoryOther), { message: "Choose a category." });
 
 /** PATCH /api/v1/vendor/beauty-professional/services/:id (M27) — edit an offered service. */
 export async function PATCH(request: Request, { params }: { params: Promise<Params> }) {

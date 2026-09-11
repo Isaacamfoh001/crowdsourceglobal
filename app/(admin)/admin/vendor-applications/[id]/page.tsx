@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { ApplicationDecisionForms } from "../../../../../components/admin/ApplicationDecisionForms";
 import { requireAdminSession } from "../../../../../modules/administration/policy";
 import { vendorApplicationsService } from "../../../../../modules/vendor-applications/service";
+import { SELLER_TYPES } from "../../../../../modules/vendor-applications/types";
 import { catalogueService } from "../../../../../modules/catalogue/service";
 import { BeginReviewButton } from "../../../../../components/admin/BeginReviewButton";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
@@ -51,7 +52,7 @@ export default async function AdminVendorApplicationDetailPage({ params }: { par
 
       <Card>
         <dl className="divide-y divide-ivory-100">
-          <Row label="Seller type" value={application.sellerType ?? ""} />
+          <Row label="Seller type" value={SELLER_TYPES.find((t) => t.value === application.sellerType)?.label ?? ""} />
           <Row label="Contact" value={`${application.contactName ?? ""} · ${application.contactPhone ?? ""}`} />
           <Row label="Contact email" value={application.contactEmail ?? ""} />
           <Row label="Store description" value={application.storeDescription ?? ""} />

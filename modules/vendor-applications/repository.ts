@@ -75,14 +75,22 @@ export const vendorApplicationsRepository = {
     });
   },
 
-  async listForAdmin(statuses: string[]): Promise<AdminApplicationSummary[]> {
+  async listForAdmin(statuses: string[], sellerTypes?: string[]): Promise<AdminApplicationSummary[]> {
     const rows = await prisma.vendorApplication.findMany({
-      where: { status: { in: statuses as never[] } },
+      where: {
+        status: { in: statuses as never[] },
+        ...(sellerTypes ? { sellerType: { in: sellerTypes as never[] } } : {}),
+      },
       select: {
         id: true,
         status: true,
         displayName: true,
         sellerType: true,
+        categorySlugs: true,
+        categoryOther: true,
+        country: true,
+        region: true,
+        city: true,
         submittedAt: true,
         createdAt: true,
         applicant: { select: { name: true, email: true } },
@@ -97,6 +105,11 @@ export const vendorApplicationsRepository = {
       sellerType: row.sellerType,
       applicantName: row.applicant.name,
       applicantEmail: row.applicant.email,
+      categorySlugs: row.categorySlugs,
+      categoryOther: row.categoryOther,
+      country: row.country,
+      region: row.region,
+      city: row.city,
       submittedAt: row.submittedAt,
       createdAt: row.createdAt,
     }));
@@ -107,9 +120,16 @@ export const vendorApplicationsRepository = {
    * applications queue page. listForAdmin itself stays unbounded — it's
    * also used by admin-dashboard for pending-application attention/summary
    * counts, which need the full matching set, not one page of it.
+   *
+   * `sellerTypes` (M32.7) narrows the queue to a subset of seller types —
+   * e.g. Manufacturer-only — for the admin "Manufacturers" tab. Omitted
+   * entirely, it matches every seller type, unchanged from before M32.7.
    */
-  async listForAdminPaginated(statuses: string[], page: number, pageSize: number) {
-    const where = { status: { in: statuses as never[] } };
+  async listForAdminPaginated(statuses: string[], page: number, pageSize: number, sellerTypes?: string[]) {
+    const where = {
+      status: { in: statuses as never[] },
+      ...(sellerTypes ? { sellerType: { in: sellerTypes as never[] } } : {}),
+    };
     const [rows, total] = await Promise.all([
       prisma.vendorApplication.findMany({
         where,
@@ -118,6 +138,11 @@ export const vendorApplicationsRepository = {
           status: true,
           displayName: true,
           sellerType: true,
+          categorySlugs: true,
+          categoryOther: true,
+          country: true,
+          region: true,
+          city: true,
           submittedAt: true,
           createdAt: true,
           applicant: { select: { name: true, email: true } },
@@ -138,6 +163,11 @@ export const vendorApplicationsRepository = {
         sellerType: row.sellerType,
         applicantName: row.applicant.name,
         applicantEmail: row.applicant.email,
+        categorySlugs: row.categorySlugs,
+        categoryOther: row.categoryOther,
+        country: row.country,
+        region: row.region,
+        city: row.city,
         submittedAt: row.submittedAt,
         createdAt: row.createdAt,
       })),

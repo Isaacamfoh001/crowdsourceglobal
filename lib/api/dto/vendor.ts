@@ -12,6 +12,7 @@ import type {
   PayoutDestinationView,
 } from "../../../modules/vendor-finance/types";
 import type { VendorProfileView } from "../../../modules/beauty-professionals/types";
+import type { ManufacturerApplicationView } from "../../../modules/manufacturer-applications/types";
 import type { VendorServiceView } from "../../../modules/beauty-services/types";
 import type { ServiceRequestView } from "../../../modules/service-requests/types";
 import type { VendorStoreProfile } from "../../../modules/vendors/types";
@@ -98,6 +99,7 @@ export function toVendorListingDetailDTO(listing: VendorListingDetail) {
     submittedAt: listing.submittedAt ? serializeDate(listing.submittedAt) : null,
     changesRequestedReason: listing.changesRequestedReason,
     categoryId: listing.categoryId,
+    categoryOther: listing.categoryOther,
     bulkPriceTiers: listing.bulkPriceTiers.map((tier) => ({
       id: tier.id,
       minQuantity: tier.minQuantity,
@@ -270,6 +272,21 @@ export function toVendorBeautyProfileDTO(profile: VendorProfileView) {
   };
 }
 
+/** M32.8 — this Vendor's Seller → Manufacturer upgrade request. */
+export function toManufacturerApplicationDTO(app: ManufacturerApplicationView) {
+  return {
+    id: app.id,
+    status: app.status,
+    categorySlugs: app.categorySlugs,
+    categoryOther: app.categoryOther,
+    submittedAt: app.submittedAt ? serializeDate(app.submittedAt) : null,
+    reviewedAt: app.reviewedAt ? serializeDate(app.reviewedAt) : null,
+    decisionReason: app.decisionReason,
+    createdAt: serializeDate(app.createdAt),
+    updatedAt: serializeDate(app.updatedAt),
+  };
+}
+
 export function toVendorServiceDTO(service: VendorServiceView) {
   return {
     id: service.id,
@@ -278,6 +295,7 @@ export function toVendorServiceDTO(service: VendorServiceView) {
     startingPrice: service.startingPrice ? serializeMoney(service.startingPrice, service.currency) : null,
     active: service.active,
     category: service.category,
+    categoryOther: service.categoryOther,
     createdAt: serializeDate(service.createdAt),
     updatedAt: serializeDate(service.updatedAt),
   };

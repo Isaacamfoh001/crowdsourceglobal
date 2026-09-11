@@ -20,9 +20,15 @@ export async function GET(request: Request) {
   return apiSuccess(apiPage({ rows: rows.map(toVendorListingSummaryDTO), total, page, pageSize }));
 }
 
-const schema = z.object({ categoryId: z.string().trim().min(1, "Choose a category to start a listing.") });
+const schema = z
+  .object({
+    categoryId: z.string().trim().optional(),
+    /** M32.5 — "Other / Not listed" free text; mutually exclusive with categoryId, resolved server-side in vendorListingsService. */
+    categoryOther: z.string().trim().min(1).max(120).optional(),
+  })
+  .refine((data) => Boolean(data.categoryId) || Boolean(data.categoryOther), { message: "Choose a category to start a listing." });
 
-/** POST /api/v1/vendor/listings (M27) — creates an empty DRAFT, same as web's "Create a new listing" entry point. JSON body: { categoryId }. */
+/** POST /api/v1/vendor/listings (M27) — creates an empty DRAFT, same as web's "Create a new listing" entry point. JSON body: { categoryId } or { categoryOther } (M32.5). */
 export async function POST(request: Request) {
   const session = await getCurrentSession();
   if (!session) return apiError("UNAUTHORIZED", "Authentication required.");
@@ -39,7 +45,7 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return apiError("VALIDATION_ERROR", parsed.error.issues[0]?.message ?? "Choose a category.");
 
-  const result = await vendorListingsService.createDraft(context.vendorId, parsed.data.categoryId);
+  const result = await vendorListingsService.createDraft(context.vendorId, parsed.data.categoryId ?? "", parsed.data.categoryOther);
   if (!result.ok) return apiError("VALIDATION_ERROR", result.error);
   return apiSuccess({ id: result.value.listingId }, { status: 201 });
 }

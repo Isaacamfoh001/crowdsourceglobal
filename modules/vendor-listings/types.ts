@@ -8,6 +8,8 @@ export type ListingFormInput = {
   title: string;
   description: string;
   categoryId: string;
+  /** M32.5 — free-text label when categoryId is the shared "Other / Not listed" placeholder Category. Null/undefined otherwise. */
+  categoryOther?: string | null;
   basePrice: number;
   moq: number;
   maxOq?: number | null;
@@ -53,6 +55,7 @@ export type VendorListingDetail = {
   submittedAt: Date | null;
   changesRequestedReason: string | null;
   categoryId: string;
+  categoryOther: string | null;
   bulkPriceTiers: { id: string; minQuantity: number; maxQuantity: number | null; unitPrice: number }[];
   pendingChanges: PendingChangesPayload | null;
 };

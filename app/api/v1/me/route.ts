@@ -58,6 +58,27 @@ export async function GET(_request: Request) {
         // Factory/Beauty); never used for authorization decisions.
         sellerType: membership.vendor.sellerType,
         beautyProfessional: { available: membership.vendor.beautyProfessionalProfile?.status === "APPROVED" },
+        // M32.8 — Factory eligibility for a Vendor that upgraded rather than
+        // being created as a MANUFACTURER directly: `available` is true
+        // either way (sellerType already covers the M32.7 direct path), and
+        // `application` lets the client render the upgrade request's own
+        // pending/changes-requested/rejected state without a second
+        // endpoint. UI-only, same as sellerType/beautyProfessional above —
+        // never used for authorization decisions.
+        manufacturer: {
+          available:
+            membership.vendor.sellerType === "MANUFACTURER" ||
+            membership.vendor.manufacturerApplication?.status === "APPROVED",
+          application: membership.vendor.manufacturerApplication
+            ? {
+                id: membership.vendor.manufacturerApplication.id,
+                status: membership.vendor.manufacturerApplication.status,
+                decisionReason: membership.vendor.manufacturerApplication.decisionReason,
+                categorySlugs: membership.vendor.manufacturerApplication.categorySlugs,
+                categoryOther: membership.vendor.manufacturerApplication.categoryOther,
+              }
+            : null,
+        },
       })),
     },
     vendorApplication: vendorApplication

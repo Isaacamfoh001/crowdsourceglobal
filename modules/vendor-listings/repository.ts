@@ -34,6 +34,7 @@ function toDetail(row: {
   submittedAt: Date | null;
   changesRequestedReason: string | null;
   categoryId: string;
+  categoryOther: string | null;
   pendingChanges: unknown;
   bulkPriceTiers: { id: string; minQuantity: number; maxQuantity: number | null; unitPrice: { toNumber: () => number } }[];
 }) {
@@ -55,6 +56,7 @@ function toDetail(row: {
     submittedAt: row.submittedAt,
     changesRequestedReason: row.changesRequestedReason,
     categoryId: row.categoryId,
+    categoryOther: row.categoryOther,
     bulkPriceTiers: row.bulkPriceTiers.map((tier) => ({
       id: tier.id,
       minQuantity: tier.minQuantity,
@@ -161,11 +163,12 @@ export const vendorListingsRepository = {
     return row ? toDetail(row) : null;
   },
 
-  createDraft(vendorId: string, categoryId: string) {
+  createDraft(vendorId: string, categoryId: string, categoryOther?: string | null) {
     return prisma.vendorListing.create({
       data: {
         vendorId,
         categoryId,
+        categoryOther: categoryOther ?? null,
         title: "Untitled listing",
         description: "",
         basePrice: 0,

@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../lib/db";
-import { bootstrapReferenceData, CATEGORIES } from "./reference-data";
+import { bootstrapReferenceData, CATEGORIES, EXPLORE_CATEGORIES } from "./reference-data";
 
+/** Every row bootstrapReferenceData upserts: CATEGORIES (+ children), EXPLORE_CATEGORIES, and the M32.5 "Other" placeholder. */
 function countCategories(): number {
-  return CATEGORIES.reduce((total, category) => total + 1 + (category.children?.length ?? 0), 0);
+  const commerce = CATEGORIES.reduce((total, category) => total + 1 + (category.children?.length ?? 0), 0);
+  return commerce + EXPLORE_CATEGORIES.length + 1;
 }
 
 /**

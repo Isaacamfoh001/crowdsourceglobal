@@ -106,6 +106,21 @@ export const EXPLORE_CATEGORY_SLUGS = [
   "skincare",
 ];
 
+/**
+ * M32.5 — the single shared "Other / Not listed" placeholder Category that
+ * `VendorListing.categoryId`/`BeautyService.categoryId` point to when a
+ * vendor's real category isn't in either taxonomy (paired with that row's
+ * `categoryOther` free-text field — see schema.prisma). Deliberately NOT
+ * added to `CANONICAL_TOP_LEVEL_SLUGS`/`EXPLORE_CATEGORY_SLUGS` above, so it
+ * never appears in ordinary category browsing/navigation
+ * (`listTopLevelCategoriesWithChildren`/`listExploreCategories` both filter
+ * to those allowlists) — the mobile category pickers add it back in
+ * explicitly as a synthetic last option and resolve its id via
+ * `OTHER_CATEGORY_SLUG`.
+ */
+export const OTHER_CATEGORY_SLUG = "other";
+const OTHER_CATEGORY: CategorySeed = { name: "Other / Not listed", slug: OTHER_CATEGORY_SLUG };
+
 export type ReferenceDataResult = {
   categoriesCreated: number;
   categoriesUpdated: number;
@@ -153,6 +168,8 @@ export async function bootstrapReferenceData(): Promise<ReferenceDataResult> {
   for (const category of EXPLORE_CATEGORIES) {
     await upsertCategory(category, null);
   }
+
+  await upsertCategory(OTHER_CATEGORY, null);
 
   return { categoriesCreated, categoriesUpdated, categoriesUnchanged };
 }

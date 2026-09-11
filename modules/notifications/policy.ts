@@ -93,6 +93,15 @@ const POLICY: Record<NotificationType, Policy> = {
   // rows above.
   VENDOR_SOURCING_SOLICITATION_RECEIVED: { required: false, category: "QUOTATIONS_SOURCING" },
   ADMIN_SOURCING_SOLICITATION_RESPONDED: { required: true },
+  // M32.8 — Seller → Manufacturer upgrade request, same "submission
+  // receipt"/"moderation outcome" reasoning as VENDOR_APPLICATION_*/
+  // BEAUTY_PROFESSIONAL_* above; the admin notice is a narrow, low-volume
+  // admin event, same reasoning as the other ADMIN_* rows above.
+  MANUFACTURER_APPLICATION_SUBMITTED: { required: true },
+  MANUFACTURER_APPLICATION_APPROVED: { required: true },
+  MANUFACTURER_APPLICATION_CHANGES_REQUESTED: { required: true },
+  MANUFACTURER_APPLICATION_REJECTED: { required: true },
+  ADMIN_NEW_MANUFACTURER_APPLICATION: { required: true },
 };
 
 const CATEGORY_FIELD: Record<NotificationCategory, keyof PreferencesView> = {
@@ -196,6 +205,13 @@ const PUSH_POLICY: Record<NotificationType, boolean> = {
   SERVICE_REQUEST_DECLINED: true,
   VENDOR_SOURCING_SOLICITATION_RECEIVED: true, // notifies the vendor — needs their action
   ADMIN_SOURCING_SOLICITATION_RESPONDED: false, // admin/web-only
+  MANUFACTURER_APPLICATION_SUBMITTED: false, // self-ack
+  // M32.8 — pushed so the mobile app has a reason to refetch GET /api/v1/me
+  // and reveal the Factory experience without requiring logout/reinstall.
+  MANUFACTURER_APPLICATION_APPROVED: true,
+  MANUFACTURER_APPLICATION_CHANGES_REQUESTED: true,
+  MANUFACTURER_APPLICATION_REJECTED: true,
+  ADMIN_NEW_MANUFACTURER_APPLICATION: false, // admin/web-only
 };
 
 /** Push is best-effort and additive on top of the always-created in-app Notification — never gated by user preference (no push-preferences UI exists yet). */

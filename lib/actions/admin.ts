@@ -6,6 +6,7 @@ import { vendorApplicationsService } from "../../modules/vendor-applications/ser
 import { vendorListingsService } from "../../modules/vendor-listings/service";
 import { explorePostsService } from "../../modules/explore-posts/service";
 import { beautyProfessionalsService } from "../../modules/beauty-professionals/service";
+import { manufacturerApplicationsService } from "../../modules/manufacturer-applications/service";
 import { messagingService } from "../../modules/messaging/service";
 import { err, ok, type Result } from "../result";
 
@@ -193,6 +194,54 @@ export async function rejectBeautyProfessionalAction(
   if (!result.ok) return result;
   revalidatePath(`/admin/beauty-professionals/${profileId}`);
   revalidatePath("/admin/beauty-professionals");
+  return ok(null);
+}
+
+// --- Manufacturer upgrade application moderation (M32.8) ----------------
+
+export async function approveManufacturerApplicationAction(
+  _prevState: Result<null> | null,
+  formData: FormData,
+): Promise<Result<null>> {
+  const { session } = await requireAdminSession("/admin/manufacturer-applications", ["SUPER_ADMIN", "OPS_ADMIN"]);
+  const applicationId = String(formData.get("applicationId") ?? "");
+  const result = await manufacturerApplicationsService.approve(session.user.id, applicationId);
+  if (!result.ok) return result;
+  revalidatePath(`/admin/manufacturer-applications/${applicationId}`);
+  revalidatePath("/admin/manufacturer-applications");
+  revalidatePath("/admin/vendor-applications");
+  return ok(null);
+}
+
+export async function requestManufacturerApplicationChangesAction(
+  _prevState: Result<null> | null,
+  formData: FormData,
+): Promise<Result<null>> {
+  const { session } = await requireAdminSession("/admin/manufacturer-applications", ["SUPER_ADMIN", "OPS_ADMIN"]);
+  const applicationId = String(formData.get("applicationId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (reason.length < 3) return err("Explain what needs to change.");
+  const result = await manufacturerApplicationsService.requestChanges(session.user.id, applicationId, reason);
+  if (!result.ok) return result;
+  revalidatePath(`/admin/manufacturer-applications/${applicationId}`);
+  revalidatePath("/admin/manufacturer-applications");
+  revalidatePath("/admin/vendor-applications");
+  return ok(null);
+}
+
+export async function rejectManufacturerApplicationAction(
+  _prevState: Result<null> | null,
+  formData: FormData,
+): Promise<Result<null>> {
+  const { session } = await requireAdminSession("/admin/manufacturer-applications", ["SUPER_ADMIN", "OPS_ADMIN"]);
+  const applicationId = String(formData.get("applicationId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (reason.length < 3) return err("Explain the reason for rejection.");
+  const result = await manufacturerApplicationsService.reject(session.user.id, applicationId, reason);
+  if (!result.ok) return result;
+  revalidatePath(`/admin/manufacturer-applications/${applicationId}`);
+  revalidatePath("/admin/manufacturer-applications");
+  revalidatePath("/admin/vendor-applications");
   return ok(null);
 }
 

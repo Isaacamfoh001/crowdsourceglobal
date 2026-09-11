@@ -126,6 +126,7 @@ describe("GET /api/v1/me", () => {
           verificationStatus: "APPROVED",
           sellerType: null,
           beautyProfessional: { available: false },
+          manufacturer: { available: false, application: null },
         },
       ],
     });
@@ -156,6 +157,64 @@ describe("GET /api/v1/me", () => {
     expect(response.status).toBe(200);
     expect(body.data.vendor.memberships[0].sellerType).toBe("MANUFACTURER");
     expect(body.data.vendor.memberships[0].beautyProfessional).toEqual({ available: true });
+  });
+
+  it("M32.8 — an approved Seller→Manufacturer upgrade request makes manufacturer.available true without touching sellerType", async () => {
+    const user = await createUserWithCustomerProfile("manufacturer-upgrade-vendor");
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const vendor = await prisma.vendor.create({
+      data: {
+        companyName: "M32.8 Distributor Co",
+        storefrontSlug: `m32-8-me-${suffix}`,
+        verificationStatus: "APPROVED",
+        country: "Ghana",
+        sellerType: "DISTRIBUTOR_WHOLESALER",
+      },
+    });
+    createdVendorIds.push(vendor.id);
+    await prisma.vendorMembership.create({ data: { userId: user.id, vendorId: vendor.id, role: "OWNER" } });
+    await prisma.manufacturerApplication.create({
+      data: { vendorId: vendor.id, status: "APPROVED", categorySlugs: ["m32-8-test-category"], reviewedAt: new Date() },
+    });
+    vi.mocked(getCurrentSession).mockResolvedValue(sessionFor({ id: user.id, email: user.email, name: user.name, emailVerified: true }));
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    const membership = body.data.vendor.memberships[0];
+    // The original classification is never overwritten by the upgrade.
+    expect(membership.sellerType).toBe("DISTRIBUTOR_WHOLESALER");
+    expect(membership.manufacturer.available).toBe(true);
+    expect(membership.manufacturer.application.status).toBe("APPROVED");
+  });
+
+  it("M32.8 — a pending (not yet approved) manufacturer upgrade request does not grant manufacturer.available", async () => {
+    const user = await createUserWithCustomerProfile("manufacturer-upgrade-pending");
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const vendor = await prisma.vendor.create({
+      data: {
+        companyName: "M32.8 Pending Distributor Co",
+        storefrontSlug: `m32-8-me-pending-${suffix}`,
+        verificationStatus: "APPROVED",
+        country: "Ghana",
+        sellerType: "REGISTERED_BUSINESS",
+      },
+    });
+    createdVendorIds.push(vendor.id);
+    await prisma.vendorMembership.create({ data: { userId: user.id, vendorId: vendor.id, role: "OWNER" } });
+    await prisma.manufacturerApplication.create({
+      data: { vendorId: vendor.id, status: "SUBMITTED", categorySlugs: ["m32-8-test-category"], submittedAt: new Date() },
+    });
+    vi.mocked(getCurrentSession).mockResolvedValue(sessionFor({ id: user.id, email: user.email, name: user.name, emailVerified: true }));
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    const membership = body.data.vendor.memberships[0];
+    expect(membership.sellerType).toBe("REGISTERED_BUSINESS");
+    expect(membership.manufacturer.available).toBe(false);
+    expect(membership.manufacturer.application.status).toBe("SUBMITTED");
   });
 
   it("never leaks another user's vendor membership or application into this user's response", async () => {
@@ -215,6 +274,7 @@ describe("GET /api/v1/me", () => {
     expect(Object.keys(body.data.vendor.memberships[0]).sort()).toEqual([
       "beautyProfessional",
       "companyName",
+      "manufacturer",
       "role",
       "sellerType",
       "vendorId",

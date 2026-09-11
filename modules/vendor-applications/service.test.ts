@@ -216,6 +216,44 @@ describe("vendorApplicationsService", () => {
     expect(updatedApplication?.vendorId).toBe(result.value.vendorId);
   });
 
+  it("M32.7 — approving a MANUFACTURER application creates a Vendor with sellerType MANUFACTURER", async () => {
+    await vendorApplicationsService.getOrCreateForUser(applicantUserId);
+    await trackApplication();
+    await vendorApplicationsService.saveSellerType(applicantUserId, { sellerType: "MANUFACTURER" });
+    await vendorApplicationsService.saveContact(applicantUserId, validContact);
+    await vendorApplicationsService.saveBusiness(applicantUserId, { ...validBusiness, registrationNumber: "BN-999" });
+    await vendorApplicationsService.saveOperations(applicantUserId, validOperations);
+    const submitted = await vendorApplicationsService.submit(applicantUserId);
+    expect(submitted.ok).toBe(true);
+
+    const application = await vendorApplicationsService.getForUser(applicantUserId);
+    const result = await vendorApplicationsService.approve(adminUserId, application!.id);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    createdVendorIds.push(result.value.vendorId);
+
+    const vendor = await prisma.vendor.findUnique({ where: { id: result.value.vendorId } });
+    expect(vendor?.sellerType).toBe("MANUFACTURER");
+  });
+
+  it("M32.7 — the admin Manufacturers filter returns only MANUFACTURER applications", async () => {
+    await vendorApplicationsService.getOrCreateForUser(applicantUserId);
+    await trackApplication();
+    await vendorApplicationsService.saveSellerType(applicantUserId, { sellerType: "MANUFACTURER" });
+    await vendorApplicationsService.saveContact(applicantUserId, validContact);
+    await vendorApplicationsService.saveBusiness(applicantUserId, { ...validBusiness, registrationNumber: "BN-998" });
+    await vendorApplicationsService.saveOperations(applicantUserId, validOperations);
+    await vendorApplicationsService.submit(applicantUserId);
+    const application = await vendorApplicationsService.getForUser(applicantUserId);
+
+    const { rows: manufacturerRows } = await vendorApplicationsService.listForAdminPaginated(undefined, 1, ["MANUFACTURER"]);
+    expect(manufacturerRows.some((row) => row.id === application!.id)).toBe(true);
+    expect(manufacturerRows.every((row) => row.sellerType === "MANUFACTURER")).toBe(true);
+
+    const { rows: sellerRows } = await vendorApplicationsService.listForAdminPaginated(undefined, 1, ["INDIVIDUAL", "SOLE_TRADER"]);
+    expect(sellerRows.some((row) => row.id === application!.id)).toBe(false);
+  });
+
   it("sets CHANGES_REQUESTED with a reason the applicant can see, then allows resubmission", async () => {
     const application = await submitFullApplication();
     const result = await vendorApplicationsService.requestChanges(adminUserId, application.id, "Add a clearer store description.");

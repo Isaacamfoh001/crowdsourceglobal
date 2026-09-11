@@ -38,4 +38,5 @@ export const notificationLinks = {
   adminExplorePost: (postId: string) => `/admin/explore-posts/${postId}`,
   adminBeautyProfessional: (profileId: string) => `/admin/beauty-professionals/${profileId}`,
   adminServiceRequest: (requestId: string) => `/admin/service-requests/${requestId}`,
+  adminManufacturerApplication: (applicationId: string) => `/admin/manufacturer-applications/${applicationId}`,
 };

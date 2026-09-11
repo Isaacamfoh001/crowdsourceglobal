@@ -134,17 +134,17 @@ model RateLimit {
 /// docs/domain/entities.md for the full future shape, added when the
 /// business/organization flows actually need it.
 model CustomerProfile {
-  id          String   @id @default(cuid())
-  displayName String
-  phone       String?
+  id                  String   @id @default(cuid())
+  displayName         String
+  phone               String?
   /// M32.3 — which focused mobile experience ("BUYER"/"SELLER"/"FACTORY"/
   /// "BEAUTY") the app should open into by default. A UI preference only —
   /// never checked by any authorization path; every `/api/v1/vendor/*`
   /// route keeps deriving its own vendor context independently. Unset
   /// (null) until the app's first-run experience chooser is completed.
   preferredExperience String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -337,6 +337,12 @@ model Vendor {
   /// Vendor never gets this automatically.
   beautyProfessionalProfile BeautyProfessionalProfile?
 
+  /// M32.8 — Seller → Manufacturer upgrade request. Optional, same reasoning
+  /// as beautyProfessionalProfile above: only a Vendor that explicitly
+  /// applies and is explicitly approved gains Factory eligibility this way.
+  /// Never touches sellerType — see ManufacturerApplication's doc comment.
+  manufacturerApplication ManufacturerApplication?
+
   @@map("vendor")
 }
 
@@ -388,6 +394,14 @@ model VendorListing {
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
+
+  /// M32.5 — free-text label the vendor typed when `categoryId` points at
+  /// the shared "Other / Not listed" placeholder Category (see
+  /// prisma/reference-data.ts's OTHER_CATEGORY_SLUG) because no existing
+  /// Category fits this listing. Mirrors VendorApplication.categoryOther —
+  /// deliberately separate from the canonical taxonomy, never itself a
+  /// Category row. Null whenever categoryId is a real category.
+  categoryOther String?
 
   bulkPriceTiers  BulkPriceTier[]
   vendorCostRule  VendorCostRule?
@@ -1565,6 +1579,61 @@ model VendorApplication {
   @@map("vendor_application")
 }
 
+/// M32.8 — the "upgrade" counterpart to VendorApplication, for a Vendor that
+/// is already APPROVED under a different SellerType (see M32.7's direct-to-
+/// MANUFACTURER new-applicant path, which this model does not touch). An
+/// OPTIONAL 1:1 extension of Vendor — same shape/reasoning as
+/// BeautyProfessionalProfile: never reopens or mutates the historical,
+/// already-APPROVED VendorApplication, never touches Vendor.sellerType, and
+/// never grants Manufacturer/Factory eligibility automatically.
+///
+/// Vendor.sellerType is deliberately left untouched by approval here — it is
+/// a single mutually-exclusive value shown publicly on the storefront DTO
+/// (see toVendorStorefrontDTO) and tied to the original, registration-
+/// validated business-structure classification from onboarding. Overwriting
+/// it would silently discard that classification and change what buyers are
+/// told about an already-approved Vendor. Factory eligibility is instead
+/// computed at read time (GET /api/v1/me) from this model's own `status`,
+/// exactly like `beautyProfessional.available` is computed from
+/// BeautyProfessionalProfile.status — see modules/vendors/repository.ts.
+///
+/// Reuses VendorApplicationStatus rather than a third lifecycle enum — this
+/// is the same review lifecycle (submit → admin review →
+/// approve/reject/changes-requested), just scoped to an existing Vendor
+/// instead of a brand-new applicant/Vendor pair.
+model ManufacturerApplication {
+  id     String                  @id @default(cuid())
+  status VendorApplicationStatus @default(DRAFT)
+
+  /// What they manufacture — same taxonomy/semantics as
+  /// VendorApplication.categorySlugs/categoryOther, deliberately not a new
+  /// category universe. Location is deliberately NOT re-asked here — the
+  /// Vendor's existing country/region/city already covers it (M32.8 §4:
+  /// "reuse information CrownSource already knows about their Vendor").
+  categorySlugs String[] @default([])
+  categoryOther String?
+
+  submittedAt    DateTime?
+  reviewedAt     DateTime?
+  reviewerUserId String?
+  /// Shown to the vendor when status = CHANGES_REQUESTED or REJECTED.
+  decisionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// One per Vendor, ever — reused across resubmission after
+  /// CHANGES_REQUESTED/REJECTED, exactly like
+  /// VendorApplication.applicantUserId. Prevents a duplicate active
+  /// application by construction, not by extra service-layer logic.
+  vendorId String @unique
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([status, submittedAt])
+  @@map("manufacturer_application")
+}
+
 enum VendorMembershipRole {
   OWNER
   STAFF
@@ -2068,6 +2137,12 @@ enum NotificationType {
   /// M25.2 — factory solicitation lifecycle (modules/sourcing).
   VENDOR_SOURCING_SOLICITATION_RECEIVED
   ADMIN_SOURCING_SOLICITATION_RESPONDED
+  /// M32.8 — Seller → Manufacturer upgrade request (modules/manufacturer-applications).
+  MANUFACTURER_APPLICATION_SUBMITTED
+  MANUFACTURER_APPLICATION_APPROVED
+  MANUFACTURER_APPLICATION_CHANGES_REQUESTED
+  MANUFACTURER_APPLICATION_REJECTED
+  ADMIN_NEW_MANUFACTURER_APPLICATION
 }
 
 /// A structured, typed in-app notification. `title`/`body` are plain text
@@ -3096,6 +3171,14 @@ model BeautyService {
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
+
+  /// M32.5 — free-text label the professional typed when `categoryId`
+  /// points at the shared "Other / Not listed" placeholder Category (see
+  /// prisma/reference-data.ts's OTHER_CATEGORY_SLUG) because none of the
+  /// fixed EXPLORE_CATEGORY_SLUGS work types fit this service. Mirrors
+  /// VendorApplication.categoryOther/VendorListing.categoryOther — never
+  /// itself a Category row. Null whenever categoryId is a real category.
+  categoryOther String?
 
   serviceRequests ServiceRequest[]
 

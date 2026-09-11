@@ -9,6 +9,7 @@ const vendorServiceSelect = {
   currency: true,
   active: true,
   category: { select: { id: true, name: true, slug: true } },
+  categoryOther: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -21,6 +22,7 @@ function toView(row: {
   currency: string;
   active: boolean;
   category: { id: string; name: string; slug: string };
+  categoryOther: string | null;
   createdAt: Date;
   updatedAt: Date;
 }): VendorServiceView {
@@ -42,7 +44,10 @@ export const beautyServicesRepository = {
     return row ? toView(row) : null;
   },
 
-  create(professionalId: string, data: { name: string; description: string | null; categoryId: string; startingPrice: string | null; currency: string }) {
+  create(
+    professionalId: string,
+    data: { name: string; description: string | null; categoryId: string; categoryOther: string | null; startingPrice: string | null; currency: string },
+  ) {
     return prisma.beautyService.create({ data: { professionalId, ...data }, select: vendorServiceSelect }).then(toView);
   },
 

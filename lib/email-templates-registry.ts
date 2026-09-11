@@ -348,6 +348,39 @@ const registry: Record<string, (data: Record<string, unknown>) => TemplateConten
     ctaLabel: "View settlement",
     ctaPath: `/vendor/portal/finance/settlements/${d["settlementId"]}`,
   }),
+  "manufacturer-application-submitted": (d) => ({
+    title: "We've received your manufacturer application",
+    intro: `Your request to add Manufacturer capability for "${d["vendorName"]}" has been submitted.`,
+    bodyLines: ["Our team will review it and let you know the outcome."],
+    ctaLabel: "Open Vendor Portal",
+    ctaPath: "/vendor/portal",
+  }),
+  "manufacturer-application-approved": (d) => ({
+    title: "You're now a Manufacturer on CrownSource",
+    intro: `Your request to add Manufacturer capability for "${d["vendorName"]}" has been approved.`,
+    bodyLines: ["Your Factory experience is now available — refresh the app to see it."],
+    ctaLabel: "Open Vendor Portal",
+    ctaPath: "/vendor/portal",
+  }),
+  "manufacturer-application-changes-requested": (d) => ({
+    title: "Changes requested on your manufacturer application",
+    intro: `CrownSourceGlobal has requested changes to your manufacturer application: ${d["reason"]}`,
+    bodyLines: ["Update and resubmit your application to continue."],
+    ctaLabel: "Open Vendor Portal",
+    ctaPath: "/vendor/portal",
+  }),
+  "manufacturer-application-rejected": (d) => ({
+    title: "Your manufacturer application was not approved",
+    intro: `Your manufacturer application was not approved: ${d["reason"]}`,
+    ctaLabel: "Open Vendor Portal",
+    ctaPath: "/vendor/portal",
+  }),
+  "admin-new-manufacturer-application": (d) => ({
+    title: "New manufacturer upgrade request",
+    intro: `"${d["vendorName"]}" has applied to add Manufacturer capability.`,
+    ctaLabel: "Review application",
+    ctaPath: `/admin/manufacturer-applications/${d["applicationId"]}`,
+  }),
 };
 
 /** Subject is NOT re-derived here — the caller (modules/notifications) sets and stores its own subject at enqueue time (EmailDeliveryJob.subject); this only renders the body. */
