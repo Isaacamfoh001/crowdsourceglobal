@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Clock, Package, ShoppingBag, Store } from "lucide-react";
+import { Clock, Package, Store } from "lucide-react";
 import { Container } from "../../../../components/ui/Container";
 import { Button } from "../../../../components/ui/Button";
 import { Breadcrumbs } from "../../../../components/catalogue/Breadcrumbs";
@@ -48,7 +48,10 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
             ...(listing.category.parent
               ? [{ label: listing.category.parent.name, href: `/shop/${listing.category.parent.slug}` }]
               : []),
-            { label: listing.category.name, href: `/shop/${listing.category.slug}` },
+            // M32.10 — a vendor-suggested "Other / Not listed" category
+            // shows the vendor's own free-text label instead of the generic
+            // placeholder name, without turning it into real navigation.
+            { label: listing.categoryOther ?? listing.category.name, href: `/shop/${listing.category.slug}` },
             { label: listing.title },
           ]}
         />
@@ -83,10 +86,6 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
             {/* Quick commerce facts as an inline row, not another card —
                 scannable in one glance before the purchase action. */}
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-espresso-900/55">
-              <span className="flex items-center gap-1.5">
-                <ShoppingBag className="size-3.5" strokeWidth={1.75} />
-                MOQ {listing.moq} {listing.moq === 1 ? "unit" : "units"}
-              </span>
               {listing.leadTimeDays ? (
                 <span className="flex items-center gap-1.5">
                   <Clock className="size-3.5" strokeWidth={1.75} />
@@ -107,7 +106,6 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
               currentPath={`/listings/${listing.id}`}
               basePrice={listing.basePrice}
               currency={listing.currency}
-              moq={listing.moq}
               maxOq={listing.maxOq}
               availableQuantity={listing.availableQuantity}
               availabilityStatus={listing.availabilityStatus}
@@ -129,7 +127,6 @@ export default async function ListingDetailPage({ params }: { params: Promise<Pa
                 currentPath={`/listings/${listing.id}`}
                 basePrice={listing.basePrice}
                 currency={listing.currency}
-                moq={listing.moq}
                 maxOq={listing.maxOq}
                 availableQuantity={listing.availableQuantity}
                 bulkPriceTiers={listing.bulkPriceTiers}

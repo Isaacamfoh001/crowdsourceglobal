@@ -163,10 +163,13 @@ describe("quotationService / ordersService.createOrderFromQuotation", () => {
     expect(result.value.reference).toMatch(/^QT-\d{8}-[A-Z0-9]{5}$/);
   });
 
-  it("rejects a quantity below MOQ", async () => {
+  // M32.10 — MOQ is no longer a marketplace requirement: a customer may
+  // quote as few as 1 unit even from a listing whose stored `moq` is still
+  // > 1.
+  it("allows a quantity below the listing's stored MOQ", async () => {
     const listing = await seedListing({ vendorId: vendorAId, basePrice: 50, moq: 20, availableQuantity: 100 });
     const result = await generate(customerAId, customerAEmail, [{ listingId: listing.id, quantity: 5 }]);
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
   });
 
   it("rejects a quantity above maxOq", async () => {

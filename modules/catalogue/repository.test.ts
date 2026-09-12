@@ -266,4 +266,72 @@ describe("catalogueRepository", () => {
     const hasSubcategoryListing = rows.some((listing) => childSlugs.has(listing.category.slug));
     expect(hasSubcategoryListing).toBe(true);
   });
+
+  // --- M32.10: search must find listings outside the canonical taxonomy ---
+
+  describe("search across non-canonical categories (M32.10)", () => {
+    it("excludes a non-canonical-category listing from unscoped browsing with no search term", async () => {
+      const listing = await prisma.vendorListing.create({
+        data: {
+          vendorId,
+          categoryId, // the "Test Fixture Category" fixture — not in CANONICAL_TOP_LEVEL_SLUGS
+          title: "Non Canonical Browse Listing",
+          description: "Should not appear in general unscoped browsing.",
+          basePrice: 50,
+          approvalStatus: "APPROVED",
+          listingStatus: "ACTIVE",
+        },
+      });
+
+      const { rows } = await catalogueRepository.listListings({}, { page: 1, pageSize: 200 });
+      expect(rows.find((r) => r.id === listing.id)).toBeUndefined();
+    });
+
+    it("still finds a non-canonical-category listing by an exact title search", async () => {
+      const listing = await prisma.vendorListing.create({
+        data: {
+          vendorId,
+          categoryId,
+          title: "Luxury Brazilian Body Wave Bundle",
+          description: "A findable-by-search regression fixture.",
+          basePrice: 50,
+          approvalStatus: "APPROVED",
+          listingStatus: "ACTIVE",
+        },
+      });
+
+      const { rows } = await catalogueRepository.listListings(
+        { search: "Luxury Brazilian Body Wave Bundle" },
+        { page: 1, pageSize: 48 },
+      );
+      expect(rows.find((r) => r.id === listing.id)).toBeDefined();
+    });
+
+    it("finds a listing by its vendor-suggested 'Other / Not listed' category text", async () => {
+      const other = await prisma.category.upsert({
+        where: { slug: "other" },
+        create: { name: "Other / Not listed", slug: "other" },
+        update: {},
+      });
+
+      const listing = await prisma.vendorListing.create({
+        data: {
+          vendorId,
+          categoryId: other.id,
+          categoryOther: "Professional Lace Adhesives",
+          title: "Custom Category Search Fixture",
+          description: "A findable-by-custom-category-text regression fixture.",
+          basePrice: 50,
+          approvalStatus: "APPROVED",
+          listingStatus: "ACTIVE",
+        },
+      });
+
+      const { rows } = await catalogueRepository.listListings(
+        { search: "Professional Lace Adhesives" },
+        { page: 1, pageSize: 48 },
+      );
+      expect(rows.find((r) => r.id === listing.id)).toBeDefined();
+    });
+  });
 });

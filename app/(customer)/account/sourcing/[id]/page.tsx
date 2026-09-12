@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, Paperclip } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "../../../../../components/ui/Button";
 import { SourcingStatusBadge } from "../../../../../components/sourcing/SourcingStatusBadge";
+import { AttachmentGallery } from "../../../../../components/sourcing/AttachmentGallery";
 import { CancelSourcingRequestButton } from "../../../../../components/sourcing/CancelSourcingRequestButton";
 import { AskAboutButton } from "../../../../../components/messaging/AskAboutButton";
 import { formatPrice } from "../../../../../lib/format";
@@ -92,7 +93,12 @@ export default async function SourcingRequestDetailPage({
         <div className="flex flex-col divide-y divide-ivory-200">
           <div className="pb-6 first:pt-0">
             <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Requirement</h2>
-            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-espresso-800">{request.description}</p>
+            {request.attachments.length > 0 ? (
+              <div className="mt-3">
+                <AttachmentGallery attachments={request.attachments} />
+              </div>
+            ) : null}
+            <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-espresso-800">{request.description}</p>
             <div className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
               <div>
                 <p className="text-espresso-900/50">Quantity</p>
@@ -127,27 +133,6 @@ export default async function SourcingRequestDetailPage({
               </dl>
             ) : null}
           </div>
-
-          {request.attachments.length > 0 ? (
-            <div className="py-6">
-              <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Attachments</h2>
-              <ul className="mt-3 flex flex-col gap-2">
-                {request.attachments.map((attachment) => (
-                  <li key={attachment.id}>
-                    <a
-                      href={`/api/sourcing/attachments/${attachment.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm font-medium text-espresso-800 hover:underline"
-                    >
-                      <Paperclip className="size-3.5" />
-                      {attachment.filename}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
 
           <div className="pt-6 last:pb-0">
             <AskAboutButton

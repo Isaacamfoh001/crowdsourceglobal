@@ -64,6 +64,7 @@ const listingDetailSelect = {
   leadTimeDays: true,
   availableQuantity: true,
   availabilityStatus: true,
+  categoryOther: true,
   category: {
     select: {
       id: true,
@@ -107,12 +108,24 @@ function listingWhere(filter: ListingFilter) {
     ...PUBLIC_LISTING_WHERE,
     ...(hasCategoryIds ? { categoryId: { in: filter.categoryIds } } : {}),
     ...(filter.vendorId ? { vendorId: filter.vendorId } : {}),
-    ...(!hasCategoryIds && !filter.vendorId ? { category: canonicalCategoryWhere() } : {}),
+    // M32.10 — the canonical-taxonomy restriction exists to keep the
+    // "Other / Not listed" placeholder category (and any legacy
+    // non-canonical category) out of ordinary browsing/navigation (see
+    // prisma/reference-data.ts's OTHER_CATEGORY_SLUG doc comment). It must
+    // NOT also apply when the caller is searching by keyword — a shopper
+    // typing a listing's exact title must find it regardless of which
+    // category it's filed under, or an approved listing under a
+    // vendor-suggested custom category becomes permanently unsearchable.
+    ...(!hasCategoryIds && !filter.vendorId && !filter.search ? { category: canonicalCategoryWhere() } : {}),
     ...(filter.search
       ? {
           OR: [
             { title: { contains: filter.search, mode: "insensitive" as const } },
             { description: { contains: filter.search, mode: "insensitive" as const } },
+            // Matches a vendor's free-text "Other / Not listed" category
+            // label (e.g. "Professional Lace Adhesives") so a search for
+            // that custom category text still surfaces the listing.
+            { categoryOther: { contains: filter.search, mode: "insensitive" as const } },
           ],
         }
       : {}),
@@ -259,6 +272,7 @@ export const catalogueRepository = {
       availableQuantity: row.availableQuantity,
       availabilityStatus: row.availabilityStatus,
       category: row.category,
+      categoryOther: row.categoryOther,
       vendor: row.vendor,
       bulkPriceTiers: [],
     };

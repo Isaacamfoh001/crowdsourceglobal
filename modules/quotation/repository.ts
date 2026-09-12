@@ -24,6 +24,20 @@ const quotationItemSelect = {
   vendor: { select: { companyName: true, storefrontSlug: true } },
 } as const;
 
+/**
+ * M32.10 — a CUSTOM_SOURCING quote's images are the originating
+ * CustomSourcingRequest's own attachments (never duplicated onto the
+ * Quotation itself). `sourcingRequestId` is nullable (M5's INSTANT path),
+ * so this relation is null for the vast majority of quotes.
+ */
+const quotationSourcingAttachmentSelect = {
+  id: true,
+  filename: true,
+  mimeType: true,
+  sizeBytes: true,
+  createdAt: true,
+} as const;
+
 const quotationDetailSelect = {
   id: true,
   reference: true,
@@ -38,6 +52,9 @@ const quotationDetailSelect = {
   customerProfileId: true,
   order: { select: { id: true } },
   items: { select: quotationItemSelect, orderBy: { id: "asc" as const } },
+  sourcingRequest: {
+    select: { attachments: { select: quotationSourcingAttachmentSelect, orderBy: { createdAt: "asc" as const } } },
+  },
 } as const;
 
 /** Admin views include the private vendor-payable snapshot per item. */
@@ -237,6 +254,9 @@ export const quotationRepository = {
         order: { select: { id: true } },
         items: { select: adminQuotationItemSelect, orderBy: { id: "asc" as const } },
         customerProfile: { select: { displayName: true, user: { select: { email: true } } } },
+        sourcingRequest: {
+          select: { attachments: { select: quotationSourcingAttachmentSelect, orderBy: { createdAt: "asc" as const } } },
+        },
       },
     });
   },

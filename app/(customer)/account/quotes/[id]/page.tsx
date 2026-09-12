@@ -5,6 +5,7 @@ import { Button } from "../../../../../components/ui/Button";
 import { QuoteStatusBadge } from "../../../../../components/quotation/QuoteStatusBadge";
 import { ReissueQuoteButton } from "../../../../../components/quotation/ReissueQuoteButton";
 import { DownloadQuoteButton } from "../../../../../components/quotation/DownloadQuoteButton";
+import { AttachmentGallery } from "../../../../../components/sourcing/AttachmentGallery";
 import { BackLink } from "../../../../../components/ui/BackLink";
 import { formatPrice } from "../../../../../lib/format";
 import { requireSession, getCurrentCustomerProfile } from "../../../../../modules/identity/policy";
@@ -86,6 +87,15 @@ export default async function QuoteDetailPage({
           </div>
         </div>
       </div>
+
+      {quote.sourcingRequestAttachments.length > 0 ? (
+        <div>
+          <h2 className="text-xs font-semibold tracking-[0.1em] text-espresso-900/45 uppercase">Your reference photos</h2>
+          <div className="mt-3">
+            <AttachmentGallery attachments={quote.sourcingRequestAttachments} />
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-8 border-t border-ivory-300 pt-6 lg:grid-cols-[1fr_320px]">
         <div>

@@ -56,8 +56,8 @@ export function CartLineItem({ line }: { line: CartLineView }) {
               <input type="hidden" name="quantity" value={quantity} />
               <button
                 type="button"
-                onClick={() => setQuantity((q) => Math.max(line.moq, q - 1))}
-                disabled={quantity <= line.moq}
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                disabled={quantity <= 1}
                 aria-label="Decrease quantity"
                 className="flex size-8 items-center justify-center rounded-lg border border-ivory-400 text-espresso-800 hover:bg-ivory-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -66,9 +66,9 @@ export function CartLineItem({ line }: { line: CartLineView }) {
               <input
                 type="number"
                 value={quantity}
-                min={line.moq}
+                min={1}
                 max={maxSelectable}
-                onChange={(event) => setQuantity(Number(event.target.value) || line.moq)}
+                onChange={(event) => setQuantity(Number(event.target.value) || 1)}
                 aria-label="Quantity"
                 className="w-14 rounded-lg border border-ivory-400 py-1.5 text-center text-sm font-medium text-espresso-950"
               />

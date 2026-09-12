@@ -56,6 +56,8 @@ export type PublicListingDetail = {
   availableQuantity: number;
   availabilityStatus: string;
   category: PublicListingCategory & { parent: PublicListingCategory | null };
+  /** M32.10 — vendor's free-text "Other / Not listed" category label, when set. */
+  categoryOther: string | null;
   vendor: PublicListingVendor & { description: string | null };
   bulkPriceTiers: PublicBulkPriceTier[];
 };

@@ -153,10 +153,17 @@ describe("cartService", () => {
     expect(line?.quantity).toBe(5); // 2 + 3
   });
 
-  it("rejects a quantity below MOQ", async () => {
+  // M32.10 — MOQ is no longer a marketplace requirement: a customer may buy
+  // as few as 1 unit even from a listing whose stored `moq` is still > 1
+  // (existing listings aren't migrated, but the field is never enforced).
+  it("allows a quantity below the listing's stored MOQ", async () => {
     const result = await cartService.addToCart(customerAId, moqListingId, 3);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain("Minimum order quantity");
+    expect(result.ok).toBe(true);
+  });
+
+  it("allows buying a single unit regardless of the listing's stored MOQ", async () => {
+    const result = await cartService.addToCart(customerAId, moqListingId, 1);
+    expect(result.ok).toBe(true);
   });
 
   it("rejects an out-of-stock listing", async () => {

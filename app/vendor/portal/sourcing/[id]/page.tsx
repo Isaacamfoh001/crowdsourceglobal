@@ -33,6 +33,11 @@ export default async function VendorSolicitationDetailPage({ params }: { params:
       />
 
       <Card>
+        {solicitation.attachments.length > 0 ? (
+          <div className="mb-4">
+            <AttachmentGallery attachments={solicitation.attachments} />
+          </div>
+        ) : null}
         <p className="whitespace-pre-line text-sm leading-relaxed text-espresso-800">{solicitation.description}</p>
         <div className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <div>
@@ -63,11 +68,6 @@ export default async function VendorSolicitationDetailPage({ params }: { params:
               </div>
             ))}
           </dl>
-        ) : null}
-        {solicitation.attachments.length > 0 ? (
-          <div className="mt-4">
-            <AttachmentGallery attachments={solicitation.attachments} />
-          </div>
         ) : null}
       </Card>
 

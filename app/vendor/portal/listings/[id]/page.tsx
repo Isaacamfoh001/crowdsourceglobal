@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { BackLink } from "../../../../../components/ui/BackLink";
 import { ListingEditorForm } from "../../../../../components/vendor-portal/ListingEditorForm";
+import { NewListingContentForm } from "../../../../../components/vendor-portal/NewListingContentForm";
 import { InventoryForm } from "../../../../../components/vendor-portal/InventoryForm";
 import { SubmitListingButton, ToggleActiveButton } from "../../../../../components/vendor-portal/SubmitListingButton";
 import { ListingStatusBadge } from "../../../../../components/vendor-portal/ListingStatusBadge";
@@ -26,6 +27,27 @@ export default async function VendorListingEditorPage({ params }: { params: Prom
 
   if (!listing) {
     notFound();
+  }
+
+  // M32.10 — a listing that has never been submitted (still DRAFT, never had
+  // submittedAt set) is mid-creation: render the simplified one-action
+  // creation journey instead of the full management experience (inventory,
+  // availability, MOQ/lead-time, staged-edit banners) — none of that is
+  // relevant before the listing exists as a real submission.
+  const isNewDraft = listing.listingStatus === "DRAFT" && listing.submittedAt === null;
+
+  if (isNewDraft) {
+    return (
+      <div className="flex flex-col gap-6">
+        <BackLink href="/vendor/portal/listings" label="All listings" />
+        <div>
+          <h1 className="font-display text-2xl font-medium text-espresso-950 sm:text-[28px]">Add product</h1>
+        </div>
+        <Card>
+          <NewListingContentForm listing={listing} categories={categories} />
+        </Card>
+      </div>
+    );
   }
 
   const hasPendingChanges = listing.pendingChanges !== null;

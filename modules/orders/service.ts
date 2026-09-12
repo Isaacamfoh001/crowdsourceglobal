@@ -62,7 +62,6 @@ async function runCheckoutTransaction(
           id: true,
           title: true,
           basePrice: true,
-          moq: true,
           maxOq: true,
           approvalStatus: true,
           listingStatus: true,
@@ -80,11 +79,8 @@ async function runCheckoutTransaction(
           `An item in your cart is no longer available. Please review your cart.`,
         );
       }
-      if (item.quantity < listing.moq) {
-        throw new CheckoutValidationError(
-          `${listing.title}: minimum order quantity is ${listing.moq}.`,
-        );
-      }
+      // M32.10 — MOQ is no longer enforced at checkout; a customer may buy
+      // as few as 1 unit regardless of the listing's stored `moq`.
       if (listing.maxOq && item.quantity > listing.maxOq) {
         throw new CheckoutValidationError(
           `${listing.title}: maximum order quantity is ${listing.maxOq}.`,

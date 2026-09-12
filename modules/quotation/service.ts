@@ -150,9 +150,8 @@ export const quotationService = {
       if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
         return err(`Enter a valid quantity for ${listing.title}.`);
       }
-      if (line.quantity < listing.moq) {
-        return err(`${listing.title}: minimum order quantity is ${listing.moq}.`);
-      }
+      // M32.10 — MOQ is no longer enforced; a customer may quote as few as
+      // 1 unit regardless of the listing's stored `moq`.
       if (listing.maxOq && line.quantity > listing.maxOq) {
         return err(`${listing.title}: maximum order quantity is ${listing.maxOq}.`);
       }
@@ -255,6 +254,7 @@ export const quotationService = {
         vendor: quotation.origin === "CUSTOM_SOURCING" ? null : item.vendor,
       })),
       acceptedOrderId: quotation.order?.id ?? null,
+      sourcingRequestAttachments: quotation.sourcingRequest?.attachments ?? [],
     };
   },
 
@@ -364,6 +364,7 @@ export const quotationService = {
       subtotal: quotation.subtotal.toNumber(),
       total: quotation.total.toNumber(),
       acceptedOrderId: quotation.order?.id ?? null,
+      sourcingRequestAttachments: quotation.sourcingRequest?.attachments ?? [],
       customerName: quotation.customerProfile.displayName,
       customerEmail: quotation.customerProfile.user.email,
       items: quotation.items.map((item) => ({

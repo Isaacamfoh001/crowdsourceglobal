@@ -356,6 +356,22 @@ export const vendorListingsService = {
     return ok(null);
   },
 
+  /**
+   * M32.10 — the "map to an existing category" half of the admin taxonomy
+   * decision for a vendor-suggested custom category (section 9 of the
+   * milestone). Creating a brand-new globally browsable category is
+   * deliberately NOT implemented here — the commerce taxonomy is a
+   * hardcoded allowlist (`CANONICAL_TOP_LEVEL_SLUGS` in
+   * prisma/reference-data.ts), not DB-driven, so a genuinely new top-level
+   * category can't take effect without a code change/deploy. See the
+   * M32.10 report for the schema question this raises.
+   */
+  async reassignCategory(listingId: string, categoryId: string): Promise<Result<null>> {
+    if (!categoryId) return err("Choose a category.");
+    const applied = await vendorListingsRepository.reassignCategoryForAdmin(listingId, categoryId);
+    return applied ? ok(null) : err("This listing can't be recategorized right now.");
+  },
+
   async requestChanges(listingId: string, reason: string): Promise<Result<null>> {
     const listing = await vendorListingsRepository.findForAdmin(listingId);
     if (!listing) return err("Listing not found.");

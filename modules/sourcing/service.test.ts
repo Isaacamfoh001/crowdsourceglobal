@@ -384,6 +384,34 @@ describe("sourcingService", () => {
     expect(serialized).not.toContain("vendorPayableBasis");
   });
 
+  // M32.10 — the customer quotation detail must surface the originating
+  // sourcing request's own photos (never duplicated onto the Quotation
+  // itself) — regression for a bug where quotationDetailSelect never
+  // fetched the sourcingRequest relation at all, so a customer's quote
+  // never showed their reference images.
+  it("surfaces the originating sourcing request's photos on the customer quotation detail", async () => {
+    const created = await sourcingService.submitRequest(customerAId, customerAUserId, customerAEmail, { ...baseInput, quantity: 100 }, [
+      { buffer: PNG_MAGIC, filename: "reference.png", mimeType: "image/png" },
+    ]);
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    createdRequestIds.push(created.value.id);
+    const id = created.value.id;
+
+    await sourcingService.moveToUnderReview(id);
+    await sourcingService.moveToSourcing(id);
+    await sourcingService.addOption(id, { sourceType: "VENDOR_LISTING", vendorId, vendorListingId: listingId, proposedQuantity: 100, unitSupplyCost: 30 });
+    const detail = await sourcingService.getDetailForAdmin(id);
+    await sourcingService.setAllocations(id, [{ sourcingOptionId: detail!.options[0]!.id, allocatedQuantity: 100 }]);
+    const quote = await sourcingService.prepareAndIssueQuote(id, { description: "reference test", unitPrice: 57 });
+    expect(quote.ok).toBe(true);
+    if (!quote.ok) return;
+
+    const customerQuote = await quotationService.getDetailForCustomer(quote.value.quotationId, customerAId);
+    expect(customerQuote?.sourcingRequestAttachments).toHaveLength(1);
+    expect(customerQuote?.sourcingRequestAttachments[0]?.mimeType).toBe("image/png");
+  });
+
   it("dispatches a quote-ready notification and email exactly once, and doesn't fail issuance when delivery fails", async () => {
     const { quote } = await sourceAndQuote();
     expect(quote.ok).toBe(true);

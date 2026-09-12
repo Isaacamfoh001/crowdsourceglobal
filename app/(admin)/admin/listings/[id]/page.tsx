@@ -3,6 +3,7 @@ import { ListingDecisionForms } from "../../../../../components/admin/ListingDec
 import { ListingImageReview } from "../../../../../components/admin/ListingImageReview";
 import { requireAdminSession } from "../../../../../modules/administration/policy";
 import { vendorListingsService } from "../../../../../modules/vendor-listings/service";
+import { catalogueService } from "../../../../../modules/catalogue/service";
 import { formatPrice } from "../../../../../lib/format";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { Card } from "../../../../../components/ui/Card";
@@ -26,7 +27,10 @@ function Row({ label, value }: { label: string; value: string }) {
 export default async function AdminListingDetailPage({ params }: { params: Promise<Params> }) {
   const { id } = await params;
   await requireAdminSession("/admin/listings");
-  const listing = await vendorListingsService.getForAdmin(id);
+  const [listing, categories] = await Promise.all([
+    vendorListingsService.getForAdmin(id),
+    catalogueService.listCategories(),
+  ]);
 
   if (!listing) {
     notFound();
@@ -36,6 +40,16 @@ export default async function AdminListingDetailPage({ params }: { params: Promi
   const content = listing.pendingChanges?.listing ?? listing;
   const tiers = listing.pendingChanges?.bulkPriceTiers ?? listing.bulkPriceTiers;
   const reviewable = listing.approvalStatus === "PENDING";
+
+  // M32.10 — surface the vendor's chosen category during review, including
+  // the free-text label they typed under "Other / Not listed" (categories
+  // never includes that placeholder itself — see reference-data.ts).
+  const categoryName = categories
+    .flatMap((category) => [category, ...category.children])
+    .find((category) => category.id === content.categoryId)?.name;
+  const categoryDisplay = content.categoryOther
+    ? `Other / Not listed — "${content.categoryOther}"`
+    : (categoryName ?? "Other / Not listed");
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,8 +69,8 @@ export default async function AdminListingDetailPage({ params }: { params: Promi
       <Card>
         <dl className="divide-y divide-ivory-100">
           <Row label="Description" value={content.description} />
+          <Row label="Category" value={categoryDisplay} />
           <Row label="Price" value={formatPrice(content.basePrice, listing.currency)} />
-          <Row label="MOQ" value={String(content.moq)} />
           <Row label="Max order qty" value={content.maxOq ? String(content.maxOq) : ""} />
           <Row label="Lead time (days)" value={content.leadTimeDays ? String(content.leadTimeDays) : ""} />
         </dl>
@@ -76,7 +90,12 @@ export default async function AdminListingDetailPage({ params }: { params: Promi
       </Card>
 
       {reviewable ? (
-        <ListingDecisionForms listingId={listing.id} isEdit={isEdit} />
+        <ListingDecisionForms
+          listingId={listing.id}
+          isEdit={isEdit}
+          categoryOther={isEdit ? null : listing.categoryOther}
+          categories={categories}
+        />
       ) : (
         <Card className="text-sm text-espresso-900/65">
           This listing is currently {listing.approvalStatus.toLowerCase().replace("_", " ")}.

@@ -51,7 +51,6 @@ export function ListingCard({ listing }: { listing: PublicListingSummary }) {
           <p className="font-display text-lg font-semibold text-espresso-950">
             {formatPrice(listing.basePrice, listing.currency)}
           </p>
-          {listing.moq > 1 ? <p className="text-xs text-espresso-900/40">MOQ {listing.moq}</p> : null}
         </div>
         {listing.hasBulkPricing ? (
           <p className="text-xs text-champagne-700">Bulk pricing available</p>

@@ -306,6 +306,23 @@ export const vendorListingsRepository = {
     return { ...toDetail(row), vendorId: row.vendor.id, vendorName: row.vendor.companyName };
   },
 
+  /**
+   * M32.10 — admin's "map to an existing category" taxonomy decision for a
+   * vendor-suggested "Other / Not listed" category: swaps the listing onto
+   * a real Category and clears `categoryOther`. Scoped to `pendingChanges:
+   * null` — a listing under review as a staged edit to an already-live
+   * listing carries its proposed category inside `pendingChanges.listing`,
+   * not this row's own `categoryId`, and reassigning that nested shape is
+   * deliberately out of scope here (rare edge case; see M32.10 report).
+   */
+  async reassignCategoryForAdmin(listingId: string, categoryId: string) {
+    const result = await prisma.vendorListing.updateMany({
+      where: { id: listingId, pendingChanges: { equals: Prisma.DbNull } },
+      data: { categoryId, categoryOther: null },
+    });
+    return result.count > 0;
+  },
+
   applyApprovalAndActivate(listingId: string, fields: Record<string, unknown> | null, tiers: { minQuantity: number; maxQuantity: number | null; unitPrice: number }[] | null) {
     return prisma.$transaction(async (tx) => {
       if (fields) {

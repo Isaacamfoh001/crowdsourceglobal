@@ -1,4 +1,5 @@
 import { vendorsRepository } from "../vendors/repository";
+import { beautyProfessionalsRepository } from "../beauty-professionals/repository";
 
 export type ExplorePostPublisherContext = {
   vendorId: string;
@@ -8,14 +9,16 @@ export type ExplorePostPublisherContext = {
 /**
  * Resolves whether `userId` may publish Explore posts, and as which Vendor.
  *
- * Publisher eligibility (M21): the smallest existing identity that already
- * carries a public name/logo/location and a real moderation relationship
- * with CrownSource is an approved Vendor — the same identity the Vendor
- * Portal already grants access to. There is no dedicated beauty-
- * professional/service-profile domain yet (the M21 brief is explicit: do
- * not build one prematurely). A future dedicated provider-profile domain
- * can widen ExplorePost's ownership later without dropping this table —
- * see prisma/schema.prisma's ExplorePost doc comment.
+ * M32.10 — Explore is a Beauty-professional authoring surface, not a
+ * general vendor one: an ordinary Seller or a Factory/Manufacturer without
+ * Beauty Professional access must not be able to post, even though they
+ * hold an otherwise-APPROVED Vendor membership (the identity Explore posts
+ * are attributed to — see prisma/schema.prisma's ExplorePost doc comment).
+ * This mirrors the mobile client's own gate (`isEligibleExploreProvider`,
+ * which reads `GET /api/v1/me`'s `beautyProfessional.available`) — that
+ * client check is a UI affordance only; this is the real authorization
+ * boundary, re-verified independently on every mutating request per
+ * CLAUDE.md's "never trust UI hiding" rule.
  *
  * Mirrors the Vendor Portal's own `getVendorPortalContext` resolution
  * (modules/vendors/policy.ts: first membership found — this codebase does
@@ -23,16 +26,13 @@ export type ExplorePostPublisherContext = {
  * non-redirecting lookup suitable for an `/api/v1` route, per
  * docs/architecture/overview.md's "Mobile API Foundation" authorization
  * convention (never the redirect/notFound-throwing page guards).
- *
- * Additionally requires `verificationStatus === "APPROVED"` — defensive
- * belt-and-braces: every Vendor row is already only ever created APPROVED
- * (modules/vendor-applications/service.ts), but this keeps Explore
- * publishing consistent with every other public-vendor-identity read path
- * in this codebase (modules/vendors/repository.ts's public queries all
- * filter on this same condition).
  */
 export async function resolveExplorePostPublisher(userId: string): Promise<ExplorePostPublisherContext | null> {
   const membership = await vendorsRepository.findFirstMembershipForUser(userId);
   if (!membership || membership.vendor.verificationStatus !== "APPROVED") return null;
+
+  const beautyProfile = await beautyProfessionalsRepository.findForVendor(membership.vendorId);
+  if (beautyProfile?.status !== "APPROVED") return null;
+
   return { vendorId: membership.vendorId, vendorName: membership.vendor.companyName };
 }

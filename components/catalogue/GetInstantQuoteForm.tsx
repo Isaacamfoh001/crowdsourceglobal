@@ -9,12 +9,15 @@ import { Button } from "../ui/Button";
 import { FormMessage } from "../ui/FormMessage";
 import type { PublicBulkPriceTier } from "../../modules/pricing/types";
 
+// M32.10 — MOQ is no longer a marketplace requirement; every listing has an
+// effective minimum purchasable quantity of 1, regardless of stored `moq`.
+const MIN_QUANTITY = 1;
+
 export function GetInstantQuoteForm({
   listingId,
   currentPath,
   basePrice,
   currency,
-  moq,
   maxOq,
   availableQuantity,
   bulkPriceTiers,
@@ -24,16 +27,15 @@ export function GetInstantQuoteForm({
   currentPath: string;
   basePrice: number;
   currency: string;
-  moq: number;
   maxOq: number | null;
   availableQuantity: number;
   bulkPriceTiers: PublicBulkPriceTier[];
   resumedQuantity: number | null;
 }) {
-  const maxSelectable = Math.max(moq, Math.min(maxOq ?? availableQuantity, availableQuantity));
+  const maxSelectable = Math.max(MIN_QUANTITY, Math.min(maxOq ?? availableQuantity, availableQuantity));
 
   const [quantity, setQuantity] = useState(
-    resumedQuantity ? Math.max(moq, Math.min(maxSelectable, resumedQuantity)) : moq,
+    resumedQuantity ? Math.max(MIN_QUANTITY, Math.min(maxSelectable, resumedQuantity)) : MIN_QUANTITY,
   );
   const [state, formAction, isPending] = useActionState(addToQuoteDraftAction, null);
 
@@ -41,7 +43,7 @@ export function GetInstantQuoteForm({
   const previewTotal = previewUnitPrice * quantity;
 
   function clamp(next: number) {
-    return Math.max(moq, Math.min(maxSelectable, next));
+    return Math.max(MIN_QUANTITY, Math.min(maxSelectable, next));
   }
 
   return (
@@ -65,7 +67,7 @@ export function GetInstantQuoteForm({
             <button
               type="button"
               onClick={() => setQuantity((q) => clamp(q - 1))}
-              disabled={quantity <= moq}
+              disabled={quantity <= MIN_QUANTITY}
               aria-label="Decrease quantity"
               className="flex size-9 items-center justify-center border border-ivory-400 text-espresso-900 hover:bg-ivory-100 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -74,9 +76,9 @@ export function GetInstantQuoteForm({
             <input
               type="number"
               value={quantity}
-              min={moq}
+              min={MIN_QUANTITY}
               max={maxSelectable}
-              onChange={(event) => setQuantity(clamp(Number(event.target.value) || moq))}
+              onChange={(event) => setQuantity(clamp(Number(event.target.value) || MIN_QUANTITY))}
               className="w-16 border border-ivory-400 bg-ivory-50 py-2 text-center text-sm font-medium text-espresso-950"
               aria-label="Quantity for instant quote"
             />

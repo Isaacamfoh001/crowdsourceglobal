@@ -54,6 +54,7 @@ function baseQuote(overrides: Partial<QuotationDetailView> = {}): QuotationDetai
       },
     ],
     acceptedOrderId: null,
+    sourcingRequestAttachments: [],
     ...overrides,
   };
 }

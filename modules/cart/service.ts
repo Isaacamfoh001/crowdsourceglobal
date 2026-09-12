@@ -26,9 +26,9 @@ async function validateQuantity(
   if (listing.availabilityStatus === "OUT_OF_STOCK") {
     return err(`${listing.title} is currently out of stock.`);
   }
-  if (quantity < listing.moq) {
-    return err(`Minimum order quantity for ${listing.title} is ${listing.moq}.`);
-  }
+  // M32.10 — MOQ is no longer a marketplace requirement: a customer may
+  // always buy as few as 1 unit, regardless of a listing's stored `moq`
+  // (which UI no longer exposes and creation no longer collects).
   if (listing.maxOq && quantity > listing.maxOq) {
     return err(`Maximum order quantity for ${listing.title} is ${listing.maxOq}.`);
   }

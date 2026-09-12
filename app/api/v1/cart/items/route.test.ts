@@ -72,13 +72,13 @@ describe("POST /api/v1/cart/items", () => {
     expect(response.status).toBe(401);
   });
 
-  it("rejects a quantity below MOQ, surfacing the service's own validation message", async () => {
+  // M32.10 — MOQ is no longer a marketplace requirement: a customer may buy
+  // as few as 1 unit even from a listing whose stored `moq` is still > 1.
+  it("allows a quantity below the listing's stored MOQ", async () => {
     const { userId, listingId } = await setup("moq");
     vi.mocked(getCurrentSession).mockResolvedValue(sessionFor(userId));
     const response = await POST(request({ listingId, quantity: 1 }));
-    expect(response.status).toBe(422);
-    const body = await response.json();
-    expect(body.error.message).toMatch(/minimum order quantity/i);
+    expect(response.status).toBe(200);
   });
 
   it("adds a valid quantity and returns the refreshed cart view", async () => {

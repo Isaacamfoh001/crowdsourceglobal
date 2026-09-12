@@ -1,3 +1,5 @@
+import type { SourcingRequestAttachmentView } from "../sourcing/types";
+
 /**
  * Cookie-carried pre-issuance line — deliberately NOT a persisted row (see
  * schema.prisma's M5 section comment). Never trusted for price; only
@@ -62,6 +64,8 @@ export type QuotationDetailView = {
   total: number;
   items: QuotationLineItemView[];
   acceptedOrderId: string | null;
+  /** M32.10 — the originating CustomSourcingRequest's photos, when this quote came from custom sourcing. Empty for an INSTANT quote. */
+  sourcingRequestAttachments: SourcingRequestAttachmentView[];
 };
 
 export type AdminQuotationSummaryView = QuotationSummaryView & {

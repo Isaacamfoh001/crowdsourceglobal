@@ -77,6 +77,20 @@ export async function approveListingAction(
   return ok(null);
 }
 
+/** M32.10 — admin maps a vendor's custom "Other / Not listed" category onto an existing real Category. */
+export async function reassignListingCategoryAction(
+  _prevState: Result<null> | null,
+  formData: FormData,
+): Promise<Result<null>> {
+  await requireAdminSession("/admin/listings", ["SUPER_ADMIN", "OPS_ADMIN"]);
+  const listingId = String(formData.get("listingId") ?? "");
+  const categoryId = String(formData.get("categoryId") ?? "");
+  const result = await vendorListingsService.reassignCategory(listingId, categoryId);
+  if (!result.ok) return result;
+  revalidatePath(`/admin/listings/${listingId}`);
+  return ok(null);
+}
+
 export async function requestListingChangesAction(
   _prevState: Result<null> | null,
   formData: FormData,
