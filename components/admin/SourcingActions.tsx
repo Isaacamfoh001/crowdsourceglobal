@@ -8,28 +8,14 @@ import {
   requestClarificationAction,
   sendToFactoriesAction,
   convertSolicitationToOptionAction,
-  addSourcingOptionAction,
-  removeSourcingOptionAction,
-  setAllocationsAction,
   prepareQuoteAction,
   markUnableToSourceAction,
 } from "../../lib/actions/sourcing";
 import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
-import { MoneyInput } from "../ui/MoneyInput";
-import { CountrySelect } from "../ui/CountrySelect";
 import { FormMessage } from "../ui/FormMessage";
 import { formatPrice } from "../../lib/format";
 import type { Result } from "../../lib/result";
-import type {
-  AdminSourcingOptionView,
-  AdminSourcingSolicitationView,
-  QuotePricingSuggestion,
-  SourcingOptionSourceType,
-  StaffOption,
-  VendorListingOption,
-  VendorOption,
-} from "../../modules/sourcing/types";
+import type { AdminSourcingSolicitationView, QuotePricingSuggestion, StaffOption, VendorOption } from "../../modules/sourcing/types";
 
 function ErrorMessage({ state }: { state: Result<unknown> | null }) {
   if (!state || state.ok) return null;
@@ -216,7 +202,7 @@ export function AskFactoriesForm({
   );
 }
 
-function UseSolicitationButton({ id, solicitationId, alreadyUsed }: { id: string; solicitationId: string; alreadyUsed: boolean }) {
+function UseSolicitationButton({ id, solicitationId, isWinner }: { id: string; solicitationId: string; isWinner: boolean }) {
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<Result<null> | null>(null);
 
@@ -231,216 +217,78 @@ function UseSolicitationButton({ id, solicitationId, alreadyUsed }: { id: string
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button type="button" size="sm" variant={alreadyUsed ? "outline" : "primary"} disabled={isPending || alreadyUsed} onClick={handleClick}>
-        {alreadyUsed ? "Used for quotation" : isPending ? "Using…" : "Use for quotation"}
+      <Button type="button" size="sm" variant={isWinner ? "outline" : "primary"} disabled={isPending || isWinner} onClick={handleClick}>
+        {isWinner ? "Selected as supplier" : isPending ? "Selecting…" : "Select this supplier"}
       </Button>
       <ErrorMessage state={state} />
     </div>
   );
 }
 
-/** Part 5's "extremely easy to compare" response list — one card per factory, sorted by admin activity above. Never renders like a database editor: no internal ids, no raw JSON. */
-export function FactoryResponsesSection({ id, solicitations }: { id: string; solicitations: AdminSourcingSolicitationView[] }) {
+/**
+ * M32.9 — the response-comparison list IS the sourcing decision surface now:
+ * one card per factory, "Select this supplier" awards it the request in one
+ * click (auto-creates its internal option/allocation — never a separate
+ * "internal sourcing option" or "save allocation" step). Never renders like
+ * a database editor: no internal ids, no raw JSON, no "allocation"/"sourcing
+ * option" terminology.
+ */
+export function FactoryResponsesSection({
+  id,
+  solicitations,
+  winningOptionIds,
+}: {
+  id: string;
+  solicitations: AdminSourcingSolicitationView[];
+  /** Option ids currently carrying the request's live allocation — at most one, per the single-winning-factory rule. */
+  winningOptionIds: Set<string>;
+}) {
   if (solicitations.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-3">
       <h3 className="text-sm font-medium text-espresso-950">Factory Responses ({solicitations.length})</h3>
-      {solicitations.map((solicitation) => (
-        <div key={solicitation.id} className="flex items-start justify-between gap-3 rounded-xl border border-ivory-300 p-4">
-          <div>
-            <p className="font-medium text-espresso-950">{solicitation.vendorName}</p>
-            {solicitation.status === "SENT" ? (
-              <p className="mt-0.5 text-sm text-espresso-900/50">Awaiting response…</p>
-            ) : solicitation.status === "CANNOT_FULFIL" ? (
-              <p className="mt-0.5 text-sm font-medium text-danger-600">Cannot fulfil</p>
-            ) : (
-              <div className="mt-1 text-sm text-espresso-900/75">
-                <p className="font-medium text-espresso-950">
-                  {solicitation.proposedQuantity?.toLocaleString()} units · {formatPrice(solicitation.unitPrice ?? 0, solicitation.currency)}/unit
-                </p>
-                <p className="mt-0.5 text-espresso-900/50">
-                  {solicitation.leadTimeDays ? `${solicitation.leadTimeDays} days lead time` : "Lead time not specified"}
-                </p>
-                {solicitation.notes ? <p className="mt-1 italic text-espresso-900/50">&ldquo;{solicitation.notes}&rdquo;</p> : null}
-              </div>
-            )}
+      {solicitations.map((solicitation) => {
+        const isWinner = !!solicitation.convertedToOptionId && winningOptionIds.has(solicitation.convertedToOptionId);
+        const supplierTotal =
+          solicitation.proposedQuantity != null && solicitation.unitPrice != null
+            ? solicitation.proposedQuantity * solicitation.unitPrice
+            : null;
+        return (
+          <div
+            key={solicitation.id}
+            className={`flex items-start justify-between gap-3 rounded-xl border p-4 ${isWinner ? "border-espresso-800 bg-champagne-200/10" : "border-ivory-300"}`}
+          >
+            <div>
+              <p className="font-medium text-espresso-950">
+                {solicitation.vendorName}
+                {isWinner ? <span className="ml-2 text-xs font-medium text-espresso-800">Selected supplier</span> : null}
+              </p>
+              {solicitation.status === "SENT" ? (
+                <p className="mt-0.5 text-sm text-espresso-900/50">Awaiting response…</p>
+              ) : solicitation.status === "CANNOT_FULFIL" ? (
+                <p className="mt-0.5 text-sm font-medium text-danger-600">Cannot fulfil</p>
+              ) : (
+                <div className="mt-1 text-sm text-espresso-900/75">
+                  <p className="font-medium text-espresso-950">
+                    {solicitation.proposedQuantity?.toLocaleString()} units · {formatPrice(solicitation.unitPrice ?? 0, solicitation.currency)}/unit
+                    {supplierTotal != null ? ` · Total ${formatPrice(supplierTotal, solicitation.currency)}` : ""}
+                  </p>
+                  <p className="mt-0.5 text-espresso-900/50">
+                    {solicitation.leadTimeDays ? `${solicitation.leadTimeDays} days lead time` : "Lead time not specified"}
+                    {solicitation.respondedAt
+                      ? ` · Submitted ${solicitation.respondedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+                      : ""}
+                  </p>
+                  {solicitation.notes ? <p className="mt-1 italic text-espresso-900/50">&ldquo;{solicitation.notes}&rdquo;</p> : null}
+                </div>
+              )}
+            </div>
+            {solicitation.status === "RESPONDED" ? <UseSolicitationButton id={id} solicitationId={solicitation.id} isWinner={isWinner} /> : null}
           </div>
-          {solicitation.status === "RESPONDED" ? (
-            <UseSolicitationButton id={id} solicitationId={solicitation.id} alreadyUsed={!!solicitation.convertedToOptionId} />
-          ) : null}
-        </div>
-      ))}
+        );
+      })}
     </div>
-  );
-}
-
-export function AddSourcingOptionForm({
-  id,
-  vendors,
-  listings,
-}: {
-  id: string;
-  vendors: VendorOption[];
-  listings: VendorListingOption[];
-}) {
-  const [state, formAction, isPending] = useActionState(addSourcingOptionAction, null);
-  const [sourceType, setSourceType] = useState<SourcingOptionSourceType>("VENDOR_LISTING");
-
-  return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-xl border border-ivory-300 bg-ivory-50 p-4">
-      <input type="hidden" name="id" value={id} />
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="sourceType" className="text-sm font-medium text-espresso-800">
-          Source type
-        </label>
-        <select
-          id="sourceType"
-          name="sourceType"
-          value={sourceType}
-          onChange={(e) => setSourceType(e.target.value as SourcingOptionSourceType)}
-          disabled={isPending}
-          className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
-        >
-          <option value="VENDOR_LISTING">Existing vendor listing</option>
-          <option value="VENDOR">Marketplace vendor (no matching listing)</option>
-          <option value="EXTERNAL_SUPPLIER">External / off-platform supplier</option>
-        </select>
-      </div>
-
-      {sourceType === "VENDOR_LISTING" ? (
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="vendorListingId" className="text-sm font-medium text-espresso-800">
-            Listing
-          </label>
-          <select
-            id="vendorListingId"
-            name="vendorListingId"
-            required
-            disabled={isPending}
-            onChange={(e) => {
-              const listing = listings.find((l) => l.id === e.target.value);
-              const vendorField = document.getElementById("vendorId_hidden") as HTMLInputElement | null;
-              if (vendorField && listing) vendorField.value = listing.vendorId;
-            }}
-            defaultValue=""
-            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
-          >
-            <option value="" disabled>
-              Select a listing
-            </option>
-            {listings.map((listing) => (
-              <option key={listing.id} value={listing.id}>
-                {listing.vendorName} — {listing.title}
-              </option>
-            ))}
-          </select>
-          <input type="hidden" id="vendorId_hidden" name="vendorId" />
-        </div>
-      ) : null}
-
-      {sourceType === "VENDOR" ? (
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="vendorId" className="text-sm font-medium text-espresso-800">
-            Vendor
-          </label>
-          <select
-            id="vendorId"
-            name="vendorId"
-            required
-            disabled={isPending}
-            defaultValue=""
-            className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-sm text-espresso-950 outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
-          >
-            <option value="" disabled>
-              Select a vendor
-            </option>
-            {vendors.map((vendor) => (
-              <option key={vendor.id} value={vendor.id}>
-                {vendor.companyName}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : null}
-
-      {sourceType === "EXTERNAL_SUPPLIER" ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Input label="Supplier name" name="externalSupplierName" required disabled={isPending} />
-          <Input label="Contact (private)" name="externalSupplierContact" disabled={isPending} />
-        </div>
-      ) : null}
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Input label="Available qty" name="quantityAvailable" type="number" min={1} disabled={isPending} />
-        <Input label="Proposed qty" name="proposedQuantity" type="number" min={1} required disabled={isPending} />
-        <MoneyInput label="Unit supply cost" name="unitSupplyCost" />
-        <Input label="Lead time (days)" name="leadTimeDays" type="number" min={0} disabled={isPending} />
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <CountrySelect label="Origin country" name="originCountry" disabled={isPending} />
-        <Input label="Internal notes (staff-only)" name="notes" disabled={isPending} />
-      </div>
-
-      <Button type="submit" size="sm" disabled={isPending} className="self-start">
-        {isPending ? "Adding…" : "Add option"}
-      </Button>
-      <ErrorMessage state={state} />
-    </form>
-  );
-}
-
-export function RemoveSourcingOptionButton({ id, optionId }: { id: string; optionId: string }) {
-  const [, formAction, isPending] = useActionState(removeSourcingOptionAction, null);
-  return (
-    <form action={formAction}>
-      <input type="hidden" name="id" value={id} />
-      <input type="hidden" name="optionId" value={optionId} />
-      <button type="submit" disabled={isPending} className="text-xs font-medium text-espresso-900/35 hover:text-danger-600">
-        Remove
-      </button>
-    </form>
-  );
-}
-
-export function AllocationForm({ id, options, quantity }: { id: string; options: AdminSourcingOptionView[]; quantity: number }) {
-  const [state, formAction, isPending] = useActionState(setAllocationsAction, null);
-  const [values, setValues] = useState<Record<string, number>>(
-    Object.fromEntries(options.map((o) => [o.id, o.allocatedQuantity])),
-  );
-
-  const total = Object.values(values).reduce((sum, v) => sum + (v || 0), 0);
-
-  return (
-    <form action={formAction} className="flex flex-col gap-3">
-      <input type="hidden" name="id" value={id} />
-      {options.map((option) => (
-        <div key={option.id} className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-espresso-800">
-            {option.vendorName ?? option.vendorListingTitle ?? option.externalSupplierName ?? "Option"}
-            <span className="ml-1.5 text-xs text-espresso-900/35">
-              ({formatPrice(option.unitSupplyCost, option.currency)}/unit)
-            </span>
-          </span>
-          <input
-            type="number"
-            name={`allocation_${option.id}`}
-            min={0}
-            value={values[option.id] ?? 0}
-            onChange={(e) => setValues((prev) => ({ ...prev, [option.id]: Number(e.target.value) }))}
-            disabled={isPending}
-            className="w-24 rounded-lg border border-ivory-400 bg-ivory-50 px-3 py-1.5 text-right text-sm text-espresso-950 outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
-          />
-        </div>
-      ))}
-      <div className={`text-sm font-medium ${total === quantity ? "text-espresso-800" : "text-champagne-700"}`}>
-        Allocated {total} of {quantity} requested
-      </div>
-      <Button type="submit" size="sm" disabled={isPending} className="self-start">
-        {isPending ? "Saving…" : "Save allocations"}
-      </Button>
-      <ErrorMessage state={state} />
-    </form>
   );
 }
 

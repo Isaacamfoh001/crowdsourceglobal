@@ -121,7 +121,9 @@ export type AdminFulfilmentDetail = AdminFulfilmentSummary & {
     addressLine1: string;
     addressLine2?: string;
     city: string;
-    region: string;
+    /** M32.9 — see modules/orders/types.ts's DeliveryInfo; absent on any order snapshotted before this field existed. */
+    country?: string;
+    region?: string;
     notes?: string;
   };
 };

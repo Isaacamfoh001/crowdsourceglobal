@@ -766,42 +766,88 @@ export const sourcingService = {
   },
 
   /**
-   * Admin selects a factory response and converts it into a SourcingOption
-   * — auto-populated from the response (proposed quantity, unit price,
-   * lead time, notes), never re-typed by admin. Idempotent: a repeat click
-   * returns the SAME option (sourcingSolicitationId is unique) rather than
-   * creating a duplicate, including under a race between two clicks.
+   * M32.9 — "Select this supplier": the single admin action that both
+   * converts a factory's RESPONDED solicitation into a SourcingOption
+   * (auto-populated from the response — proposed quantity, unit price,
+   * lead time, notes, never re-typed by admin) AND awards it the internal
+   * allocation, replacing any previously selected winner's. This is the
+   * ONE-WINNING-FACTORY rule: CrownSourceGlobal doesn't support split
+   * fulfilment across factories yet, so picking a new winner always
+   * supersedes the old one — there is never more than one live allocation
+   * per request as a result of this action (a legacy multi-vendor manual
+   * allocation, from addOption/setAllocations, is still possible for
+   * backward compatibility, but this path never produces one).
+   *
+   * Awarded quantity is `min(the factory's own proposedQuantity, the
+   * request's quantity)` — never fabricated above what the factory actually
+   * offered, and never above what the customer actually asked for. When a
+   * factory's offer covers the full request, this exactly satisfies
+   * prepareAndIssueQuote's "allocated must equal requested" gate
+   * automatically (the M32.9 brief's "the entire requested quantity as
+   * awarded automatically"); when it only covers part, the gate still
+   * blocks quoting — by design, since a partial-coverage winner alone can't
+   * fulfil the order and there's no split-fulfilment path to complete it.
+   *
+   * Idempotent: re-selecting the same already-converted response reuses its
+   * existing SourcingOption (sourcingSolicitationId is unique) rather than
+   * duplicating it, including under a race between two clicks, and simply
+   * re-affirms/refreshes its allocation.
    */
   async useSolicitationForOption(id: string, solicitationId: string): Promise<Result<{ optionId: string }>> {
     const solicitation = await sourcingRepository.findSolicitationById(solicitationId);
     if (!solicitation || solicitation.sourcingRequestId !== id) return err("Response not found.");
-    if (solicitation.sourcingOption) return ok({ optionId: solicitation.sourcingOption.id });
     if (solicitation.status !== "RESPONDED") return err("This factory hasn't submitted a usable response yet.");
     if (solicitation.proposedQuantity == null || solicitation.unitPrice == null) {
       return err("This response is missing required figures.");
     }
 
-    try {
-      const option = await sourcingRepository.createOptionFromSolicitation({
-        sourcingRequestId: id,
-        sourcingSolicitationId: solicitation.id,
-        vendorId: solicitation.vendorId,
-        proposedQuantity: solicitation.proposedQuantity,
-        unitSupplyCost: solicitation.unitPrice.toNumber(),
-        currency: solicitation.currency,
-        leadTimeDays: solicitation.leadTimeDays,
-        notes: solicitation.notes,
-      });
-      await sourcingRepository.createActivity(id, "factory_response_used_for_option", null, { solicitationId, optionId: option.id });
-      return ok({ optionId: option.id });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        const existing = await sourcingRepository.findOptionBySolicitationId(solicitation.id);
-        if (existing) return ok({ optionId: existing.id });
+    const request = await sourcingRepository.findStatusForUpdate(id);
+    if (!request) return err("Request not found.");
+
+    let optionId = solicitation.sourcingOption?.id ?? null;
+    if (!optionId) {
+      try {
+        const option = await sourcingRepository.createOptionFromSolicitation({
+          sourcingRequestId: id,
+          sourcingSolicitationId: solicitation.id,
+          vendorId: solicitation.vendorId,
+          proposedQuantity: solicitation.proposedQuantity,
+          unitSupplyCost: solicitation.unitPrice.toNumber(),
+          currency: solicitation.currency,
+          leadTimeDays: solicitation.leadTimeDays,
+          notes: solicitation.notes,
+        });
+        optionId = option.id;
+        await sourcingRepository.createActivity(id, "factory_response_used_for_option", null, { solicitationId, optionId });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+          const existing = await sourcingRepository.findOptionBySolicitationId(solicitation.id);
+          if (!existing) {
+            console.error("Failed to convert factory response into a sourcing option:", error);
+            return err("Something went wrong using this response. Please try again.");
+          }
+          optionId = existing.id;
+        } else {
+          console.error("Failed to convert factory response into a sourcing option:", error);
+          return err("Something went wrong using this response. Please try again.");
+        }
       }
-      console.error("Failed to convert factory response into a sourcing option:", error);
-      return err("Something went wrong using this response. Please try again.");
     }
+
+    const awardedQuantity = Math.min(solicitation.proposedQuantity, request.quantity);
+    await sourcingRepository.replaceAllocations(id, [
+      {
+        sourcingOptionId: optionId,
+        allocatedQuantity: awardedQuantity,
+        unitSupplyCostSnapshot: solicitation.unitPrice.toNumber(),
+        currency: solicitation.currency,
+        leadTimeDaysSnapshot: solicitation.leadTimeDays,
+        originCountrySnapshot: null,
+      },
+    ]);
+    await sourcingRepository.createActivity(id, "factory_selected_as_winner", null, { solicitationId, optionId, awardedQuantity });
+
+    return ok({ optionId });
   },
 
   /**

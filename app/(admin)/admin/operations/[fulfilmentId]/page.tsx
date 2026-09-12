@@ -87,7 +87,12 @@ export default async function AdminFulfilmentDetailPage({ params }: { params: Pr
           <dl className="mt-2 divide-y divide-ivory-100">
             <Row label="Recipient" value={fulfilment.deliveryInfo.recipientName} />
             <Row label="Phone" value={fulfilment.deliveryInfo.phone} />
-            <Row label="Address" value={`${fulfilment.deliveryInfo.addressLine1}, ${fulfilment.deliveryInfo.city}, ${fulfilment.deliveryInfo.region}`} />
+            <Row
+              label="Address"
+              value={[fulfilment.deliveryInfo.addressLine1, fulfilment.deliveryInfo.city, fulfilment.deliveryInfo.region, fulfilment.deliveryInfo.country]
+                .filter(Boolean)
+                .join(", ")}
+            />
           </dl>
         </div>
       </div>

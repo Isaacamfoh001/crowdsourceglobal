@@ -12,9 +12,6 @@ import {
   RequestClarificationForm,
   AskFactoriesForm,
   FactoryResponsesSection,
-  AddSourcingOptionForm,
-  RemoveSourcingOptionButton,
-  AllocationForm,
   PrepareQuoteForm,
   MarkUnableToSourceForm,
 } from "../../../../../components/admin/SourcingActions";
@@ -33,16 +30,16 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
   await requireAdminSession("/admin/sourcing");
   const { id } = await params;
 
-  const [request, staff, vendors, listings] = await Promise.all([
+  const [request, staff, vendors] = await Promise.all([
     sourcingService.getDetailForAdmin(id),
     sourcingService.listStaffOptions(),
     sourcingService.listVendorOptions(),
-    sourcingService.listVendorListingOptions(),
   ]);
   if (!request) notFound();
 
   const allocationCost = request.allocations.reduce((sum, a) => sum + a.allocatedQuantity * a.unitSupplyCostSnapshot, 0);
   const alreadyAskedVendorIds = request.solicitations.map((s) => s.vendorId);
+  const winningOptionIds = new Set(request.allocations.map((a) => a.sourcingOptionId));
   // Only a single-factory allocation has one clear "the" factory price to suggest a markup from — a mixed
   // multi-vendor allocation keeps the existing manual entry, unchanged.
   const pricingSuggestion =
@@ -149,58 +146,13 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
               ) : null}
               {request.solicitations.length > 0 ? (
                 <div className="mt-6 border-t border-ivory-300 pt-4">
-                  <FactoryResponsesSection id={request.id} solicitations={request.solicitations} />
+                  <FactoryResponsesSection id={request.id} solicitations={request.solicitations} winningOptionIds={winningOptionIds} />
                 </div>
               ) : null}
             </div>
           ) : null}
 
-          {(request.status === "SOURCING" || request.status === "QUOTED") ? (
-            <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
-              <h2 className="font-display text-base font-medium text-espresso-950">Internal sourcing options</h2>
-              <p className="mt-1 text-sm text-espresso-900/50">
-                Never visible to the customer — marketplace vendors, listings, or external suppliers under
-                consideration.
-              </p>
-
-              {request.options.length > 0 ? (
-                <div className="mt-4 flex flex-col gap-3">
-                  {request.options.map((option) => (
-                    <div key={option.id} className="flex items-center justify-between gap-3 rounded-xl border border-ivory-300 p-3 text-sm">
-                      <div>
-                        <p className="font-medium text-espresso-950">
-                          {option.vendorName ?? option.vendorListingTitle ?? option.externalSupplierName}
-                          <span className="ml-2 text-xs font-normal text-espresso-900/35">{option.sourceType}</span>
-                        </p>
-                        <p className="text-xs text-espresso-900/50">
-                          {formatPrice(option.unitSupplyCost, option.currency)}/unit · proposed {option.proposedQuantity}
-                          {option.leadTimeDays ? ` · ${option.leadTimeDays}d lead time` : ""}
-                          {option.originCountry ? ` · ${option.originCountry}` : ""}
-                          {option.notes ? ` · "${option.notes}"` : ""}
-                        </p>
-                      </div>
-                      <RemoveSourcingOptionButton id={request.id} optionId={option.id} />
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-
-              <div className="mt-4">
-                <AddSourcingOptionForm id={request.id} vendors={vendors} listings={listings} />
-              </div>
-
-              {request.options.length > 0 ? (
-                <div className="mt-6 border-t border-ivory-300 pt-4">
-                  <h3 className="text-sm font-medium text-espresso-950">Allocate supply</h3>
-                  <div className="mt-3">
-                    <AllocationForm id={request.id} options={request.options} quantity={request.quantity} />
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {(request.status === "SOURCING" || request.status === "QUOTED") ? (
+          {request.allocations.length > 0 || request.status === "QUOTED" ? (
             <div className="rounded-lg border border-ivory-300 bg-ivory-50 p-5">
               <h2 className="font-display text-base font-medium text-espresso-950">
                 {request.status === "QUOTED" ? "Revise commercial offer" : "Prepare commercial offer"}
@@ -208,7 +160,7 @@ export default async function AdminSourcingDetailPage({ params }: { params: Prom
               <p className="mt-1 text-sm text-espresso-900/50">
                 {request.status === "QUOTED"
                   ? "Issuing a new quote supersedes the current one — history is preserved."
-                  : "Allocated quantity must equal the requested quantity before issuing."}
+                  : "The selected supplier's cost feeds this offer — set what the customer sees and pays below."}
               </p>
               <div className="mt-4">
                 <PrepareQuoteForm id={request.id} allocationCost={allocationCost} currency="GHS" pricingSuggestion={pricingSuggestion} />

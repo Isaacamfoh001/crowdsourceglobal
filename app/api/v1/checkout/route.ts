@@ -51,9 +51,11 @@ export async function POST(request: Request) {
   const result = await ordersService.createOrderFromCart(customerProfile.id, parsed.data);
   if (!result.ok) return apiError("VALIDATION_ERROR", result.error);
 
-  if (body && typeof body === "object" && "saveAddress" in body && (body as { saveAddress?: unknown }).saveAddress === true) {
+  // The saved-address book (CustomerAddress) is still Ghana-only (no
+  // country column) — never save an international delivery into it.
+  if (body && typeof body === "object" && "saveAddress" in body && (body as { saveAddress?: unknown }).saveAddress === true && parsed.data.region) {
     try {
-      await addressesService.create(customerProfile.id, parsed.data);
+      await addressesService.create(customerProfile.id, { ...parsed.data, region: parsed.data.region });
     } catch (error) {
       console.error("Failed to save address from mobile checkout (non-blocking):", error);
     }

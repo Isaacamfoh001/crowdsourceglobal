@@ -753,6 +753,29 @@ describe("sourcingService", () => {
       expect(detail?.solicitations).toHaveLength(2);
     });
 
+    it("lets a solicited factory download the request's reference-image attachments, but never an unsolicited factory (M32.9)", async () => {
+      const created = await sourcingService.submitRequest(customerAId, customerAUserId, customerAEmail, baseInput, [
+        { buffer: PNG_MAGIC, filename: "reference.png", mimeType: "image/png" },
+      ]);
+      expect(created.ok).toBe(true);
+      if (!created.ok) return;
+      createdRequestIds.push(created.value.id);
+
+      const detailForCustomer = await sourcingService.getDetailForCustomer(created.value.id, customerAId);
+      const attachmentId = detailForCustomer!.attachments[0]!.id;
+
+      await sourcingService.moveToUnderReview(created.value.id);
+      await sourcingService.moveToSourcing(created.value.id);
+      await sourcingService.sendToFactories(created.value.id, [vendorId], staffUserId);
+
+      const solicitedAccess = await sourcingService.getAttachmentForDownload(attachmentId, { isStaff: false, vendorId });
+      expect(solicitedAccess).not.toBeNull();
+
+      // vendorTwoId was never solicited for this request.
+      const unsolicitedAccess = await sourcingService.getAttachmentForDownload(attachmentId, { isStaff: false, vendorId: vendorTwoId });
+      expect(unsolicitedAccess).toBeNull();
+    });
+
     it("never exposes customer name/email/private data on the factory-facing detail view", async () => {
       const { id } = await submitAndSendToFactories([vendorId]);
       const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
@@ -843,7 +866,7 @@ describe("sourcingService", () => {
       expect(detail?.solicitations.find((s) => s.id === solicitationId)?.status).toBe("SENT");
     });
 
-    it("converts a RESPONDED solicitation into a SourcingOption automatically, and that option flows through allocation and quote issuance", async () => {
+    it("converts a RESPONDED solicitation into a SourcingOption AND awards it the full allocation automatically — no separate manual allocation step (M32.9)", async () => {
       const { id } = await submitAndSendToFactories([vendorId], { quantity: 10000 });
       const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
       const solicitationId = rows[0]!.id;
@@ -868,7 +891,13 @@ describe("sourcingService", () => {
       expect(option.unitSupplyCost).toBe(32);
       expect(option.leadTimeDays).toBe(14);
 
-      await sourcingService.setAllocations(id, [{ sourcingOptionId: option.id, allocatedQuantity: 10000 }]);
+      // No admin.setAllocations call anywhere in this test — selecting the
+      // winning factory response already awarded it the full 10,000 units.
+      expect(detail!.allocatedTotal).toBe(10000);
+      expect(detail!.allocations).toHaveLength(1);
+      expect(detail!.allocations[0]?.sourcingOptionId).toBe(option.id);
+      expect(detail!.allocations[0]?.allocatedQuantity).toBe(10000);
+
       const suggestion = await sourcingService.getQuotePricingSuggestion(option.id);
       expect(suggestion?.customerUnitPrice).toBe(36.8); // 32 * 1.15
 
@@ -880,9 +909,11 @@ describe("sourcingService", () => {
       if (!quote.ok) return;
       const customerQuote = await quotationService.getDetailForCustomer(quote.value.quotationId, customerAId);
       expect(customerQuote?.total).toBe(368000); // 10,000 * 36.80
-      // Never leaks factory identity/cost/markup to the customer quote.
-      const serialized = JSON.stringify(customerQuote);
-      expect(serialized).not.toContain("32");
+      // Never leaks factory identity/cost/markup to the customer quote — the
+      // factory's raw unit price (32) must never appear as a price field
+      // here, only the marked-up customer price (36.8).
+      expect(customerQuote?.items[0]?.unitPrice).toBe(36.8);
+      expect(customerQuote?.items[0]?.lineTotal).toBe(368000);
       expect(customerQuote?.items[0]?.vendor).toBeNull();
     });
 
@@ -898,6 +929,44 @@ describe("sourcingService", () => {
 
       const detail = await sourcingService.getDetailForAdmin(id);
       expect(detail?.options).toHaveLength(1);
+    });
+
+    it("caps the automatic award at the requested quantity — a factory offering more than requested is never awarded more than the customer actually asked for (M32.9)", async () => {
+      const { id } = await submitAndSendToFactories([vendorId], { quantity: 5000 });
+      const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
+      const solicitationId = rows[0]!.id;
+      await sourcingService.respondToSolicitation(solicitationId, vendorId, { canFulfil: true, proposedQuantity: 8000, unitPrice: 10 });
+
+      const conversion = await sourcingService.useSolicitationForOption(id, solicitationId);
+      expect(conversion.ok).toBe(true);
+
+      const detail = await sourcingService.getDetailForAdmin(id);
+      expect(detail!.allocatedTotal).toBe(5000);
+    });
+
+    it("selecting a new winning factory replaces the previous winner's award — only one winner at a time (M32.9)", async () => {
+      const { id } = await submitAndSendToFactories([vendorId, vendorTwoId], { quantity: 1000 });
+      const { rows: rowsOne } = await sourcingService.listSolicitationsForVendor(vendorId);
+      const { rows: rowsTwo } = await sourcingService.listSolicitationsForVendor(vendorTwoId);
+      const solicitationOneId = rowsOne[0]!.id;
+      const solicitationTwoId = rowsTwo[0]!.id;
+
+      await sourcingService.respondToSolicitation(solicitationOneId, vendorId, { canFulfil: true, proposedQuantity: 1000, unitPrice: 10 });
+      await sourcingService.respondToSolicitation(solicitationTwoId, vendorTwoId, { canFulfil: true, proposedQuantity: 1000, unitPrice: 9 });
+
+      const first = await sourcingService.useSolicitationForOption(id, solicitationOneId);
+      expect(first.ok).toBe(true);
+      let detail = await sourcingService.getDetailForAdmin(id);
+      expect(detail!.allocations).toHaveLength(1);
+      if (first.ok) expect(detail!.allocations[0]?.sourcingOptionId).toBe(first.value.optionId);
+
+      // Admin changes their mind and picks factory two instead.
+      const second = await sourcingService.useSolicitationForOption(id, solicitationTwoId);
+      expect(second.ok).toBe(true);
+      detail = await sourcingService.getDetailForAdmin(id);
+      expect(detail!.allocations).toHaveLength(1);
+      if (second.ok) expect(detail!.allocations[0]?.sourcingOptionId).toBe(second.value.optionId);
+      expect(detail!.allocatedTotal).toBe(1000);
     });
 
     it("rejects converting a solicitation that hasn't responded yet, or cannot fulfil", async () => {

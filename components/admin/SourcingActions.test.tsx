@@ -27,9 +27,8 @@ vi.mock("../../lib/actions/sourcing", () => ({
   moveToUnderReviewAction: vi.fn(),
   moveToSourcingAction: vi.fn(),
   requestClarificationAction: vi.fn(),
-  addSourcingOptionAction: vi.fn(),
-  removeSourcingOptionAction: vi.fn(),
-  setAllocationsAction: vi.fn(),
+  sendToFactoriesAction: vi.fn(),
+  convertSolicitationToOptionAction: vi.fn(),
   prepareQuoteAction: vi.fn(),
   markUnableToSourceAction: vi.fn(),
 }));

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AddressFormFields } from "../account/AddressFormFields";
+import { DeliveryAddressFormFields } from "./DeliveryAddressFormFields";
 import type { AddressView } from "../../modules/addresses/types";
 
 /**
@@ -11,11 +12,29 @@ import type { AddressView } from "../../modules/addresses/types";
  * inputs mirroring its exact current values; nothing about the Order-
  * creation path changes. The Order snapshots whatever is in these fields
  * at submit time, exactly as before this feature existed.
+ *
+ * `countryAware` (M32.9, opt-in — QuoteCheckoutForm only, for now) swaps
+ * the plain Ghana-only "new address" fields for DeliveryAddressFormFields'
+ * country-first fields, and hides "Save this address for next time" once a
+ * non-Ghana country is chosen — the saved-address book is still Ghana-only
+ * (see that component's doc comment). Saved addresses themselves are
+ * unaffected either way: they're always Ghana (the only country
+ * `CustomerAddress` can represent), so a hidden `country=Ghana` is
+ * submitted alongside them regardless of `countryAware`.
  */
-export function DeliveryAddressFields({ addresses, disabled }: { addresses: AddressView[]; disabled?: boolean }) {
+export function DeliveryAddressFields({
+  addresses,
+  disabled,
+  countryAware = false,
+}: {
+  addresses: AddressView[];
+  disabled?: boolean;
+  countryAware?: boolean;
+}) {
   const defaultAddress = addresses.find((a) => a.isDefault) ?? addresses[0] ?? null;
   const [mode, setMode] = useState<"saved" | "new">(defaultAddress ? "saved" : "new");
   const [selectedId, setSelectedId] = useState(defaultAddress?.id ?? "");
+  const [newAddressCountry, setNewAddressCountry] = useState("Ghana");
   const selected = addresses.find((a) => a.id === selectedId) ?? null;
 
   if (mode === "saved" && addresses.length > 0) {
@@ -64,6 +83,7 @@ export function DeliveryAddressFields({ addresses, disabled }: { addresses: Addr
             <input type="hidden" name="addressLine1" value={selected.addressLine1} />
             <input type="hidden" name="addressLine2" value={selected.addressLine2 ?? ""} />
             <input type="hidden" name="city" value={selected.city} />
+            <input type="hidden" name="country" value="Ghana" />
             <input type="hidden" name="region" value={selected.region} />
           </>
         ) : null}
@@ -92,7 +112,11 @@ export function DeliveryAddressFields({ addresses, disabled }: { addresses: Addr
           ← Use a saved address
         </button>
       ) : null}
-      <AddressFormFields disabled={disabled} />
+      {countryAware ? (
+        <DeliveryAddressFormFields disabled={disabled} onCountryChange={setNewAddressCountry} />
+      ) : (
+        <AddressFormFields disabled={disabled} />
+      )}
       <div className="flex flex-col gap-1.5">
         <label htmlFor="notes" className="text-sm font-medium text-espresso-800">
           Delivery notes (optional)
@@ -106,10 +130,12 @@ export function DeliveryAddressFields({ addresses, disabled }: { addresses: Addr
           className="w-full rounded-lg border border-ivory-400 bg-ivory-50 px-3.5 py-2.5 text-[15px] text-espresso-950 shadow-soft outline-none focus:border-espresso-800 focus:ring-2 focus:ring-champagne-200"
         />
       </div>
-      <label className="flex items-center gap-2 text-sm text-espresso-900/65">
-        <input type="checkbox" name="saveAddress" value="1" disabled={disabled} />
-        Save this address for next time
-      </label>
+      {!countryAware || newAddressCountry === "Ghana" ? (
+        <label className="flex items-center gap-2 text-sm text-espresso-900/65">
+          <input type="checkbox" name="saveAddress" value="1" disabled={disabled} />
+          Save this address for next time
+        </label>
+      ) : null}
     </div>
   );
 }

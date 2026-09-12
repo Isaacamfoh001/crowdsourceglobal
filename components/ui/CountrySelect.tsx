@@ -21,6 +21,7 @@ export function CountrySelect({
   disabled = false,
   hint,
   error,
+  onChange,
 }: {
   name: string;
   label: string;
@@ -29,6 +30,8 @@ export function CountrySelect({
   disabled?: boolean;
   hint?: string;
   error?: string;
+  /** Notified with the newly selected country name — lets a parent conditionally show/hide country-specific fields (e.g. Ghana's region picker). */
+  onChange?: (country: string) => void;
 }) {
   const [selected, setSelected] = useState(defaultValue ?? "");
   const [query, setQuery] = useState("");
@@ -49,6 +52,7 @@ export function CountrySelect({
     setOpen(false);
     setActiveIndex(0);
     inputRef.current?.blur();
+    onChange?.(country);
   }
 
   function openList() {

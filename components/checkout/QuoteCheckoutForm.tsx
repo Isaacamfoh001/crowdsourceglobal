@@ -16,7 +16,7 @@ export function QuoteCheckoutForm({ quotationId, addresses }: { quotationId: str
 
       {state && !state.ok ? <FormMessage tone="error">{state.error}</FormMessage> : null}
 
-      <DeliveryAddressFields addresses={addresses} disabled={isPending} />
+      <DeliveryAddressFields addresses={addresses} disabled={isPending} countryAware />
 
       <Button type="submit" size="lg" fullWidth disabled={isPending} className="mt-2">
         {isPending ? "Placing order…" : "Place order"}

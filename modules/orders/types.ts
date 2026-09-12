@@ -25,7 +25,10 @@ export type DeliveryInfo = {
   addressLine1: string;
   addressLine2?: string;
   city: string;
-  region: string;
+  /** M32.9 — absent/undefined means Ghana (every pre-existing caller predates international delivery); see lib/delivery-schema.ts, which defaults it server-side. Optional in the type too so the many existing Ghana-only fixtures/callers don't all need updating. */
+  country?: string;
+  /** Ghana's own subdivision — required only when country is Ghana, never fabricated for another country. */
+  region?: string;
   notes?: string;
 };
 

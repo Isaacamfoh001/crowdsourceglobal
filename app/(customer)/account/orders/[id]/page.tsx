@@ -199,9 +199,7 @@ export default async function OrderDetailPage({
               <p>{order.deliveryInfo.phone}</p>
               <p>{order.deliveryInfo.addressLine1}</p>
               {order.deliveryInfo.addressLine2 ? <p>{order.deliveryInfo.addressLine2}</p> : null}
-              <p>
-                {order.deliveryInfo.city}, {order.deliveryInfo.region}
-              </p>
+              <p>{[order.deliveryInfo.city, order.deliveryInfo.region, order.deliveryInfo.country].filter(Boolean).join(", ")}</p>
               {order.deliveryInfo.notes ? (
                 <p className="mt-2 text-espresso-900/50">Note: {order.deliveryInfo.notes}</p>
               ) : null}
