@@ -1,7 +1,6 @@
 import { getCurrentSession } from "../../../../modules/identity/policy";
 import { resolveExplorePostPublisher } from "../../../../modules/explore-posts/policy";
 import { explorePostsService } from "../../../../modules/explore-posts/service";
-import { catalogueRepository } from "../../../../modules/catalogue/repository";
 import { apiError, apiSuccess } from "../../../../lib/api/response";
 import { toExplorePostDTO } from "../../../../lib/api/dto/explore-posts";
 import { checkActionRateLimit, RATE_LIMIT_MESSAGE } from "../../../../lib/rate-limit";
@@ -13,21 +12,16 @@ import { checkActionRateLimit, RATE_LIMIT_MESSAGE } from "../../../../lib/rate-l
  * in caller additionally gets real `likedByMe`/`savedByMe`; an anonymous
  * caller always gets `false` for both — never an anonymous like/save
  * record (CLAUDE.md M21 §9/§10).
+ *
+ * M32.10.2 — Explore dropped categories entirely (photos + caption only),
+ * so this no longer accepts a `category` filter param.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const categorySlug = url.searchParams.get("category") ?? undefined;
   const cursor = url.searchParams.get("cursor") ?? undefined;
 
-  let categoryId: string | undefined;
-  if (categorySlug) {
-    const category = await catalogueRepository.findCategoryBySlug(categorySlug);
-    if (!category) return apiError("NOT_FOUND", "Category not found.");
-    categoryId = category.id;
-  }
-
   const session = await getCurrentSession();
-  const feed = await explorePostsService.getFeed({ categoryId, cursor, viewerUserId: session?.user.id });
+  const feed = await explorePostsService.getFeed({ cursor, viewerUserId: session?.user.id });
 
   return apiSuccess({
     rows: feed.rows.map((post) =>
@@ -44,8 +38,8 @@ const CREATE_RATE_LIMIT = { windowSeconds: 60 * 60, max: 10 };
  * §17: mobile's create flow has no persisted "save as draft" step). Only an
  * approved-Vendor-membership caller may post — see
  * modules/explore-posts/policy.ts. `multipart/form-data`: `caption`
- * (string), `categoryId` (string), one or more `images` file parts (1-6,
- * PNG/JPEG/WEBP, <=5MB each — modules/explore-posts/image-validation.ts).
+ * (string), one or more `images` file parts (1-6, PNG/JPEG/WEBP, <=5MB each
+ * — modules/explore-posts/image-validation.ts). No category (M32.10.2).
  */
 export async function POST(request: Request) {
   const session = await getCurrentSession();
@@ -65,7 +59,6 @@ export async function POST(request: Request) {
   }
 
   const caption = String(formData.get("caption") ?? "");
-  const categoryId = String(formData.get("categoryId") ?? "");
 
   const imageFiles: { buffer: Buffer; filename: string; mimeType: string }[] = [];
   for (const entry of formData.getAll("images")) {
@@ -73,7 +66,7 @@ export async function POST(request: Request) {
     imageFiles.push({ buffer: Buffer.from(await entry.arrayBuffer()), filename: entry.name, mimeType: entry.type });
   }
 
-  const result = await explorePostsService.createAndSubmit(publisher.vendorId, { caption, categoryId }, imageFiles);
+  const result = await explorePostsService.createAndSubmit(publisher.vendorId, { caption }, imageFiles);
   if (!result.ok) return apiError("VALIDATION_ERROR", result.error);
 
   return apiSuccess({ id: result.value.postId }, { status: 201 });

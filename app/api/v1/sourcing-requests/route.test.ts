@@ -93,7 +93,7 @@ describe("POST/GET /api/v1/sourcing-requests", () => {
     const listBody = await listResponse.json();
     const row = listBody.data.rows.find((r: { id: string }) => r.id === createBody.data.id);
     expect(row.title).toBe("Photo sourcing request");
-    expect(row.thumbnail).toMatch(/^https?:\/\/.*\/api\/sourcing\/attachments\//);
+    expect(row.thumbnail).toMatch(/^\/api\/sourcing\/attachments\/.+/);
     expect(Object.keys(row).sort()).toEqual(
       ["hasQuotation", "id", "quantity", "quantityUnit", "requestNumber", "status", "statusLabel", "submittedAt", "thumbnail", "title"].sort(),
     );

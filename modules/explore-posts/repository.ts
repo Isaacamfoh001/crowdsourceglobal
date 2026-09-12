@@ -42,7 +42,6 @@ const publicFeedSelect = {
   caption: true,
   images: true,
   createdAt: true,
-  category: { select: { id: true, name: true, slug: true } },
   vendor: {
     select: { id: true, companyName: true, logoUrl: true, storefrontSlug: true, country: true, region: true, city: true },
   },
@@ -54,7 +53,6 @@ function toPublicPost(row: {
   caption: string;
   images: unknown;
   createdAt: Date;
-  category: { id: string; name: string; slug: string };
   vendor: {
     id: string;
     companyName: string;
@@ -71,7 +69,6 @@ function toPublicPost(row: {
     caption: row.caption,
     images: toImages(row.images),
     createdAt: row.createdAt,
-    category: row.category,
     vendor: row.vendor,
     likeCount: row._count.likes,
   };
@@ -85,7 +82,6 @@ function toVendorDetail(row: {
   images: unknown;
   approvalStatus: string;
   visibility: string;
-  categoryId: string;
   submittedAt: Date | null;
   changesRequestedReason: string | null;
   pendingChanges: unknown;
@@ -100,7 +96,6 @@ function toVendorDetail(row: {
     visibility: row.visibility,
     hasPendingChanges: row.pendingChanges !== null,
     changesRequestedReason: row.changesRequestedReason,
-    categoryId: row.categoryId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -108,10 +103,11 @@ function toVendorDetail(row: {
 
 export const explorePostsRepository = {
   /**
-   * The fixed Explore category allowlist (prisma/reference-data.ts),
-   * resolved to real rows — backs the mobile create-post category picker
-   * and the public category-filter param. Never the full commerce taxonomy
-   * (most of which has no meaning as a "type of beauty work").
+   * The fixed beauty-work category allowlist (prisma/reference-data.ts).
+   * M32.10.2 — Explore post creation no longer uses this (photos + caption
+   * only), but Beauty Professional profile/service category pickers still
+   * do (app/vendor/portal/beauty-professional/*, admin's beauty-professional
+   * detail page) — never remove this without checking those callers too.
    */
   listExploreCategories() {
     return prisma.category.findMany({
@@ -148,13 +144,12 @@ export const explorePostsRepository = {
    * prisma/schema.prisma's ExplorePost doc comment for the full state
    * table.
    */
-  async listPublicFeed(params: { categoryId?: string; cursor?: string }, pageSize: number) {
+  async listPublicFeed(params: { cursor?: string }, pageSize: number) {
     const decodedCursor = params.cursor ? decodeExploreFeedCursor(params.cursor) : null;
 
     const rows = await prisma.explorePost.findMany({
       where: {
         visibility: "PUBLISHED",
-        ...(params.categoryId ? { categoryId: params.categoryId } : {}),
         ...(decodedCursor
           ? {
               OR: [
@@ -275,7 +270,6 @@ export const explorePostsRepository = {
           images: true,
           approvalStatus: true,
           visibility: true,
-          categoryId: true,
           submittedAt: true,
           changesRequestedReason: true,
           pendingChanges: true,
@@ -300,7 +294,6 @@ export const explorePostsRepository = {
         images: true,
         approvalStatus: true,
         visibility: true,
-        categoryId: true,
         submittedAt: true,
         changesRequestedReason: true,
         pendingChanges: true,
@@ -311,11 +304,10 @@ export const explorePostsRepository = {
     return row ? toVendorDetail(row) : null;
   },
 
-  createAndSubmit(vendorId: string, input: { caption: string; categoryId: string; images: string[] }) {
+  createAndSubmit(vendorId: string, input: { caption: string; images: string[] }) {
     return prisma.explorePost.create({
       data: {
         vendorId,
-        categoryId: input.categoryId,
         caption: input.caption,
         images: input.images,
         approvalStatus: "PENDING",
@@ -385,7 +377,7 @@ export const explorePostsRepository = {
   async findForAdmin(id: string) {
     const row = await prisma.explorePost.findUnique({
       where: { id },
-      include: { ...detailInclude, category: { select: { id: true, name: true } }, vendor: { select: { id: true, companyName: true } } },
+      include: { ...detailInclude, vendor: { select: { id: true, companyName: true } } },
     });
     if (!row) return null;
     return {
@@ -394,8 +386,6 @@ export const explorePostsRepository = {
       images: toImages(row.images),
       approvalStatus: row.approvalStatus,
       visibility: row.visibility,
-      categoryId: row.categoryId,
-      category: row.category,
       pendingChanges: parsePendingChanges(row.pendingChanges),
       vendorId: row.vendor.id,
       vendorName: row.vendor.companyName,
@@ -403,7 +393,7 @@ export const explorePostsRepository = {
     };
   },
 
-  applyApprovalAndPublish(id: string, fields: { caption: string; categoryId: string; images: string[] } | null) {
+  applyApprovalAndPublish(id: string, fields: { caption: string; images: string[] } | null) {
     return prisma.explorePost.update({
       where: { id },
       data: {

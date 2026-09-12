@@ -163,6 +163,47 @@ describe("/api/v1/vendor/sourcing-requests/:id", () => {
     expect(rows.find((r) => r.id === solicitationId)?.status).toBe("SENT");
   });
 
+  it("returns the customer's sourcing photos to the solicited factory (M32.10.2)", async () => {
+    const { vendorId, ownerUserId } = await makeVendorWithOwner("photos");
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const customerUser = await prisma.user.create({
+      data: { id: `m32102-api-cust-${suffix}`, name: "Customer", email: `m32102.api.cust.${suffix}@example.com` },
+    });
+    createdUserIds.push(customerUser.id);
+    const customer = await prisma.customerProfile.create({ data: { userId: customerUser.id, displayName: "Photo Customer" } });
+    createdCustomerIds.push(customer.id);
+    const staffUser = await prisma.user.create({
+      data: { id: `m32102-api-staff-${suffix}`, name: "Staff", email: `m32102.api.staff.${suffix}@example.com` },
+    });
+    createdUserIds.push(staffUser.id);
+
+    const created = await sourcingService.submitRequest(
+      customer.id,
+      customerUser.id,
+      customerUser.email,
+      { title: "Photo-first request", description: "See photo", quantity: 3, deliveryCountry: "Ghana" },
+      [{ buffer: Buffer.from([0xff, 0xd8, 0xff, 0x00]), filename: "reference.jpg", mimeType: "image/jpeg" }],
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    createdRequestIds.push(created.value.id);
+
+    await sourcingService.moveToUnderReview(created.value.id);
+    await sourcingService.moveToSourcing(created.value.id);
+    await sourcingService.sendToFactories(created.value.id, [vendorId], staffUser.id);
+    const { rows } = await sourcingService.listSolicitationsForVendor(vendorId);
+    const solicitationId = rows[0]!.id;
+
+    vi.mocked(getCurrentSession).mockResolvedValue(sessionFor(ownerUserId));
+    const res = await GET(getRequest(solicitationId), { params: Promise.resolve({ id: solicitationId }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.attachments).toHaveLength(1);
+    expect(body.data.attachments[0].isImage).toBe(true);
+    expect(body.data.attachments[0].sizeBytes).toBeGreaterThan(0);
+    expect(body.data.attachments[0].url).toMatch(/^\/api\/sourcing\/attachments\/.+/);
+  });
+
   it("lets the correct factory submit a real CAN FULFIL response", async () => {
     const { vendorId, ownerUserId } = await makeVendorWithOwner("respond");
     const { solicitationId } = await makeSolicitationFor(vendorId);

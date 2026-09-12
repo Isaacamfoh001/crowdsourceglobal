@@ -3,32 +3,50 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ImageOff, X } from "lucide-react";
 import { listingImageUrl } from "../../lib/listing-images";
+import { explorePostImageUrl } from "../../lib/explore-post-images";
 
 type ListingImageReviewProps = {
   images: string[];
   title: string;
   /**
    * (M21) Which storage-key resolver to render images through — defaults to
-   * `listingImageUrl` (VendorListing photos). The Explore-post admin detail
-   * page passes `explorePostImageUrl` instead, reusing this entire
-   * component/lightbox rather than building a second image-viewer (CLAUDE.md
-   * M21 §19: "reuse the good image-review/lightbox pattern... do not create
+   * `listingImageUrl` (VendorListing photos); the Explore-post admin detail
+   * page passes `"explore-post"` instead, reusing this entire component/
+   * lightbox rather than building a second image-viewer (CLAUDE.md M21 §19:
+   * "reuse the good image-review/lightbox pattern... do not create
    * duplicated image-viewer logic unnecessarily").
+   *
+   * M32.10.2 — this used to accept the resolver function itself
+   * (`resolveUrl?: (entry: string) => string`). That's exactly what broke
+   * the Explore admin page: a Server Component page (async, no "use
+   * client") imported `explorePostImageUrl` and passed the function down as
+   * a prop into this Client Component, which Next.js refuses at runtime
+   * ("Functions cannot be passed directly to Client Components unless you
+   * explicitly expose it by marking it with 'use server'") — the listings
+   * page never hit this because it always relied on the default resolver
+   * and never passed one across the boundary. Both resolvers
+   * (`listingImageUrl`/`explorePostImageUrl`) are pure, dependency-free
+   * string builders with no server-only imports, so the fix is to import
+   * both directly here and pick between them with a serializable string
+   * discriminant instead of ever crossing the boundary with a function.
    */
-  resolveUrl?: (entry: string) => string;
+  imageKind?: "listing" | "explore-post";
   /** Label for the section heading/counts — "Product images" by default, "Post photos" for Explore. */
   label?: string;
 };
 
+const RESOLVERS = { listing: listingImageUrl, "explore-post": explorePostImageUrl } as const;
+
 /**
  * Admin moderation image review (M17.1.2, generalized M21). Read-only:
- * renders every image-array entry (resolved via `resolveUrl`, same
+ * renders every image-array entry (resolved via `imageKind`'s resolver, same
  * resolution already used on the corresponding public page — no second
  * image representation) so Admin can inspect content visually before
  * deciding. Primary image + thumbnail grid, click-through to a larger
  * lightbox with prev/next. No mutation, no reorder, no delete.
  */
-export function ListingImageReview({ images, title, resolveUrl = listingImageUrl, label = "Product images" }: ListingImageReviewProps) {
+export function ListingImageReview({ images, title, imageKind = "listing", label = "Product images" }: ListingImageReviewProps) {
+  const resolveUrl = RESOLVERS[imageKind];
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   if (images.length === 0) {

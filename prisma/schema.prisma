@@ -2965,8 +2965,12 @@ model ExplorePost {
   vendorId String
   vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
+  /// M32.10.2 — Explore dropped categories entirely (photos + caption only).
+  /// Nullable so new posts never need one; existing rows keep whatever
+  /// category they were filed under, but nothing reads it for display or
+  /// filtering any more (see modules/explore-posts).
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
 
   likes ExplorePostLike[]
   saves ExplorePostSave[]

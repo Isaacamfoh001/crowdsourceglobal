@@ -1,6 +1,5 @@
 export type ExplorePostPendingChangesPayload = {
   caption: string;
-  categoryId: string;
   images: string[];
 };
 
@@ -10,7 +9,6 @@ export type PublicExplorePost = {
   caption: string;
   images: string[];
   createdAt: Date;
-  category: { id: string; name: string; slug: string };
   vendor: {
     id: string;
     companyName: string;
@@ -36,7 +34,6 @@ export type VendorExplorePostSummary = {
   visibility: string;
   hasPendingChanges: boolean;
   changesRequestedReason: string | null;
-  categoryId: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -59,8 +56,6 @@ export type AdminExplorePostDetail = {
   images: string[];
   approvalStatus: string;
   visibility: string;
-  categoryId: string;
-  category: { id: string; name: string };
   pendingChanges: ExplorePostPendingChangesPayload | null;
   vendorId: string;
   vendorName: string;

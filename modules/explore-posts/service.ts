@@ -1,5 +1,4 @@
 import { explorePostsRepository } from "./repository";
-import { catalogueRepository } from "../catalogue/repository";
 import { vendorsRepository } from "../vendors/repository";
 import { notificationsService } from "../notifications/service";
 import { notificationLinks } from "../notifications/links";
@@ -7,10 +6,9 @@ import { ok, err, type Result } from "../../lib/result";
 import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import { storageProvider, generateStorageKey } from "../../lib/storage";
 import { validateExplorePostImage, MIN_EXPLORE_POST_IMAGES, MAX_EXPLORE_POST_IMAGES } from "./image-validation";
-import { EXPLORE_CATEGORY_SLUGS } from "../../prisma/reference-data";
 import type { NotificationType } from "../notifications/types";
 
-type CaptionAndCategoryInput = { caption: string; categoryId: string };
+type CaptionInput = { caption: string };
 
 const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 export const EXPLORE_FEED_PAGE_SIZE = 10;
@@ -55,14 +53,9 @@ async function resolveImages(newImageFiles: { buffer: Buffer; filename: string; 
   return ok(keys);
 }
 
-async function validateCaptionAndCategory(caption: string, categoryId: string): Promise<Result<null>> {
+function validateCaption(caption: string): Result<null> {
   if (caption.trim().length < 3) return err("Add a short caption describing the work.");
   if (caption.trim().length > 500) return err("Captions must be under 500 characters.");
-
-  const category = await catalogueRepository.findCategoryById(categoryId);
-  if (!category || !EXPLORE_CATEGORY_SLUGS.includes(category.slug)) {
-    return err("Choose a valid Explore category.");
-  }
   return ok(null);
 }
 
@@ -99,17 +92,15 @@ async function notifyVendorOwner(params: {
 }
 
 export const explorePostsService = {
+  /** Still used by Beauty Professional profile/service category pickers (M32.10.2 — Explore post creation itself no longer calls this). */
   listCategories() {
     return explorePostsRepository.listExploreCategories();
   },
 
   // --- Public feed / engagement ------------------------------------------
 
-  async getFeed(params: { categoryId?: string; cursor?: string; viewerUserId?: string }) {
-    const page = await explorePostsRepository.listPublicFeed(
-      { categoryId: params.categoryId, cursor: params.cursor },
-      EXPLORE_FEED_PAGE_SIZE,
-    );
+  async getFeed(params: { cursor?: string; viewerUserId?: string }) {
+    const page = await explorePostsRepository.listPublicFeed({ cursor: params.cursor }, EXPLORE_FEED_PAGE_SIZE);
     if (!params.viewerUserId || page.rows.length === 0) {
       return { ...page, likedIds: new Set<string>(), savedIds: new Set<string>() };
     }
@@ -168,10 +159,10 @@ export const explorePostsService = {
    */
   async createAndSubmit(
     vendorId: string,
-    input: CaptionAndCategoryInput,
+    input: CaptionInput,
     imageFiles: { buffer: Buffer; filename: string; mimeType: string }[],
   ): Promise<Result<{ postId: string }>> {
-    const captionCheck = await validateCaptionAndCategory(input.caption, input.categoryId);
+    const captionCheck = validateCaption(input.caption);
     if (!captionCheck.ok) return captionCheck;
 
     const imagesResult = await resolveImages(imageFiles);
@@ -179,7 +170,6 @@ export const explorePostsService = {
 
     const post = await explorePostsRepository.createAndSubmit(vendorId, {
       caption: input.caption.trim(),
-      categoryId: input.categoryId,
       images: imagesResult.value,
     });
     return ok({ postId: post.id });
@@ -198,7 +188,7 @@ export const explorePostsService = {
   async updateAndResubmit(
     vendorId: string,
     id: string,
-    input: CaptionAndCategoryInput,
+    input: CaptionInput,
     newImageFiles: { buffer: Buffer; filename: string; mimeType: string }[] = [],
     keptImages: string[] = [],
   ): Promise<Result<null>> {
@@ -242,10 +232,10 @@ export const explorePostsService = {
       return err("Add at least one photo of the finished work.");
     }
 
-    const captionCheck = await validateCaptionAndCategory(input.caption, input.categoryId);
+    const captionCheck = validateCaption(input.caption);
     if (!captionCheck.ok) return captionCheck;
 
-    const fields = { caption: input.caption.trim(), categoryId: input.categoryId, images: uploadResult.value };
+    const fields = { caption: input.caption.trim(), images: uploadResult.value };
 
     if (post.visibility === "PUBLISHED") {
       await explorePostsRepository.updateFieldsForVendor(vendorId, id, {
@@ -289,7 +279,6 @@ export const explorePostsService = {
     if (post.pendingChanges) {
       await explorePostsRepository.applyApprovalAndPublish(id, {
         caption: post.pendingChanges.caption,
-        categoryId: post.pendingChanges.categoryId,
         images: post.pendingChanges.images,
       });
     } else {

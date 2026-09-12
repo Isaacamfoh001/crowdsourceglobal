@@ -1,5 +1,5 @@
 import { serializeDate, serializeMoney } from "../response";
-import { absoluteResolutionAttachmentUrl } from "../images";
+import { resolutionAttachmentUrl } from "../images";
 import type {
   CustomerCaseDetail,
   CustomerCaseSummary,
@@ -53,7 +53,7 @@ export function toCustomerCaseDetailDTO(row: CustomerCaseDetail, currency: strin
       filename: a.filename,
       mimeType: a.mimeType,
       isImage: a.mimeType.startsWith("image/"),
-      url: absoluteResolutionAttachmentUrl(a.id),
+      url: resolutionAttachmentUrl(a.id),
     })),
     refunds: row.refunds.map((r) => ({
       id: r.id,

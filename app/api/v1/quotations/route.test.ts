@@ -9,6 +9,7 @@ vi.mock("../../../../modules/identity/policy", async (importOriginal) => {
 });
 
 import { getCurrentSession } from "../../../../modules/identity/policy";
+import { sourcingService } from "../../../../modules/sourcing/service";
 import { GET } from "./route";
 import { GET as GET_DETAIL } from "./[id]/route";
 
@@ -27,6 +28,7 @@ describe("GET /api/v1/quotations, GET /api/v1/quotations/[id]", () => {
   const createdVendorIds: string[] = [];
   const createdListingIds: string[] = [];
   const createdQuotationIds: string[] = [];
+  const createdSourcingRequestIds: string[] = [];
 
   afterEach(() => {
     vi.mocked(getCurrentSession).mockReset();
@@ -35,6 +37,9 @@ describe("GET /api/v1/quotations, GET /api/v1/quotations/[id]", () => {
   afterAll(async () => {
     await prisma.quotationItem.deleteMany({ where: { quotationId: { in: createdQuotationIds } } });
     await prisma.quotation.deleteMany({ where: { id: { in: createdQuotationIds } } });
+    await prisma.sourcingRequestAttachment.deleteMany({ where: { sourcingRequestId: { in: createdSourcingRequestIds } } });
+    await prisma.sourcingRequestActivity.deleteMany({ where: { sourcingRequestId: { in: createdSourcingRequestIds } } });
+    await prisma.customSourcingRequest.deleteMany({ where: { id: { in: createdSourcingRequestIds } } });
     await prisma.vendorCostRule.deleteMany({ where: { listingId: { in: createdListingIds } } });
     await prisma.vendorListing.deleteMany({ where: { id: { in: createdListingIds } } });
     await prisma.customerProfile.deleteMany({ where: { userId: { in: createdUserIds } } });
@@ -86,6 +91,46 @@ describe("GET /api/v1/quotations, GET /api/v1/quotations/[id]", () => {
     expect(detailBody.data.status).toBe("ISSUED");
     expect(detailBody.data.items).toHaveLength(1);
     expect(detailBody.data.items[0]).not.toHaveProperty("vendorPayableBasis");
+  });
+
+  it("returns the originating sourcing request's photos on a custom sourcing quotation (M32.10.2)", async () => {
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const user = await prisma.user.create({ data: { id: `qr-photo-customer-${suffix}`, name: "Photo Customer", email: `qr.photo.customer.${suffix}@example.com` } });
+    createdUserIds.push(user.id);
+    const profile = await prisma.customerProfile.create({ data: { userId: user.id, displayName: "Photo Customer" } });
+
+    const request = await sourcingService.submitRequest(
+      profile.id,
+      user.id,
+      user.email,
+      { title: "Beaded handwear", description: "Match this reference photo", quantity: 500, deliveryCountry: "Ghana" },
+      [{ buffer: Buffer.from([0xff, 0xd8, 0xff, 0x00]), filename: "reference.jpg", mimeType: "image/jpeg" }],
+    );
+    expect(request.ok).toBe(true);
+    if (!request.ok) return;
+    createdSourcingRequestIds.push(request.value.id);
+
+    const issued = await quotationService.issueCustomSourcingQuote({
+      customerProfileId: profile.id,
+      sourcingRequestId: request.value.id,
+      description: "500 units, beaded handwear",
+      quantity: 500,
+      unitPrice: 12,
+      vendorPayableBasis: 9,
+      vendorId: null,
+    });
+    expect(issued.ok).toBe(true);
+    if (!issued.ok) return;
+    createdQuotationIds.push(issued.value.quotationId);
+
+    vi.mocked(getCurrentSession).mockResolvedValue(sessionFor(user));
+    const detailResponse = await GET_DETAIL(new Request(`http://localhost/api/v1/quotations/${issued.value.quotationId}`), {
+      params: Promise.resolve({ id: issued.value.quotationId }),
+    });
+    expect(detailResponse.status).toBe(200);
+    const detailBody = await detailResponse.json();
+    expect(detailBody.data.sourcingRequestImages).toHaveLength(1);
+    expect(detailBody.data.sourcingRequestImages[0].url).toMatch(/^\/api\/sourcing\/attachments\/.+/);
   });
 
   it("returns 404 for another customer's quotation", async () => {

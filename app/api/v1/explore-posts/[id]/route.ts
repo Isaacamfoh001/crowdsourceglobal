@@ -7,10 +7,11 @@ type Params = { id: string };
 
 /**
  * PATCH /api/v1/explore-posts/[id] (M21 §23) — edit the caller's own post.
- * `multipart/form-data`: `caption`, `categoryId`, zero or more `keptImages`
- * (existing storage-key strings the vendor kept — an image is "removed"
- * simply by omitting its key, never deleted from storage, same convention
- * as vendor-listings), zero or more new `images` file parts.
+ * `multipart/form-data`: `caption`, zero or more `keptImages` (existing
+ * storage-key strings the vendor kept — an image is "removed" simply by
+ * omitting its key, never deleted from storage, same convention as
+ * vendor-listings), zero or more new `images` file parts. No category
+ * (M32.10.2).
  *
  * modules/explore-posts/service.ts's updateAndResubmit decides whether this
  * applies directly (CHANGES_REQUESTED/REJECTED — never public yet) or is
@@ -33,7 +34,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<Para
   }
 
   const caption = String(formData.get("caption") ?? "");
-  const categoryId = String(formData.get("categoryId") ?? "");
   const keptImages = formData.getAll("keptImages").map(String);
 
   const newImageFiles: { buffer: Buffer; filename: string; mimeType: string }[] = [];
@@ -46,7 +46,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<Para
   const result = await explorePostsService.updateAndResubmit(
     publisher.vendorId,
     id,
-    { caption, categoryId },
+    { caption },
     newImageFiles,
     keptImages,
   );

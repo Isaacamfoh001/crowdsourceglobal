@@ -8,11 +8,9 @@ const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 describe("explorePostsService", () => {
   let vendorAId: string;
   let vendorBId: string;
-  let categoryId: string;
   let userAId: string;
   let userBId: string;
   const createdVendorIds: string[] = [];
-  const createdCategoryIds: string[] = [];
   const createdPostIds: string[] = [];
   const createdUserIds: string[] = [];
 
@@ -32,15 +30,6 @@ describe("explorePostsService", () => {
     });
     vendorBId = vendorB.id;
     createdVendorIds.push(vendorB.id);
-
-    // A category slug this module's EXPLORE_CATEGORY_SLUGS allowlist accepts.
-    const category = await prisma.category.upsert({
-      where: { slug: "wigs" },
-      create: { name: "Wigs", slug: "wigs" },
-      update: {},
-    });
-    categoryId = category.id;
-    createdCategoryIds.push(category.id);
 
     const userA = await prisma.user.create({
       data: { id: `explore-user-a-${suffix}`, name: "Explore User A", email: `explore.user.a.${suffix}@example.com` },
@@ -65,7 +54,7 @@ describe("explorePostsService", () => {
   });
 
   async function createSubmittedPost(vendorId: string, caption = "A completed hairstyle") {
-    const result = await explorePostsService.createAndSubmit(vendorId, { caption, categoryId }, [validImage]);
+    const result = await explorePostsService.createAndSubmit(vendorId, { caption }, [validImage]);
     if (!result.ok) throw new Error(result.error);
     createdPostIds.push(result.value.postId);
     return result.value.postId;
@@ -85,27 +74,13 @@ describe("explorePostsService", () => {
   });
 
   it("rejects a post with zero images", async () => {
-    const result = await explorePostsService.createAndSubmit(vendorAId, { caption: "No photos", categoryId }, []);
+    const result = await explorePostsService.createAndSubmit(vendorAId, { caption: "No photos" }, []);
     expect(result.ok).toBe(false);
   });
 
   it("rejects more than the maximum allowed images", async () => {
     const sevenImages = Array.from({ length: 7 }, () => validImage);
-    const result = await explorePostsService.createAndSubmit(vendorAId, { caption: "Too many photos", categoryId }, sevenImages);
-    expect(result.ok).toBe(false);
-  });
-
-  it("rejects a category outside the Explore allowlist", async () => {
-    const commerceOnlyCategory = await prisma.category.upsert({
-      where: { slug: "human-hair-bundles" },
-      create: { name: "Human Hair Bundles", slug: "human-hair-bundles" },
-      update: {},
-    });
-    const result = await explorePostsService.createAndSubmit(
-      vendorAId,
-      { caption: "Wrong category", categoryId: commerceOnlyCategory.id },
-      [validImage],
-    );
+    const result = await explorePostsService.createAndSubmit(vendorAId, { caption: "Too many photos" }, sevenImages);
     expect(result.ok).toBe(false);
   });
 
@@ -151,7 +126,7 @@ describe("explorePostsService", () => {
 
   it("a vendor cannot edit another vendor's post", async () => {
     const postId = await createSubmittedPost(vendorAId);
-    const result = await explorePostsService.updateAndResubmit(vendorBId, postId, { caption: "Hijacked", categoryId }, [], []);
+    const result = await explorePostsService.updateAndResubmit(vendorBId, postId, { caption: "Hijacked" }, [], []);
     expect(result.ok).toBe(false);
 
     const own = await explorePostsService.getForVendor(vendorBId, postId);
@@ -183,7 +158,7 @@ describe("explorePostsService", () => {
 
   it("a PENDING first-time submission cannot be edited while awaiting its first decision", async () => {
     const postId = await createSubmittedPost(vendorAId);
-    const result = await explorePostsService.updateAndResubmit(vendorAId, postId, { caption: "Edited", categoryId }, [], []);
+    const result = await explorePostsService.updateAndResubmit(vendorAId, postId, { caption: "Edited" }, [], []);
     expect(result.ok).toBe(false);
   });
 
@@ -195,7 +170,7 @@ describe("explorePostsService", () => {
     const editResult = await explorePostsService.updateAndResubmit(
       vendorAId,
       postId,
-      { caption: "Updated caption", categoryId },
+      { caption: "Updated caption" },
       [],
       originalImages,
     );
@@ -234,7 +209,7 @@ describe("explorePostsService", () => {
     const postId = await createSubmittedPost(vendorAId, "Original caption");
     await explorePostsService.approve(postId);
     const originalImages = (await explorePostsService.getForVendor(vendorAId, postId))?.images ?? [];
-    await explorePostsService.updateAndResubmit(vendorAId, postId, { caption: "Proposed caption", categoryId }, [], originalImages);
+    await explorePostsService.updateAndResubmit(vendorAId, postId, { caption: "Proposed caption" }, [], originalImages);
 
     const result = await explorePostsService.requestChanges(postId, "Please retake this photo in better light");
     expect(result.ok).toBe(true);
@@ -257,7 +232,7 @@ describe("explorePostsService", () => {
     await explorePostsService.save(postId, userAId);
     const originalImages = (await explorePostsService.getForVendor(vendorAId, postId))?.images ?? [];
 
-    await explorePostsService.updateAndResubmit(vendorAId, postId, { caption: "Proposed caption", categoryId }, [], originalImages);
+    await explorePostsService.updateAndResubmit(vendorAId, postId, { caption: "Proposed caption" }, [], originalImages);
 
     const saved = await explorePostsService.getSaved(userAId);
     const savedRow = saved.rows.find((p) => p.id === postId);
@@ -297,7 +272,7 @@ describe("explorePostsService", () => {
     await explorePostsService.save(postId, userAId);
     const originalImages = (await explorePostsService.getForVendor(vendorAId, postId))?.images ?? [];
 
-    await explorePostsService.updateAndResubmit(vendorAId, postId, { caption: "Updated caption", categoryId }, [], originalImages);
+    await explorePostsService.updateAndResubmit(vendorAId, postId, { caption: "Updated caption" }, [], originalImages);
     await explorePostsService.approve(postId);
 
     const likeCount = await prisma.explorePostLike.count({ where: { explorePostId: postId, userId: userAId } });
@@ -321,7 +296,7 @@ describe("explorePostsService", () => {
 
     // Editing the OLDER post (which does not change its createdAt) must not
     // change its relative feed position.
-    await explorePostsService.updateAndResubmit(vendorAId, olderPostId, { caption: "Older post, edited", categoryId }, [], originalImages);
+    await explorePostsService.updateAndResubmit(vendorAId, olderPostId, { caption: "Older post, edited" }, [], originalImages);
 
     const feed = await explorePostsService.getFeed({});
     const olderIndex = feed.rows.findIndex((p) => p.id === olderPostId);
@@ -338,7 +313,7 @@ describe("explorePostsService", () => {
     await explorePostsService.updateAndResubmit(
       vendorAId,
       postId,
-      { caption: "Proposed caption", categoryId },
+      { caption: "Proposed caption" },
       [validImage],
       originalImages,
     );
@@ -355,7 +330,7 @@ describe("explorePostsService", () => {
     const postId = await createSubmittedPost(vendorAId, "Original caption");
     await explorePostsService.approve(postId);
     const keptImages = (await explorePostsService.getForVendor(vendorAId, postId))?.images ?? [];
-    await explorePostsService.updateAndResubmit(vendorAId, postId, { caption: "Bad edit", categoryId }, [], keptImages);
+    await explorePostsService.updateAndResubmit(vendorAId, postId, { caption: "Bad edit" }, [], keptImages);
 
     const result = await explorePostsService.reject(postId, "Not consistent with our guidelines");
     expect(result.ok).toBe(true);
@@ -371,7 +346,7 @@ describe("explorePostsService", () => {
     const postId = await createSubmittedPost(vendorAId, "First attempt");
     await explorePostsService.requestChanges(postId, "Please add a clearer photo");
 
-    const edit = await explorePostsService.updateAndResubmit(vendorAId, postId, { caption: "Second attempt", categoryId }, [validImage], []);
+    const edit = await explorePostsService.updateAndResubmit(vendorAId, postId, { caption: "Second attempt" }, [validImage], []);
     expect(edit.ok).toBe(true);
 
     const row = await prisma.explorePost.findUnique({ where: { id: postId } });

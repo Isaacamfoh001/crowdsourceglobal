@@ -1,4 +1,4 @@
-import { absoluteSourcingAttachmentUrl } from "../images";
+import { sourcingAttachmentUrl } from "../images";
 import { serializeDate } from "../response";
 import type { SourcingRequestDetailView, SourcingRequestSummaryView } from "../../../modules/sourcing/types";
 
@@ -22,7 +22,7 @@ export function toSourcingRequestSummaryDTO(request: SourcingRequestSummaryView)
     hasQuotation: request.hasQuotation,
     thumbnail:
       request.primaryAttachment && request.primaryAttachment.mimeType.startsWith("image/")
-        ? absoluteSourcingAttachmentUrl(request.primaryAttachment.id)
+        ? sourcingAttachmentUrl(request.primaryAttachment.id)
         : null,
   };
 }
@@ -52,7 +52,7 @@ export function toSourcingRequestDetailDTO(request: SourcingRequestDetailView) {
       mimeType: attachment.mimeType,
       sizeBytes: attachment.sizeBytes,
       isImage: attachment.mimeType.startsWith("image/"),
-      url: absoluteSourcingAttachmentUrl(attachment.id),
+      url: sourcingAttachmentUrl(attachment.id),
     })),
     latestQuotation: request.latestQuotation
       ? {

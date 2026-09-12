@@ -19,7 +19,6 @@ export function toExplorePostDTO(
     id: post.id,
     caption: post.caption,
     images: post.images.map(absoluteExplorePostImageUrl),
-    category: post.category,
     location,
     createdAt: serializeDate(post.createdAt),
     publisher: {

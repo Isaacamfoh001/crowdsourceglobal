@@ -3,8 +3,6 @@ import { ExplorePostDecisionForms } from "../../../../../components/admin/Explor
 import { ListingImageReview } from "../../../../../components/admin/ListingImageReview";
 import { requireAdminSession } from "../../../../../modules/administration/policy";
 import { explorePostsService } from "../../../../../modules/explore-posts/service";
-import { catalogueRepository } from "../../../../../modules/catalogue/repository";
-import { explorePostImageUrl } from "../../../../../lib/explore-post-images";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { Card } from "../../../../../components/ui/Card";
 import { Alert } from "../../../../../components/ui/Alert";
@@ -36,13 +34,9 @@ export default async function AdminExplorePostDetailPage({ params }: { params: P
 
   const isEdit = post.pendingChanges !== null;
   const content = post.pendingChanges
-    ? { caption: post.pendingChanges.caption, categoryId: post.pendingChanges.categoryId, images: post.pendingChanges.images }
+    ? { caption: post.pendingChanges.caption, images: post.pendingChanges.images }
     : post;
   const reviewable = post.approvalStatus === "PENDING";
-  // The pending edit may have changed the category — always resolve the
-  // name from `content.categoryId`, never assume it still matches
-  // post.category (the live category), which would be wrong for an edit.
-  const category = isEdit ? await catalogueRepository.findCategoryById(content.categoryId) : post.category;
 
   return (
     <div className="flex flex-col gap-6">
@@ -57,12 +51,11 @@ export default async function AdminExplorePostDetailPage({ params }: { params: P
         </Alert>
       ) : null}
 
-      <ListingImageReview images={content.images} title={post.caption} resolveUrl={explorePostImageUrl} label="Post photos" />
+      <ListingImageReview images={content.images} title={post.caption} imageKind="explore-post" label="Post photos" />
 
       <Card>
         <dl className="divide-y divide-ivory-100">
           <Row label="Caption" value={content.caption} />
-          <Row label="Category" value={category?.name ?? ""} />
         </dl>
       </Card>
 

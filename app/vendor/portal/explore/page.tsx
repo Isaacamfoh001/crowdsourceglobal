@@ -31,7 +31,7 @@ export default async function VendorExplorePage({ searchParams }: { searchParams
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Explore"
-        description="Your beauty-work portfolio posts. Post new work from the CrownSourceGlobal mobile app — Select images → caption → category → submit."
+        description="Your beauty-work portfolio posts. Post new work from the CrownSourceGlobal mobile app — Select images → caption → submit."
       />
 
       {posts.length === 0 ? (

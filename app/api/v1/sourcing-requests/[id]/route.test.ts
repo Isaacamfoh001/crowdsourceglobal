@@ -71,7 +71,7 @@ describe("GET /api/v1/sourcing-requests/[id]", () => {
     expect(response.status).toBe(404);
   });
 
-  it("returns the owner's own request with an absolute attachment URL", async () => {
+  it("returns the owner's own request with a relative attachment path (M32.10.3 — resolved against the client's own API base, never this server's origin)", async () => {
     const owner = await createCustomer("self");
     const submitted = await sourcingService.submitRequest(owner.profileId, owner.user.id, owner.user.email, {
       description: "Self-view request",
@@ -88,6 +88,6 @@ describe("GET /api/v1/sourcing-requests/[id]", () => {
     expect(body.data.description).toBe("Self-view request");
     expect(body.data.attachments).toHaveLength(1);
     expect(body.data.attachments[0].isImage).toBe(true);
-    expect(body.data.attachments[0].url).toMatch(/^https?:\/\/.*\/api\/sourcing\/attachments\//);
+    expect(body.data.attachments[0].url).toMatch(/^\/api\/sourcing\/attachments\/.+/);
   });
 });

@@ -1,5 +1,5 @@
 import { serializeMoney, serializeDate } from "../response";
-import { absoluteImageUrl, absoluteBeautyProfessionalImageUrl, absoluteServiceRequestImageUrl, absoluteSourcingAttachmentUrl, absoluteVendorLogoUrl } from "../images";
+import { absoluteImageUrl, absoluteBeautyProfessionalImageUrl, absoluteServiceRequestImageUrl, sourcingAttachmentUrl, absoluteVendorLogoUrl } from "../images";
 import type { VendorApplicationView } from "../../../modules/vendor-applications/types";
 import type { VendorListingSummary, VendorListingDetail } from "../../../modules/vendor-listings/types";
 import type { VendorFulfilmentSummary, VendorFulfilmentDetail } from "../../../modules/fulfilment/types";
@@ -384,8 +384,9 @@ export function toVendorSolicitationDetailDTO(row: VendorSolicitationDetailView)
       id: attachment.id,
       filename: attachment.filename,
       mimeType: attachment.mimeType,
+      sizeBytes: attachment.sizeBytes,
       isImage: attachment.mimeType.startsWith("image/"),
-      url: absoluteSourcingAttachmentUrl(attachment.id),
+      url: sourcingAttachmentUrl(attachment.id),
     })),
     response: row.response
       ? {

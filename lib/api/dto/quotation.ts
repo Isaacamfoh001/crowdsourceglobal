@@ -1,5 +1,5 @@
 import { serializeDate } from "../response";
-import { absoluteSourcingAttachmentUrl } from "../images";
+import { sourcingAttachmentUrl } from "../images";
 import type { QuotationDetailView, QuotationSummaryView } from "../../../modules/quotation/types";
 
 /**
@@ -46,6 +46,6 @@ export function toQuotationDetailDTO(quotation: QuotationDetailView) {
     // as the sourcing-request DTOs, see lib/api/dto/sourcing.ts).
     sourcingRequestImages: quotation.sourcingRequestAttachments
       .filter((attachment) => attachment.mimeType.startsWith("image/"))
-      .map((attachment) => ({ id: attachment.id, url: absoluteSourcingAttachmentUrl(attachment.id) })),
+      .map((attachment) => ({ id: attachment.id, url: sourcingAttachmentUrl(attachment.id) })),
   };
 }
