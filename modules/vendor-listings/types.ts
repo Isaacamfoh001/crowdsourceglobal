@@ -35,6 +35,8 @@ export type VendorListingSummary = {
   hasPendingChanges: boolean;
   changesRequestedReason: string | null;
   updatedAt: Date;
+  /** M32.11 — raw storage key/legacy URL of the first image, or null if the listing has none yet; resolved to a URL only in the DTO layer (toVendorListingSummaryDTO). Only findSummariesForVendorPaginated (the mobile/vendor-portal listings list) selects `images` to compute this — see that method's own doc comment. */
+  primaryImage: string | null;
 };
 
 export type VendorListingDetail = {

@@ -70,6 +70,10 @@ export function toVendorListingSummaryDTO(listing: VendorListingSummary) {
     hasPendingChanges: listing.hasPendingChanges,
     changesRequestedReason: listing.changesRequestedReason,
     updatedAt: serializeDate(listing.updatedAt),
+    // M32.11 — so the Vendor Products list can show each listing's own
+    // photo (a vendor recognizing their own submission), same primaryImage
+    // convention as the public catalogue's toListingSummaryDTO.
+    primaryImage: listing.primaryImage ? absoluteImageUrl(listing.primaryImage) : null,
   };
 }
 

@@ -118,11 +118,11 @@ describe("GET /api/v1/listings/[id]", () => {
     expect(body.data.bulkPriceTiers).toEqual([{ id: expect.any(String), minQuantity: 5, maxQuantity: 19, unitPrice: { amount: "400.00", currency: "GHS" } }]);
   });
 
-  it("returns both a resolved storage-key image and an untouched external image URL, both absolute/fetchable", async () => {
+  it("returns a RELATIVE storage-key image path (M32.11 — never this server's own origin) and an untouched external image URL", async () => {
     const response = await GET(request(approvedListingId), { params: Promise.resolve({ id: approvedListingId }) });
     const body = await response.json();
 
-    expect(body.data.images[0]).toMatch(/^http:\/\/localhost:3000\/api\/listings\/images\//);
+    expect(body.data.images[0]).toMatch(/^\/api\/listings\/images\//);
     expect(body.data.images[1]).toBe("https://cdn.example.com/external.png");
   });
 

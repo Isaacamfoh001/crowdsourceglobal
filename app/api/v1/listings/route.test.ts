@@ -1,7 +1,6 @@
 // @vitest-environment node
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../../lib/db";
-import { env } from "../../../../lib/env";
 import { GET } from "./route";
 
 /**
@@ -151,12 +150,12 @@ describe("GET /api/v1/listings", () => {
     expect(body.data).toMatchObject({ page: 1, pageSize: 24, total: 2, totalPages: 1 });
   });
 
-  it("resolves a stored image key to an absolute HTTPS-capable URL a native client can fetch directly", async () => {
+  it("resolves a stored image key to a RELATIVE public-image path, never this server's own NEXT_PUBLIC_APP_URL origin (M32.11 — a physical native client has no server on its own localhost)", async () => {
     const response = await GET(request(`category=${categorySlug}`));
     const body = await response.json();
     const listing = body.data.rows.find((r: { id: string }) => r.id === approvedListingId);
 
-    expect(listing.primaryImage).toBe(`${env.NEXT_PUBLIC_APP_URL}/api/listings/images/vendor-listing-images%2Fm18-2-fixture.png`);
+    expect(listing.primaryImage).toBe("/api/listings/images/vendor-listing-images%2Fm18-2-fixture.png");
   });
 
   it("returns only the deliberate summary DTO fields — no description/specs/internal fields", async () => {
